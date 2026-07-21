@@ -150,4 +150,7 @@
   --engineering-focus-outline-width: 1px;
   --engineering-focus-outline-offset: 4px;
   --engineering-reduced-motion-duration: 0.01ms;
+  --engineering-shell-motion-duration: 160ms;
+  --engineering-z-index-shell: 10;
+  --engineering-z-index-overlay: 30;
 }

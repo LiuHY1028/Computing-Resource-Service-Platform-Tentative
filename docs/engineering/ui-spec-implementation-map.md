@@ -1,16 +1,16 @@
 # UI 规范逐页实施映射
 
-原始文件：`docs/source/03-ui-design-spec.pdf.pdf`，共 18 页。状态中的“后续实现”表示正式组件或业务布局不属于 Task 02，不表示该页被遗漏。
+原始文件：`docs/source/03-ui-design-spec.pdf.pdf`，共 18 页。状态中的“后续实现”表示正式公共组件或业务内容不属于当前 AppShell 阶段，不表示该页被遗漏。
 
 | PDF 页码 | 规范主题 | 本阶段是否涉及 | 对应 Token 或文件 | 是否已经实现 | 是否存在疑问 |
 |---:|---|---|---|---|---|
 | p.1 | Logo 平台标识 | 是，仅品牌边界 | `UiSpecPage.tsx`、`productConfig` | 已实现边界说明；未复制资产 | 正式品牌、Logo 安全区与资产路径均未确认 |
 | p.2 | Color 色彩 | 是 | `tokens.css` 颜色组、验证页色卡 | 已实现 | 无；与组件页冲突见冲突文档 |
 | p.3 | Typography 文字 | 是 | `fonts.css`、`tokens.css` 排版组、`theme.css`、验证页排版 | 已实现 Token、Variable Font、加载状态与中英数符号/连续字重样例；浏览器确认实际命中 | 仓库未包含书面授权文件；系统回退渲染存在平台差异 |
-| p.4 | Navbar 导航栏 | 是，仅 Token | Navbar 尺寸与颜色 Token、验证页尺寸关系 | Token 已实现；正式 Navbar 后续实现 | 40 px Hover 标注语义不明确 |
-| p.5 | Sidebar 侧边菜单栏 | 是，仅 Token | Sidebar 尺寸/颜色/圆角 Token、Demibold 450 元数据映射、验证页尺寸关系 | Token 已实现；正式 Sidebar 后续实现 | 48 px 标注语义、p.5 是否采用字体命名实例 Demibold 450 待确认 |
-| p.6 | Main Layout 主界面布局 | 是，仅 Token | Main gap、容器圆角、验证页关系示意 | Token 已实现；正式应用框架后续实现 | 窄屏适配未定义 |
-| p.7 | Main Content 主内容区布局 | 是，仅 Token | 标题栏、操作间距、悬浮偏移 Token | Token 已实现；正式 Main Content 后续实现 | 悬浮入口业务含义未定义 |
+| p.4 | Navbar 导航栏 | 是 | `TopNavbar.tsx`、`AppShell.css`、Navbar Token | 已实现配置化品牌、右侧入口及私有反馈 | 40 px 暂按局部点击区使用，精确语义仍待确认 |
+| p.5 | Sidebar 侧边菜单栏 | 是 | `SideNavigation.tsx`、`navigation.ts`、`AppShell.css` | 已实现 208/64 px 状态、选中/Hover、Tooltip、独立滚动、遮罩和底部固定区 | 48 px 未提升为菜单项 Token；Demibold 450 仍待确认 |
+| p.6 | Main Layout 主界面布局 | 是 | `AppShell.tsx`、`MainContent.tsx`、`AppShell.css` | 已实现视口壳层、自适应剩余空间、8 px 间隙与圆角 | PDF 无响应式断点；本阶段补充 1366 桌面适配 |
+| p.7 | Main Content 主内容区布局 | 是 | `PageTitleBar.tsx`、`MainContent.tsx`、`FloatingAction.tsx` | 已实现 64 px 标题栏和可选悬浮定位能力；正式页面默认不显示悬浮入口 | 悬浮入口业务含义仍未定义 |
 | p.8 | Container & Shadow | 是 | 容器语义色、边框与三种阴影 Token、验证页 | 已实现 Token 与样例 | 成功背景、透明填充标注冲突 |
 | p.9 | Button 按钮 | 是，仅基础值 | 控件高度、圆角、内边距、图标与标签尺寸 Token | 基础 Token 已实现；正式 Button 后续实现 | 完整 Hover/Focus/Active/Loading 缺失 |
 | p.10 | Input 与 Textarea | 是，仅基础值与 Focus | 控件/文本域尺寸、颜色、Focus/Error 阴影 Token | 基础 Token 已实现；正式 Input 后续实现 | 错误色与 p.2 冲突；超长输入策略缺失 |
@@ -27,5 +27,5 @@
 
 - 本阶段直接实现基础体系的主要页码：p.2、p.3、p.8、p.16，以及 p.4-p.7、p.9-p.15、p.17-p.18 中可转成公共 Token 的明确数值。
 - p.1 只实施品牌隔离；不复制来源 Logo。
-- p.4-p.7 的正式应用框架留给阶段 3。
+- p.4-p.7 的正式应用框架已由 Task 03 实现；工程说明见 `docs/engineering/app-shell.md`。
 - p.9-p.15、p.17-p.18 的正式公共组件留给阶段 4。

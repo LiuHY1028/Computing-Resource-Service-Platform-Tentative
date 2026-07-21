@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-Task 02（Design Token 与基础主题）已在工程骨架上建立原始 UI 规范对应的 CSS Custom Properties、默认浅色主题和开发验证页。项目负责人提供的 MiSans VF 本地可变字体已按补充任务接入，不改变其他视觉规则。当前仍没有正式业务页面、业务 Mock 数据或公共组件 API。
+Task 03（应用框架）已基于原始 UI 规范 p.4-p.7 实现可运行的 AppShell：56 px 顶部导航、208/64 px 可展开侧栏、自适应主内容区、64 px 页面标题栏、正式信息架构菜单、15 个稳定页面 ID 的占位路由，以及菜单滚动遮罩、底部固定区和收起 Tooltip。项目仍没有正式业务页面、业务 Mock 数据或公共组件 API。
 
-下一阶段是应用框架和公共组件：应用框架消费 p.4-p.7 的布局 Token，公共组件消费 p.8-p.18 的基础 Token 与冲突记录。
+下一阶段是公共组件及业务页面：公共组件消费 p.8-p.18 的基础 Token 与冲突记录，业务页面在 AppShell 的稳定路由与页面标题映射上逐阶段接入。
 
 ## 技术栈
 
@@ -58,9 +58,9 @@ npm run preview
 public/                 静态资源目录（当前为空）
 src/
 ├── assets/fonts/       项目负责人提供的本地字体资产（仅一份 WOFF2）
-├── app/                应用根节点、集中路由和错误边界
+├── app/                应用根节点、集中路由、页面定义、AppShell 和错误边界
 ├── config/             产品身份与运行模式配置
-├── pages/              工程占位页、UI 规范验证页和 404 页
+├── pages/              模块占位页、UI 规范验证页和 404 页
 ├── shared/types/       后续共享类型入口
 ├── styles/             Token、浅色主题、Reset 与基础样式
 ├── test/               Vitest/jsdom 测试环境初始化
@@ -71,11 +71,15 @@ src/
 
 ## 路由
 
-- `/`：工程初始化占位页
+- `/`：重定向到默认正式模块 `/marketplace`
+- `/marketplace`：`MKT-01` 资源商城占位页
+- `/resources/cloud-servers`：`RES-01` 云服务器列表占位页
+- `/storage`、`/images`、`/software`、`/network-access`：对应正式模块占位页
+- `/orders`、`/operation-records`：订单与操作记录占位页
 - `/__dev/ui-spec`：UI 规范 Design Token 开发验证页，不加入正式菜单
 - `*`：404 页面
 
-所有路径统一定义在 `src/app/router.tsx`，本阶段没有预注册业务路由。
+15 个稳定页面 ID 的路径、标题、模块和用途统一定义在 `src/app/routes.ts`；正式菜单定义在 `src/app/shell/navigation.ts`；路由装配位于 `src/app/router.tsx`。详情路由使用动态对象 ID 参数，但本阶段不创建任何业务数据。
 
 ## 环境变量
 
@@ -96,6 +100,7 @@ src/
 - TypeScript CSS 变量引用：`src/theme/tokenVars.ts`
 - 验证路由：`/__dev/ui-spec`
 - 工程说明：`docs/engineering/design-tokens.md`
+- 应用框架说明：`docs/engineering/app-shell.md`
 - 字体资产与授权边界记录：`docs/engineering/font-assets.md`
 - 逐页映射、冲突、缺口与核验记录：`docs/engineering/ui-spec-*.md`
 
@@ -105,7 +110,6 @@ src/
 
 ## 当前未实现
 
-- 顶部导航、侧边栏、页面标题栏等应用框架
 - Button、Input、Table 等公共 UI 组件
 - 字体在目标 Windows/macOS 环境的像素级渲染复核与书面授权归档
 - 资源商城、购买、资源、存储、镜像、软件、网络、订单和操作记录页面

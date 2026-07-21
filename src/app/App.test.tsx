@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
+import { APP_PAGE_ROUTES, DEFAULT_APP_ROUTE } from './routes';
 import { App } from './App';
 
 function renderRoute(path: string) {
@@ -12,16 +13,35 @@ function renderRoute(path: string) {
 }
 
 describe('application routes', () => {
-  it('renders the application root', () => {
-    const { container } = renderRoute('/');
-
-    expect(container.querySelector('main')).toBeInTheDocument();
-  });
-
-  it('shows the engineering placeholder on the root route', () => {
+  it('redirects the root to the first formal module', () => {
     renderRoute('/');
 
-    expect(screen.getByText('前端工程初始化')).toBeInTheDocument();
+    expect(DEFAULT_APP_ROUTE.pageId).toBe('MKT-01');
+    expect(
+      screen.getByRole('heading', { level: 1, name: '资源商城' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('MKT-01')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['/marketplace', '资源商城'],
+    ['/resources/cloud-servers', '云服务器列表'],
+    ['/storage', '存储空间列表'],
+    ['/images', '镜像管理'],
+    ['/software', '软件中心'],
+    ['/network-access', '网络与访问'],
+    ['/orders', '订单列表'],
+    ['/operation-records', '操作记录'],
+  ])('renders formal route %s', (path, title) => {
+    renderRoute(path);
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: title }),
+    ).toBeInTheDocument();
+  });
+
+  it('registers every stable page route', () => {
+    expect(APP_PAGE_ROUTES).toHaveLength(15);
   });
 
   it('renders the UI specification verification route', () => {
@@ -39,5 +59,9 @@ describe('application routes', () => {
     renderRoute('/unknown-route');
 
     expect(screen.getByRole('heading', { name: '404' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '返回资源商城' })).toHaveAttribute(
+      'href',
+      '/marketplace',
+    );
   });
 });

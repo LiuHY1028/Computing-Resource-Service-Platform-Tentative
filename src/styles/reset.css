@@ -9,6 +9,12 @@ h1,
 h2,
 h3,
 h4,
-p {
+p,
+dl,
+dd {
   margin: 0;
+}
+
+button {
+  color: inherit;
 }

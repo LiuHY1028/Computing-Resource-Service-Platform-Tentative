@@ -17,10 +17,10 @@
 | p.1 | 品牌隔离与可配置边界说明 | 来源 Logo 资产及正式品牌 | 未复制、未重绘、未作为当前品牌展示 |
 | p.2 | 品牌渐变、功能色阶、中性色 Token 与色卡 | 无正式业务色彩绑定 | 颜色按页面图像和标注落地 |
 | p.3 | 本地 MiSans VF、5 级字号/行高、连续字重 Token、中文/英文/数字符号与加载状态验证 | 书面授权文件、跨平台像素级一致性 | WOFF2 元数据、150–700 `wght` 轴、Demibold 450 命名实例与回退链已记录 |
-| p.4 | Navbar 高度、品牌区、右侧区、Hover 色及临时 40 px Token | 正式 Navbar | 40 px 含义保持临时，不扩成全局规则 |
-| p.5 | Sidebar 展开/收起宽度、颜色、间距与圆角基础值 | 正式 Sidebar、48 px 语义 | 48 px 未误设为全局菜单项高度 |
-| p.6 | Navbar/Sidebar/Main Content 关系及 8 px 间隙 | 正式应用框架 | 只展示尺寸关系，无业务布局组件 |
-| p.7 | 标题栏 64 px、20 px 内边距、8 px 操作间距、20 px 悬浮偏移 | 正式 Main Content | 尺寸 Token 已落地 |
+| p.4 | Navbar 高度、品牌区、右侧区、Hover 状态与私有反馈面板 | 真实消息、用户与账号系统 | 品牌和操作区域按原图关系落地，40 px 含义保持临时 |
+| p.5 | Sidebar 展开/收起、菜单分组、选中/Hover、独立滚动、固定底部、渐变遮罩与收起 Tooltip | 正式公共 Tooltip | 48 px 未误设为全局菜单项高度；超量菜单由测试 fixture 覆盖 |
+| p.6 | Navbar/Sidebar/Main Content 关系、8 px 间隙、自适应列宽和视口内滚动 | 正式业务正文 | CSS Grid/Flex 实现应用框架，无大面积绝对定位 |
+| p.7 | 64 px 标题栏、20 px 内边距、8 px 操作间距和可选悬浮能力 | 正式业务操作 | 悬浮能力默认不在正式页面显示，未虚构业务用途 |
 | p.8 | 容器语义色、边框、圆角、三类阴影 | 正式容器组件 | 成功背景与透明填充冲突已单独记录 |
 | p.9 | 32/24 px 高度、内边距、图标尺寸、按钮相关颜色基础值 | 正式 Button/IconButton | 未建立公共组件 API |
 | p.10 | Input/Textarea 高度、内边距、清除/拖拽色、Focus/Error 阴影 | 正式 Input/Textarea | 组件错误色与全局错误色分离 |
@@ -37,13 +37,19 @@
 
 | 项目 | 结果 |
 |---|---|
-| 根路由 | 标题与工程占位内容正常，入口可达 |
-| 404 | 明确显示 `404`，返回入口存在 |
+| 根路由 | 重定向至首个正式模块 `/marketplace`，不再显示工程初始化占位页 |
+| 正式路由 | 15 个稳定页面路由均可访问；7 个一级菜单入口逐一检查，页面标题与选中项同步 |
+| AppShell | Navbar、208/64 px Sidebar、Main Content 和 64 px PageTitleBar 正常；展开/收起不刷新、不丢路由 |
+| 菜单交互 | Hover、选中、展开/收起、二级菜单、固定底部区域正常；收起 Tooltip Portal 位于 `body`，未被裁切 |
+| 菜单溢出 | 自动化 fixture 注入 20 个仅测试菜单项，验证独立滚动区域、顶部/底部遮罩出现与消失、固定底部区域 |
+| 顶部入口 | 消息与用户入口均有明确“功能待接入”反馈，点击无死控件 |
+| 404 | 明确显示 `404`，返回资源商城入口存在 |
 | `/__dev/ui-spec` | 标题明确，按 p.1-p.18 顺序组织已 Token 化内容 |
-| 1920 × 1080 | 无横向溢出；色卡、排版、布局关系、阴影和栅格显示正常 |
-| 1366 × 768 | 无横向溢出；布局自然换行，24 栏比例保持 |
+| 1920 × 1080 | 展开和收起两种侧栏均无横向溢出；主内容分别从 x=216/x=72 开始，标题栏 64 px |
+| 1366 × 768 | 展开侧栏、页面标题和正文均可读，无横向溢出或负宽度；主内容宽度 1142 px |
 | 键盘 Focus | Tab 键触发 `:focus-visible`；1 px 主色轮廓、4 px 偏移清晰可见 |
-| 控制台 | 根路由、404、验证页均无 warning 或 error |
+| 控制台 | 正式路由、404、验证页和交互过程均无 warning 或 error |
+| 评审截图 | `artifacts/app-shell/` 已生成 4 张 PNG；目录由 `.gitignore` 排除 |
 
 ## 字体补充核验
 
@@ -52,7 +58,7 @@
 | 字体文件 | `src/assets/fonts/MiSansVF.woff2`；WOFF2 TrueType；11,870,264 bytes；SHA-256 见 `font-assets.md` |
 | 字体元数据 | Family `MiSans VF`；Variable Font；仅 `wght` 轴 150–700，默认 330；Demibold 命名实例 450 |
 | 加载顺序 | `reset.css` → `fonts.css` → `tokens.css` → `theme.css` → `base.css` |
-| Network | 字体请求 HTTP 200、`font/woff2`、无 404；同一页面一条 WOFF2 资源记录 |
+| Network | 本轮刷新字体请求 HTTP 304（缓存命中）、`font/woff2`、无 404 或加载失败；Font Loading API 返回已加载 |
 | Computed Style | `"MiSans VF", MiSans, "PingFang SC", "Microsoft YaHei", SimSun, sans-serif`；首选为 MiSans VF |
 | 实际字体命中 | 浏览器调试协议返回 `familyName: MiSans VF`、`isCustomFont: true`；不是直接回退 |
 | 连续字重 | 300、305、330、380、480 与 Demibold(450) 的 Computed Style 均符合 Token；各行均实际命中 MiSans VF，视觉粗细有连续差异 |
@@ -66,12 +72,14 @@
 
 - 已修复：移除验证页页头额外的主色顶部边框，避免加入 PDF 未支持的装饰。
 - 已修复：所有验证页色值和尺寸均改为 CSS 变量消费，页面与 TypeScript 不重复维护原始色值。
+- 已实现：AppShell 只消费集中 Token；产品名和可选 Logo 由 `productConfig` 提供，未复制来源品牌资产。
+- 已实现：原图未定义的折叠过渡仅补充 160 ms 工程 Token，并在 `prefers-reduced-motion` 下关闭。
 - 已核验：工程内引用统一指向受版本控制的原始文件 `docs/source/03-ui-design-spec.pdf.pdf`，未复制或重命名原文件。
 - 保留差异：验证页是 Token 核验工具，不逐像素复刻 PDF 说明文档；不嵌入截图、不显示来源 Logo。
 - 保留差异：全局 `:focus-visible` 与 `prefers-reduced-motion` 是工程可访问性暂定，PDF 未定义完整全局规范。
 
 ## 后续处理
 
-- p.4-p.7 的正式应用框架在下一阶段消费当前布局 Token。
+- p.4-p.7 的应用框架已经落地；下一阶段只需把正式业务内容和公共组件接入现有 Outlet 与标题栏操作插槽。
 - p.8-p.15、p.17-p.18 的正式公共组件在后续组件阶段实现，并继续遵守冲突与缺口记录。
 - p.4 的 40 px、p.5 的 48 px、p.8 的成功容器标注仍需设计确认；p.5 的 Demibold 已按字体命名实例映射到 450，但是否就是设计预期仍需确认。

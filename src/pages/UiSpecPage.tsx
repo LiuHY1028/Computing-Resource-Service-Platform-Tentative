@@ -324,7 +324,7 @@ export function UiSpecPage() {
         <p>
           原始设计依据：<code>docs/source/03-ui-design-spec.pdf.pdf</code>
         </p>
-        <Link to="/">返回工程占位页</Link>
+        <Link to="/marketplace">返回资源商城</Link>
       </header>
 
       <section className="ui-spec-section" aria-labelledby="brand-boundary-title">
