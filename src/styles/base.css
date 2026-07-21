@@ -1,0 +1,20 @@
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  color: CanvasText;
+  background: Canvas;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.engineering-page {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.engineering-page > * + * {
+  margin-top: 1rem;
+}
