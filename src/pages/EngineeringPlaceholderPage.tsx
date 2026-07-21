@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { productConfig } from '../config/product';
 import { runtimeConfig } from '../config/runtime';
 
@@ -8,6 +9,7 @@ export function EngineeringPlaceholderPage() {
       <h1>{productConfig.displayName}</h1>
       <p>当前为工程占位页，工作名称并非正式产品名称。</p>
       <p>数据运行模式：{runtimeConfig.dataMode}</p>
+      <Link to="/__dev/ui-spec">查看 UI 规范验证页</Link>
     </main>
   );
 }

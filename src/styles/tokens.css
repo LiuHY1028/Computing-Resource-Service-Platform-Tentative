@@ -1,0 +1,153 @@
+:root {
+  /* p.2 Brand and functional colors */
+  --color-brand-gradient-start: #0f88ee;
+  --color-brand-gradient-end: #00baaa;
+  --color-primary: #0f88ee;
+  --color-success: #0bc443;
+  --color-warning: #ffa400;
+  --color-error: #f14444;
+
+  /* p.2 Functional state scales */
+  --color-primary-background: #eaf4fe;
+  --color-primary-focus: #c2e4ff;
+  --color-primary-disabled: #99cfff;
+  --color-primary-hover: #4394f0;
+  --color-primary-active: #0d53bd;
+  --color-success-background: #e6ffe9;
+  --color-success-focus: #adf7ba;
+  --color-success-disabled: #7feb94;
+  --color-success-hover: #54de74;
+  --color-success-active: #029e36;
+  --color-warning-background: #fffae6;
+  --color-warning-focus: #ffefb6;
+  --color-warning-disabled: #ffde7a;
+  --color-warning-hover: #ffce52;
+  --color-warning-active: #d98600;
+  --color-error-background: #fff2f0;
+  --color-error-focus: #fde6e3;
+  --color-error-disabled: #ffc8c2;
+  --color-error-hover: #ff7570;
+  --color-error-active: #cc2f34;
+
+  /* p.2 Neutral colors */
+  --color-text-title: #111111;
+  --color-text-body: #3e4654;
+  --color-text-secondary: #9499a1;
+  --color-text-disabled: #bcbec3;
+  --color-border-default: #dddee1;
+  --color-divider: #edeeef;
+  --color-background-page: #f6f6f7;
+  --color-background-header: #f9fafa;
+  --color-surface-default: #ffffff;
+
+  /* Component-page colors kept separate where the PDF differs from p.2 */
+  --color-border-control: #e6e8ee; /* p.8-p.12; conflicts with p.2 */
+  --color-input-error: #ff4d4f; /* p.10; conflicts with p.2 */
+  --color-container-disabled: #dbdae7; /* p.8 */
+  --color-navbar-hover: #f0f2f9; /* p.4 */
+  --color-sidebar-selected: #f0f1f7; /* p.5 */
+  --color-sidebar-heading: #a2a2b3; /* p.5 */
+  --color-sidebar-text: #3a3a5a; /* p.5 */
+  --color-sidebar-arrow: #9d9dae; /* p.5 */
+  --color-button-disabled-text: #a0a0a0; /* p.9 */
+  --color-button-ghost: #ededed; /* p.9 */
+  --color-filter-background: #f7f7f9; /* p.9 */
+  --color-icon-clear: #ceced6; /* p.10 */
+  --color-textarea-resize: #bcbcbc; /* p.10 */
+  --color-icon-button-hover-background: rgb(205 208 220 / 15%); /* p.9 */
+  --color-icon-button-hover-foreground: rgb(62 70 84 / 82%); /* p.9 */
+
+  /* p.3 Typography */
+  --font-family-base: "MiSans VF", "MiSans", "PingFang SC", "Microsoft YaHei",
+    SimSun, sans-serif;
+  --font-size-title-large: 24px;
+  --line-height-title-large: 32px;
+  --font-size-title: 20px;
+  --line-height-title: 27px;
+  --font-size-subtitle: 16px;
+  --line-height-subtitle: 22px;
+  --font-size-body: 14px;
+  --line-height-body: 19px;
+  --font-size-caption: 12px;
+  --line-height-caption: 16px;
+  --font-weight-light: 300; /* p.11, p.13, p.17 */
+  --font-weight-action: 305; /* p.9 */
+  --font-weight-regular: 330; /* p.3 */
+  --font-weight-medium: 380; /* p.11-p.13, p.18 */
+  --font-weight-table-header: 480; /* p.17 */
+  --font-weight-demibold-temporary: 450; /* Font metadata; legacy key retained */
+
+  /* Explicit repeated spacing values: p.10-p.18 */
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-40: 40px;
+
+  /* p.5-p.13 Corners and borders */
+  --radius-control: 8px;
+  --radius-container: 8px;
+  --border-width-control-temporary: 1px; /* Engineering hairline; not labeled */
+  --border-control: var(--border-width-control-temporary) solid
+    var(--color-border-control);
+  --border-default: var(--border-width-control-temporary) solid
+    var(--color-border-default);
+
+  /* p.8 and p.10 Shadows */
+  --shadow-button-hover: 0 0 6px 0 rgb(0 0 0 / 12%);
+  --shadow-dropdown: 0 4px 10px 0 rgb(0 0 0 / 6%);
+  --shadow-floating: 0 8px 20px 0 rgb(0 0 0 / 12%);
+  --shadow-focus-control: 0 0 0 1.5px rgb(15 136 238 / 16%);
+  --shadow-error-focus-control: 0 0 0 1.5px rgb(255 77 79 / 16%);
+
+  /* p.9-p.15 Control and overlay dimensions */
+  --height-control-default: 32px;
+  --height-control-tag: 24px;
+  --height-control-radio-card: 48px;
+  --height-textarea-min: 32px;
+  --height-textarea-default: 52px;
+  --height-textarea-counter: 24px;
+  --size-icon-shell: 20px;
+  --size-icon-inner: 16px;
+  --size-icon-sidebar: 14px;
+  --size-avatar: 30px;
+  --size-resize-handle: 8px;
+  --max-width-tooltip: 220px;
+  --height-tabs-title-area: 40px;
+  --height-tabs-item: 32px;
+  --height-modal-section: 64px;
+
+  /* p.4-p.7 Application layout */
+  --layout-navbar-height: 56px;
+  --layout-navbar-brand-width: 208px;
+  --layout-navbar-actions-width: 100px;
+  --layout-navbar-hover-area-temporary: 40px; /* p.4 meaning is unclear */
+  --layout-sidebar-expanded-width: 208px;
+  --layout-sidebar-collapsed-width: 64px;
+  --layout-main-gap: 8px;
+  --layout-page-header-height: 64px;
+  --layout-page-header-padding-inline: 20px;
+  --layout-page-header-action-gap: 8px;
+  --layout-floating-offset: 20px;
+
+  /* p.16-p.18 Grid and form composition */
+  --grid-column-count: 24;
+  --grid-content-width: 1704px;
+  --grid-margin: 20px;
+  --grid-gutter: 20px;
+  --form-section-gap: 40px;
+  --form-field-gap: 20px;
+  --form-label-gap: 8px;
+  --form-anchor-gap: 40px;
+  --form-upload-width: 800px;
+  --table-cell-padding-inline: 20px;
+  --table-multiline-padding-block: 16px;
+  --table-multiline-gap: 4px;
+
+  /* Minimal engineering tokens for requirements not specified by the PDF */
+  --engineering-focus-outline-width: 1px;
+  --engineering-focus-outline-offset: 4px;
+  --engineering-reduced-motion-duration: 0.01ms;
+}

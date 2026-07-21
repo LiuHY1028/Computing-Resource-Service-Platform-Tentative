@@ -5,6 +5,9 @@ import { App } from './app/App';
 import { ErrorBoundary } from './app/ErrorBoundary';
 import { productConfig } from './config/product';
 import './styles/reset.css';
+import './styles/fonts.css';
+import './styles/tokens.css';
+import './styles/theme.css';
 import './styles/base.css';
 
 const rootElement = document.getElementById('root');

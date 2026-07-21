@@ -1,20 +1,19 @@
-body {
-  min-width: 320px;
-  min-height: 100vh;
-  color: CanvasText;
-  background: Canvas;
-}
-
-#root {
-  min-height: 100vh;
-}
-
 .engineering-page {
-  max-width: 48rem;
+  max-width: var(--grid-content-width);
   margin: 0 auto;
-  padding: 3rem 1.5rem;
+  padding: var(--space-40) var(--space-20);
 }
 
 .engineering-page > * + * {
-  margin-top: 1rem;
+  margin-top: var(--space-16);
+}
+
+.engineering-page h1 {
+  font-size: var(--font-size-title-large);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-title-large);
+}
+
+.engineering-page a {
+  display: inline-block;
 }

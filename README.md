@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-Task 01（前端工程初始化）已经建立可运行、可检查、可扩展的工程骨架。当前只包含工程占位页与 404 页面，没有业务页面、业务 Mock 数据、Design Token、正式主题或公共业务组件。
+Task 02（Design Token 与基础主题）已在工程骨架上建立原始 UI 规范对应的 CSS Custom Properties、默认浅色主题和开发验证页。项目负责人提供的 MiSans VF 本地可变字体已按补充任务接入，不改变其他视觉规则。当前仍没有正式业务页面、业务 Mock 数据或公共组件 API。
 
-下一阶段是 Design Token 和基础主题。
+下一阶段是应用框架和公共组件：应用框架消费 p.4-p.7 的布局 Token，公共组件消费 p.8-p.18 的基础 Token 与冲突记录。
 
 ## 技术栈
 
@@ -57,12 +57,14 @@ npm run preview
 ```text
 public/                 静态资源目录（当前为空）
 src/
+├── assets/fonts/       项目负责人提供的本地字体资产（仅一份 WOFF2）
 ├── app/                应用根节点、集中路由和错误边界
 ├── config/             产品身份与运行模式配置
-├── pages/              工程占位页和 404 页
+├── pages/              工程占位页、UI 规范验证页和 404 页
 ├── shared/types/       后续共享类型入口
-├── styles/             最小 Reset 与基础渲染样式
+├── styles/             Token、浅色主题、Reset 与基础样式
 ├── test/               Vitest/jsdom 测试环境初始化
+├── theme/              CSS 变量引用与 Token 契约测试
 ├── main.tsx            浏览器入口
 └── vite-env.d.ts       Vite 环境变量类型
 ```
@@ -70,6 +72,7 @@ src/
 ## 路由
 
 - `/`：工程初始化占位页
+- `/__dev/ui-spec`：UI 规范 Design Token 开发验证页，不加入正式菜单
 - `*`：404 页面
 
 所有路径统一定义在 `src/app/router.tsx`，本阶段没有预注册业务路由。
@@ -82,11 +85,29 @@ src/
 - `VITE_PRODUCT_DISPLAY_NAME`：可替换工作名称。
 - `VITE_PRODUCT_LOGO_SRC`：可选 Logo 地址；正式品牌未确认前保持为空。
 
+## UI 规范与 Token
+
+- 原始 UI 规范：`docs/source/03-ui-design-spec.pdf.pdf`
+- 字体资产：`src/assets/fonts/MiSansVF.woff2`
+- 字体声明：`src/styles/fonts.css`
+- Token 单一事实来源：`src/styles/tokens.css`
+- 默认浅色主题：`src/styles/theme.css`
+- 全局基础样式：`src/styles/base.css`
+- TypeScript CSS 变量引用：`src/theme/tokenVars.ts`
+- 验证路由：`/__dev/ui-spec`
+- 工程说明：`docs/engineering/design-tokens.md`
+- 字体资产与授权边界记录：`docs/engineering/font-assets.md`
+- 逐页映射、冲突、缺口与核验记录：`docs/engineering/ui-spec-*.md`
+
+字体由项目负责人提供并明确允许在当前项目内使用，仓库当前不包含书面授权文件；未经再次确认不应独立对外分发。工程没有复制来源 Logo，也没有引入 UI 组件库或 CSS 框架。正式产品名称和 Logo 仍由 `src/config/product.ts` 配置。
+
+字体使用 Vite 本地资产机制构建为带哈希的 WOFF2 文件；开发验证页会显示字体加载状态、回退链、5 级字号和连续字重。浏览器已确认三条当前路由字体加载正常且无字体 404，验证页混排与字重样例实际命中 `MiSans VF`。
+
 ## 当前未实现
 
-- Design Token、正式主题与 MiSans 字体资产
 - 顶部导航、侧边栏、页面标题栏等应用框架
 - Button、Input、Table 等公共 UI 组件
+- 字体在目标 Windows/macOS 环境的像素级渲染复核与书面授权归档
 - 资源商城、购买、资源、存储、镜像、软件、网络、订单和操作记录页面
 - 业务 Mock 数据、Mock 接口和真实 API 客户端
 - 价格、支付、审批、权限、计费、资源状态或订单状态规则

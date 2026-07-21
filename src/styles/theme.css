@@ -1,0 +1,80 @@
+:root {
+  color-scheme: light;
+  font-family: var(--font-family-base);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  color: var(--color-text-body);
+  background: var(--color-background-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--color-text-body);
+  background: var(--color-background-page);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-text-title);
+}
+
+a {
+  color: var(--color-primary);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+a:active {
+  color: var(--color-primary-active);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: var(--engineering-focus-outline-width) solid var(--color-primary);
+  outline-offset: var(--engineering-focus-outline-offset);
+  box-shadow: var(--shadow-focus-control);
+}
+
+:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+::selection {
+  color: var(--color-text-title);
+  background: var(--color-primary-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: var(--engineering-reduced-motion-duration) !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--engineering-reduced-motion-duration) !important;
+  }
+}
