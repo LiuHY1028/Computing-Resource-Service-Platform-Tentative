@@ -1,0 +1,92 @@
+.ui-modal-overlay {
+  position: fixed;
+  z-index: var(--engineering-z-index-modal);
+  display: grid;
+  overflow: auto;
+  padding: var(--space-20);
+  background: var(--engineering-modal-overlay-background);
+  inset: 0;
+  place-items: center;
+}
+
+.ui-modal {
+  display: grid;
+  width: min(var(--engineering-modal-width), 100%);
+  max-height: var(--engineering-modal-max-height);
+  overflow: hidden;
+  border: var(--border-default);
+  border-radius: var(--radius-container);
+  background: var(--color-surface-default);
+  box-shadow: var(--shadow-floating);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.ui-modal[data-width='prompt'] {
+  width: min(var(--engineering-prompt-modal-width), 100%);
+}
+
+.ui-modal__header,
+.ui-modal__footer {
+  display: flex;
+  min-height: var(--height-modal-section);
+  align-items: center;
+  padding-inline: var(--space-20);
+}
+
+.ui-modal__header {
+  justify-content: space-between;
+  border-bottom: var(--border-default);
+}
+
+.ui-modal__header h2 {
+  margin: 0;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-subtitle);
+}
+
+.ui-modal__content {
+  overflow: auto;
+  padding: var(--modal-content-padding);
+  color: var(--color-text-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-light);
+  line-height: var(--line-height-body);
+}
+
+.ui-modal__footer {
+  justify-content: flex-end;
+  gap: var(--modal-footer-action-gap);
+  border-top: var(--border-default);
+}
+
+.ui-prompt-modal__body {
+  display: grid;
+  min-height: var(--height-control-radio-card);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-12);
+}
+
+.ui-prompt-modal__status {
+  display: inline-grid;
+  width: var(--size-icon-shell);
+  height: var(--size-icon-shell);
+  border-radius: 50%;
+  color: var(--color-surface-default);
+  background: var(--color-primary);
+  font-weight: var(--font-weight-table-header);
+  place-items: center;
+}
+
+.ui-prompt-modal__status[data-variant='warning'] {
+  background: var(--color-warning);
+}
+
+.ui-prompt-modal__status[data-variant='danger'],
+.ui-prompt-modal__status[data-variant='close'] {
+  background: var(--color-error);
+}
+
+.ui-prompt-modal__status[data-variant='success'] {
+  background: var(--color-success);
+}

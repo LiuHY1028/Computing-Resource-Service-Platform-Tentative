@@ -1,0 +1,117 @@
+.ui-form {
+  display: grid;
+  min-width: 0;
+  gap: var(--form-section-gap);
+}
+
+.ui-form-section {
+  min-width: 0;
+  scroll-margin-top: var(--space-20);
+}
+
+.ui-form-section__header {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-20);
+}
+
+.ui-form-section__header h2,
+.ui-form-section__header h3,
+.ui-form-section__header h4,
+.ui-form-section__header p {
+  margin: 0;
+}
+
+.ui-form-section__header h2,
+.ui-form-section__header h3,
+.ui-form-section__header h4 {
+  color: var(--color-text-title);
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-subtitle);
+}
+
+.ui-form-section__header p,
+.ui-form-field__help {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}
+
+.ui-form-section__fields {
+  display: grid;
+  min-width: 0;
+  gap: var(--form-field-gap);
+}
+
+.ui-form-field {
+  display: grid;
+  min-width: 0;
+  max-width: var(--engineering-form-control-max-width);
+  gap: var(--form-label-gap);
+}
+
+.ui-form-field[data-width='upload'] {
+  width: min(var(--form-upload-width), 100%);
+  max-width: none;
+}
+
+.ui-form-field__label {
+  color: var(--color-text-body);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+}
+
+.ui-form-field__required,
+.ui-form-field__error {
+  color: var(--color-input-error);
+}
+
+.ui-form-field__required {
+  margin-left: var(--space-4);
+}
+
+.ui-form-field__help,
+.ui-form-field__error {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}
+
+.ui-form-field[data-disabled] .ui-form-field__label,
+.ui-form-field[data-disabled] .ui-form-field__help {
+  color: var(--color-text-disabled);
+}
+
+.ui-form-field__control,
+.ui-form-field__control > * {
+  min-width: 0;
+}
+
+.ui-form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding-top: var(--space-20);
+  border-top: var(--border-default);
+}
+
+.ui-form-anchor-nav {
+  position: sticky;
+  top: var(--engineering-form-anchor-top);
+  display: grid;
+  align-self: start;
+  gap: var(--space-4);
+  padding-left: var(--form-anchor-gap);
+  border-left: var(--border-default);
+}
+
+.ui-form-anchor-nav .ui-text-button {
+  justify-content: flex-start;
+  color: var(--color-text-body);
+}
+
+.ui-form-anchor-nav .ui-text-button[aria-current='location'] {
+  color: var(--color-primary);
+}

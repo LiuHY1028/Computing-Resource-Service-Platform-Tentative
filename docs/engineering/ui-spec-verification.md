@@ -26,12 +26,12 @@
 | p.10 | Input/SearchInput/Textarea、清空、计数、Error/Focus 与 ARIA 关联 | 密码/日期/数字等未定义类型 | 组件错误色与全局错误色分离，Resize 工程补充已记录 |
 | p.11 | Radio/RadioGroup/CardRadio、Checkbox/CheckboxGroup 全部图示状态 | 精确 16 px 尺寸待确认 | 使用原生 input 语义；选中不只依赖颜色 |
 | p.12 | Select/MultiSelect、标签折叠、ARIA、键盘与 Portal | 异步 Loading/Empty/Error/远程搜索 | 本地通用选项能力完成，浮层不受 AppShell 裁切 |
-| p.13 | 弹窗头/底 64 px、20 px 内边距、8 px 圆角 | 正式 Modal | 宽度、遮罩、层级和焦点规则列为缺口 |
-| p.14 | Title Bar Tab 40 px、Tab 32 px 与间距基础值 | 正式 Tabs | 未补溢出和 Disabled 规则 |
+| p.13 | 弹窗头/底、内边距、圆角、`Modal`/`PromptModal`、Portal、Focus Trap 与滚动锁 | 正式宽度、遮罩透明度和动效 | 图示类型和必要工程交互已实现，未引入第三方弹窗样式 |
+| p.14 | Title Bar/Underline 两类 Tabs、项目高度、间距、Disabled 与手动键盘激活 | 正式溢出形式和路由同步 | Roving Tabindex、ARIA 关系和受控切换已实现 |
 | p.15 | Tooltip 220 px 最大宽度、五类内容、Hover/Focus/Escape 和 Portal | 箭头及正式方位/时序 | 最小方位与延时作为工程补充集中维护 |
-| p.16 | 24 栏、1704 px 内容宽度、20 px 边距/栏距及常用组合示意 | 响应式断点 | 验证页在两种视口无横向溢出 |
-| p.17 | 表格水平内边距、多行留白/间距和排版基础值 | 正式 Table/Pagination、行高/列宽等 | 未把静态示例补成业务规则 |
-| p.18 | 表单分组/字段/标签/锚点间距和 800 px 上传区宽度 | 正式 Form/Upload、窄屏规则 | 组合基础值已落地 |
+| p.16 | 24 栏、常用 Span、自动换行、主次与居中组合 | 正式响应式断点 | `Grid`/`GridItem` 已实现且不依赖绝对定位 |
+| p.17 | Regular/Multi-select/Multi-line/Compact/Blank Table、Loading/Error、简易/复杂 Pagination | 排序、固定列、业务列宽等 | 选择复用公共 Checkbox；页码和每页数量复用公共 Button/IconButton/Select |
+| p.18 | Form/Section/Field/Actions/AnchorNav、Grid 组合和通用上传 Slot 布局 | 真正上传组件、窄屏规则和固定底部结论 | 字段只承载公共控件并建立 Label/帮助/Error ARIA 关系 |
 
 ## 浏览器核验
 
@@ -74,6 +74,30 @@
 | 自动化 | 12 个测试文件、73 项测试通过，包含组件交互、ARIA、Portal 清理与工程约束扫描 |
 | 评审截图 | `artifacts/components-foundation/` 生成 5 张真实浏览器 PNG；1920 × 1080 四张、1366 × 768 一张；目录由 `.gitignore` 排除 |
 
+## Task 04B 高级组件核验
+
+| 项目 | 结果 |
+|---|---|
+| 验证路由 | `/__dev/components/advanced` 使用现有 AppShell；正式导航内没有开发路由链接；UI 规范页提供文字入口 |
+| 组件范围 | Modal/PromptModal、Tabs 三种导出、Grid/GridItem、泛型 Table/EmptyTable、Pagination、Form/Section/Field/Actions/AnchorNav 均从公共入口导入 |
+| Modal | 普通、info、warning、danger、success、close 和 busy 均实际打开；warning/danger 为 `alertdialog`，其他为 `dialog`；全部 `aria-modal=true` |
+| Modal Focus/滚动 | 打开后焦点位于关闭按钮，`body` overflow 为 hidden；末按钮 Tab 循环回关闭按钮；Escape 关闭后焦点返回“普通 Modal”触发器，overflow 恢复 |
+| Modal Portal | dialog 的 Overlay 祖先位于 `BODY`；1366 视口边界 left 403/right 963/top 289.5/bottom 478.5，z-index 40，完全位于视口内 |
+| 提交中 | `aria-busy=true`，关闭和确认按钮均 disabled；验证定时结束后 Portal 与滚动锁清理 |
+| Tabs | 鼠标切换 TitleBarTabs；UnderlineTabs 方向键把焦点移到“详细内容”，Enter 激活；Disabled 不可用，ARIA selected 同步 |
+| Grid | 1920 下 6 栏项目等宽 384.5，16/8 实测约 1058.7/519.3；Computed position 为 static，无绝对定位 |
+| Table | 初始全选为 mixed；选择 A 后全选为 true，取消 B 后恢复 mixed；禁用行不可选；Empty、Loading、Error 与 Retry 可见并可操作 |
+| Pagination | 第 7 页点击后 `aria-current=page`；每页数量选择 20 后触发器更新；Select listbox 挂在 `BODY`；简易分页第一页前一页禁用、下一页后当前页变 2 |
+| Form | Input 填入“交互验证”、Select 选择 Gamma、Radio 选项二、Checkbox 取消、Textarea 输入、Error `aria-invalid=true`、Disabled 不响应、提交中按钮 disabled |
+| Form Anchor/Slot | 锚点点击更新 `aria-current=location` 并滚动；通用布局 Slot 不包含 file input 或上传行为 |
+| 基础组件回归 | `/__dev/components/foundation` 正常；Select 键盘选中 Beta；Tooltip Focus 打开、Escape 关闭且 Portal 位于 BODY；没有改 AppShell 私有控件 |
+| 正式与开发路由 | `/` 重定向 `/marketplace`；`/__dev/ui-spec`、基础组件页、高级组件页和 404 均正常；正式菜单无开发链接 |
+| 1920 × 1080 | document 1920/1920、Main Content 1696/1696，无横向溢出；MiSans VF 为首选字体 |
+| 1366 × 768 | document 1366/1366、Main Content 1142/1142，无横向溢出；Table 留在自身容器内；Modal 未越界 |
+| 控制台 | 全部上述路由、组件操作和视口切换后 warning/error 列表为空 |
+| 自动化 | 19 个测试文件、101 项测试通过，覆盖交互、ARIA、Portal、算法、泛型渲染和工程约束 |
+| 评审截图 | `artifacts/components-advanced/` 生成 5 张真实浏览器 PNG；1920 × 1080 四张、1366 × 768 一张；目录由 `.gitignore` 排除 |
+
 ## 字体补充核验
 
 | 项目 | 结果 |
@@ -105,5 +129,5 @@
 
 - p.4-p.7 的应用框架已经落地；下一阶段只需把正式业务内容和公共组件接入现有 Outlet 与标题栏操作插槽。
 - p.8-p.12、p.15 的第一批正式公共组件已由 Task 04A 实现；目录、API、键盘与工程补充见 `components-foundation.md`。
-- p.13-p.14、p.17-p.18 的 Modal、Tabs、Table、Pagination 和 Form 组合继续留给 Task 04B。
+- p.13-p.14、p.16-p.18 的 Modal、Tabs、Grid、Table、Pagination 和 Form 组合已经由 Task 04B 实现；使用边界见 `components-advanced.md`。
 - p.4 的 40 px、p.5 的 48 px、p.8 的成功容器标注仍需设计确认；p.5 的 Demibold 已按字体命名实例映射到 450，但是否就是设计预期仍需确认。

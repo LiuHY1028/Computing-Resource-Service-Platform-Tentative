@@ -1,0 +1,19 @@
+.ui-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(var(--grid-column-count), minmax(0, 1fr));
+  gap: var(--grid-gutter);
+}
+
+.ui-grid[data-align='center'] {
+  align-items: center;
+}
+
+.ui-grid__item {
+  min-width: 0;
+  grid-column-end: span var(--ui-grid-item-span);
+}
+
+.ui-grid__item[style*='--ui-grid-item-start'] {
+  grid-column-start: var(--ui-grid-item-start);
+}

@@ -3,9 +3,11 @@ import { ModulePlaceholderPage } from '../pages/ModulePlaceholderPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { UiSpecPage } from '../pages/UiSpecPage';
 import { FoundationComponentsPage } from '../pages/FoundationComponentsPage';
+import { AdvancedComponentsPage } from '../pages/AdvancedComponentsPage';
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
+  ADVANCED_COMPONENTS_ROUTE,
   DEFAULT_APP_ROUTE,
   FOUNDATION_COMPONENTS_ROUTE,
 } from './routes';
@@ -15,6 +17,7 @@ export const ROUTE_PATHS = Object.freeze({
   default: DEFAULT_APP_ROUTE.path,
   uiSpec: '/__dev/ui-spec',
   foundationComponents: FOUNDATION_COMPONENTS_ROUTE.path,
+  advancedComponents: ADVANCED_COMPONENTS_ROUTE.path,
   fallback: '*',
 });
 
@@ -36,6 +39,10 @@ export function AppRouter() {
         <Route
           path={ROUTE_PATHS.foundationComponents}
           element={<FoundationComponentsPage />}
+        />
+        <Route
+          path={ROUTE_PATHS.advancedComponents}
+          element={<AdvancedComponentsPage />}
         />
       </Route>
       <Route path={ROUTE_PATHS.uiSpec} element={<UiSpecPage />} />

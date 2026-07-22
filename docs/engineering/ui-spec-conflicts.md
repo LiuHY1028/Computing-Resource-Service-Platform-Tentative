@@ -20,3 +20,9 @@
 1. 能区分组件或场景时保留独立语义 Token。
 2. 不能区分时优先采用组件专用页的明确标注，同时保留 temporary 命名或文档说明。
 3. 后续组件任务不得为减少 Token 数量而合并以上差异。
+
+## Task 04B 核对结论
+
+- p.17 Regular Table 表头字重 480 与 Compact Table 表头字重 300 属于明确的不同表格类型，不作为冲突合并；Compact 仅降低表头层级和行高，其余结构复用同一 Table。
+- p.13 PromptModal 的 warning、danger 与 success 是不同语义场景；warning 继续使用 p.2 警告色，danger 使用错误色，没有套用 p.9 “警示按钮”名称对应的红色冲突规则。
+- 本轮没有新增需要覆盖 UI-C01 至 UI-C10 的静默统一；已有组件专用 Token 继续优先。

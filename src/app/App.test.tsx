@@ -65,6 +65,16 @@ describe('application routes', () => {
     expect(document.querySelector('nav a[href="/__dev/components/foundation"]')).toBeNull();
   });
 
+  it('renders advanced components inside AppShell without adding a formal menu item', () => {
+    renderRoute('/__dev/components/advanced');
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: '高级公共组件' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Table' })).toBeInTheDocument();
+    expect(document.querySelector('nav a[href="/__dev/components/advanced"]')).toBeNull();
+  });
+
   it('shows the not-found page for an unknown route', () => {
     renderRoute('/unknown-route');
 

@@ -6,6 +6,7 @@ dist/
 coverage/
 /artifacts/app-shell/
 /artifacts/components-foundation/
+/artifacts/components-advanced/
 
 # Local environment files
 .env

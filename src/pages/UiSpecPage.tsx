@@ -327,6 +327,7 @@ export function UiSpecPage() {
         <div className="ui-spec-page__links">
           <Link to="/marketplace">返回资源商城</Link>
           <Link to="/__dev/components/foundation">查看基础交互组件</Link>
+          <Link to="/__dev/components/advanced">查看高级公共组件</Link>
         </div>
       </header>
 

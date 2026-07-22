@@ -46,6 +46,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     showCount = false,
     value,
     'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
     ...rest
   },
   ref,
@@ -97,7 +98,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           disabled={disabled}
           readOnly={readOnly}
           maxLength={maxLength}
-          aria-invalid={error || undefined}
+          aria-invalid={error || ariaInvalid || undefined}
           aria-describedby={joinIds(ariaDescribedBy, errorId)}
           onChange={handleChange}
         />
@@ -186,6 +187,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       showCount = false,
       value,
       'aria-describedby': ariaDescribedBy,
+      'aria-invalid': ariaInvalid,
       ...rest
     },
     ref,
@@ -220,7 +222,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             disabled={disabled}
             readOnly={readOnly}
             maxLength={maxLength}
-            aria-invalid={error || undefined}
+            aria-invalid={error || ariaInvalid || undefined}
             aria-describedby={joinIds(ariaDescribedBy, errorId)}
             onChange={handleChange}
           />

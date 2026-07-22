@@ -211,6 +211,12 @@ export const FOUNDATION_COMPONENTS_ROUTE: DevelopmentShellRoute = Object.freeze(
   navigationItemId: '',
 });
 
+export const ADVANCED_COMPONENTS_ROUTE: DevelopmentShellRoute = Object.freeze({
+  path: '/__dev/components/advanced',
+  pageTitle: '高级公共组件',
+  navigationItemId: '',
+});
+
 export function getAppPageRoute(pageId: PageId) {
   const route = APP_PAGE_ROUTES.find((candidate) => candidate.pageId === pageId);
 
@@ -235,6 +241,11 @@ export function findShellPageRoute(pathname: string) {
       pathname,
     )
       ? FOUNDATION_COMPONENTS_ROUTE
-      : undefined)
+      : matchPath(
+            { path: ADVANCED_COMPONENTS_ROUTE.path, end: true },
+            pathname,
+          )
+        ? ADVANCED_COMPONENTS_ROUTE
+        : undefined)
   );
 }

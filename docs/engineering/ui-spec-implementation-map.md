@@ -16,12 +16,12 @@
 | p.10 | Input 与 Textarea | 是 | `Input`、`SearchInput`、`Textarea`、Focus/Error Token | 输入、清空、搜索 Enter、计数、错误关联和文本域已实现 | 错误色与 p.2 冲突；纵向 Resize 为工程补充 |
 | p.11 | Radio & Checkbox | 是 | `Radio`、`RadioGroup`、`CardRadio`、`Checkbox`、`CheckboxGroup` | 原生表单语义、全部图示状态及键盘行为已实现 | 基础控件 16 px 为工程 Token，需设计确认 |
 | p.12 | Select 选择器 | 是 | `Select`、`MultiSelect`、`SelectOption`、Portal 与下拉 Token | 单选/多选、折叠标签、ARIA、键盘、外部关闭与定位已实现 | Loading/Empty/Error/远程搜索不属于 Task 04A |
-| p.13 | Pop-up 弹窗 | 是，仅基础值 | 头部/底部高度、内边距、圆角、排版 Token | 基础 Token 已实现；正式 Modal 后续实现 | 宽度、遮罩、层级、滚动与焦点规则缺失 |
-| p.14 | Tabs 标签页 | 是，仅基础值 | Tab 操作区/项目高度、间距 Token | 基础 Token 已实现；正式 Tabs 后续实现 | Hover/Disabled/溢出规则缺失 |
+| p.13 | Pop-up 弹窗 | 是 | `Modal`、`PromptModal`、Portal、Focus Trap、滚动锁与工程 Token | 普通/提示/警告/危险/成功/关闭型和提交中已实现 | 宽度、遮罩和动效仍需设计确认 |
+| p.14 | Tabs 标签页 | 是 | `Tabs`、`TitleBarTabs`、`UnderlineTabs`、Roving Tabindex | 两类视觉、受控切换、Disabled 和手动键盘激活已实现 | 正式溢出形式与路由同步未定义 |
 | p.15 | Tooltip 文字提示 | 是 | `Tooltip`、最大宽度、颜色与内间距 Token、Portal | 五类图示内容、Hover/Focus/Escape、交互内容与视口定位已实现 | 方位与触发时序为明确记录的工程补充；未增加箭头 |
-| p.16 | Grid 栅格 | 是 | 24 栏、1704 px、边距/栏距 Token 与验证页 | 已实现 | 响应式断点和最低宽度缺失 |
-| p.17 | Table 与 Pagination | 是，仅基础值 | 表格排版/内边距/多行间距 Token、验证页 | 基础 Token 已实现；正式 Table/Pagination 后续实现 | 行高、列宽、固定列、Loading/Error 等缺失 |
-| p.18 | Form 表单 | 是，仅组合基础值 | 分组/字段/标签/锚点间距与上传宽度 Token | 基础 Token 已实现；正式 Form/Upload 后续实现 | 标签宽度、必填、窄屏及底部是否固定缺失 |
+| p.16 | Grid 栅格 | 是 | `Grid`、`GridItem`、24 栏与常用组合 | 24 栏、Span、Start、自动换行和非法值保护已实现 | 正式响应式断点仍缺失 |
+| p.17 | Table 与 Pagination | 是 | 泛型 `Table`、公共 Checkbox 选择、`EmptyTable`、`Pagination` 与页码算法 | Regular/Multi-select/Multi-line/Compact/Blank、Loading/Error、简易/复杂分页已实现 | 业务列宽、排序、固定列等不在本阶段 |
+| p.18 | Form 表单 | 是 | `Form`、`FormSection`、`FormField`、`FormActions`、`FormAnchorNav` | 分区、字段关联、锚点、操作区、Grid 组合和通用上传 Slot 布局已实现 | 正式窄屏规则与底部是否固定仍待确认 |
 
 ## 阶段结论
 
@@ -29,4 +29,4 @@
 - p.1 只实施品牌隔离；不复制来源 Logo。
 - p.4-p.7 的正式应用框架已由 Task 03 实现；工程说明见 `docs/engineering/app-shell.md`。
 - Task 04A 已正式实现 p.8-p.12、p.15 的第一批公共组件；API、状态和工程补充见 `components-foundation.md`。
-- p.13-p.14、p.17-p.18 的 Modal、Tabs、Table、Pagination 和 Form 组合组件仍留给 Task 04B。
+- Task 04B 已实现 p.13、p.14、p.16-p.18 的 Modal、Tabs、Grid、Table、Pagination 和 Form 组合；工程行为见 `components-advanced.md`。

@@ -17,6 +17,13 @@ function ClearableFixture() {
 }
 
 describe('Input and Textarea', () => {
+  it('preserves aria-invalid supplied by a form layout wrapper', () => {
+    render(<Input aria-label="外部错误输入" aria-invalid="true" />);
+    render(<Textarea aria-label="外部错误文本域" aria-invalid="true" />);
+
+    expect(screen.getByRole('textbox', { name: '外部错误输入' })).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('textbox', { name: '外部错误文本域' })).toHaveAttribute('aria-invalid', 'true');
+  });
   it('supports placeholder, input and clear interactions', async () => {
     const user = userEvent.setup();
     render(
