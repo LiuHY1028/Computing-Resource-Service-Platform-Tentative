@@ -34,6 +34,8 @@
   --color-text-body: #3e4654;
   --color-text-secondary: #9499a1;
   --color-text-disabled: #bcbec3;
+  --color-text-placeholder: var(--color-text-disabled);
+  --color-text-caption: var(--color-text-secondary);
   --color-border-default: #dddee1;
   --color-divider: #edeeef;
   --color-background-page: #f6f6f7;

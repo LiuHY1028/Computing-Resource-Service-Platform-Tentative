@@ -87,10 +87,14 @@ describe('AppShell', () => {
     renderRoute('/marketplace');
 
     await user.click(screen.getByRole('button', { name: '消息入口' }));
-    expect(screen.getByRole('status')).toHaveTextContent('消息功能待接入');
+    expect(screen.getByText('消息功能待接入').closest('[role="status"]')).toHaveTextContent(
+      '当前阶段仅保留应用级消息入口。',
+    );
 
     await user.click(screen.getByRole('button', { name: '当前用户入口' }));
-    expect(screen.getByRole('status')).toHaveTextContent('用户功能待接入');
+    expect(screen.getByText('用户功能待接入').closest('[role="status"]')).toHaveTextContent(
+      '当前阶段不创建真实账号、组织或权限信息。',
+    );
   });
 
   it('does not render a broken image when no logo is configured', () => {

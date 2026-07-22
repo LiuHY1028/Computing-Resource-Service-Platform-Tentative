@@ -20,7 +20,10 @@ describe('application routes', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: '资源商城' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('MKT-01')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '选择适合的机器资源' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
   });
 
   it.each([
@@ -42,6 +45,33 @@ describe('application routes', () => {
 
   it('registers every stable page route', () => {
     expect(APP_PAGE_ROUTES).toHaveLength(15);
+  });
+
+  it.each([
+    [
+      '/marketplace/cloud-server/purchase',
+      '云服务器购买配置',
+    ],
+    [
+      '/marketplace/physical-machine/purchase',
+      '物理机购买配置',
+    ],
+  ])('keeps the Task 05B purchase placeholder at %s', (path, title) => {
+    renderRoute(path);
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: title }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: '购买配置将在 Task 05B 实现',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '返回资源商城' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
   });
 
   it('renders the UI specification verification route', () => {

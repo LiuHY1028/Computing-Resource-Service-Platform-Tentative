@@ -4,9 +4,11 @@
 
 ## 当前阶段
 
-Task 03（应用框架）已基于原始 UI 规范 p.4-p.7 实现可运行的 AppShell：56 px 顶部导航、208/64 px 可展开侧栏、自适应主内容区、64 px 页面标题栏、正式信息架构菜单、15 个稳定页面 ID 的占位路由，以及菜单滚动遮罩、底部固定区和收起 Tooltip。项目仍没有正式业务页面、业务 Mock 数据或公共组件 API。
+Task 03（应用框架）、Task 04A（基础公共组件）和 Task 04B（高级公共组件）已经完成。AppShell 提供 56 px 顶部导航、208/64 px 可展开侧栏、自适应主内容区、64 px 页面标题栏、正式信息架构菜单和 15 个稳定页面 ID；公共 UI 从 `src/components/ui/index.ts` 统一导出，并在两个不进入正式菜单的开发页中验证。
 
-下一阶段是公共组件及业务页面：公共组件消费 p.8-p.18 的基础 Token 与冲突记录，业务页面在 AppShell 的稳定路由与页面标题映射上逐阶段接入。
+Task 05A 已把 `/marketplace` 替换为第一个正式业务页面：资源商城支持云服务器/物理机切换、搜索、站点与规格筛选、条件回显、组合过滤、结果数量、分页、可配置/不可配置商品，以及 Loading、Error/Retry、Empty 和 No Result 状态。商城通过类型安全的本地演示数据访问层工作，不包含真实库存、价格、计费、审批或订单规则。
+
+`/marketplace/cloud-server/purchase` 和 `/marketplace/physical-machine/purchase` 已作为明确购买入口接通，目前仍是 Task 05A 的范围说明与返回商城占位页；完整购买配置由 Task 05B 接管。其余业务模块继续使用稳定占位路由。
 
 ## 技术栈
 
@@ -59,8 +61,11 @@ public/                 静态资源目录（当前为空）
 src/
 ├── assets/fonts/       项目负责人提供的本地字体资产（仅一份 WOFF2）
 ├── app/                应用根节点、集中路由、页面定义、AppShell 和错误边界
+├── components/ui/      Task 04A/04B 公共组件及统一导出入口
 ├── config/             产品身份与运行模式配置
-├── pages/              模块占位页、UI 规范验证页和 404 页
+├── features/
+│   └── marketplace/    商城业务组件、类型、本地演示数据和最小数据访问层
+├── pages/              商城、购买入口占位、模块占位、开发验证和 404 页
 ├── shared/types/       后续共享类型入口
 ├── styles/             Token、浅色主题、Reset 与基础样式
 ├── test/               Vitest/jsdom 测试环境初始化
@@ -72,14 +77,19 @@ src/
 ## 路由
 
 - `/`：重定向到默认正式模块 `/marketplace`
-- `/marketplace`：`MKT-01` 资源商城占位页
+- `/marketplace`：`MKT-01` 正式资源商城；`?type=cloud|physical` 保留资源类型
+- `/marketplace?demoState=loading|error|empty`：仅用于商城开发验收，不进入正式菜单
+- `/marketplace/cloud-server/purchase`：`BUY-01` 云服务器购买配置入口，完整表单由 Task 05B 实现
+- `/marketplace/physical-machine/purchase`：`BUY-02` 物理机购买配置入口，完整表单由 Task 05B 实现
 - `/resources/cloud-servers`：`RES-01` 云服务器列表占位页
 - `/storage`、`/images`、`/software`、`/network-access`：对应正式模块占位页
 - `/orders`、`/operation-records`：订单与操作记录占位页
+- `/__dev/components/foundation`：Task 04A 基础公共组件验证页，不加入正式菜单
+- `/__dev/components/advanced`：Task 04B 高级公共组件验证页，不加入正式菜单
 - `/__dev/ui-spec`：UI 规范 Design Token 开发验证页，不加入正式菜单
 - `*`：404 页面
 
-15 个稳定页面 ID 的路径、标题、模块和用途统一定义在 `src/app/routes.ts`；正式菜单定义在 `src/app/shell/navigation.ts`；路由装配位于 `src/app/router.tsx`。详情路由使用动态对象 ID 参数，但本阶段不创建任何业务数据。
+15 个稳定页面 ID 的路径、标题、模块和用途统一定义在 `src/app/routes.ts`；正式菜单定义在 `src/app/shell/navigation.ts`；路由装配位于 `src/app/router.tsx`。详情路由使用动态对象 ID 参数。当前只有商城具有业务演示数据；购买入口按 `product` 查询参数回显同一商城规格，不创建订单或资源。
 
 ## 环境变量
 
@@ -101,6 +111,9 @@ src/
 - 验证路由：`/__dev/ui-spec`
 - 工程说明：`docs/engineering/design-tokens.md`
 - 应用框架说明：`docs/engineering/app-shell.md`
+- 基础公共组件说明：`docs/engineering/components-foundation.md`
+- 高级公共组件说明：`docs/engineering/components-advanced.md`
+- 资源商城说明：`docs/engineering/marketplace.md`
 - 字体资产与授权边界记录：`docs/engineering/font-assets.md`
 - 逐页映射、冲突、缺口与核验记录：`docs/engineering/ui-spec-*.md`
 
@@ -110,10 +123,12 @@ src/
 
 ## 当前未实现
 
-- Button、Input、Table 等公共 UI 组件
 - 字体在目标 Windows/macOS 环境的像素级渲染复核与书面授权归档
-- 资源商城、购买、资源、存储、镜像、软件、网络、订单和操作记录页面
-- 业务 Mock 数据、Mock 接口和真实 API 客户端
+- Task 05B 的完整云服务器/物理机购买配置、确认、提交与结果流程
+- 我的资源、存储、镜像、软件、网络、订单和操作记录正式业务页面
+- 商城之外的业务 Mock 数据；Mock HTTP 接口和真实 API 客户端
 - 价格、支付、审批、权限、计费、资源状态或订单状态规则
+
+商城当前的站点、规格、加速卡、可配置性和 4/8 卡物理机均为明确标记的中性演示数据；`30 GB` 只作为云服务器默认系统盘的暂定存储容量。筛选深链只保留资源类型，其他筛选条件不跨刷新持久化。开发状态参数不属于正式业务能力。
 
 后续实现必须继续遵守根目录 `AGENTS.md` 和 `docs/analysis/` 中的需求约束。

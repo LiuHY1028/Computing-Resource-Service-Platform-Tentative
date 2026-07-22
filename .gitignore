@@ -7,6 +7,7 @@ coverage/
 /artifacts/app-shell/
 /artifacts/components-foundation/
 /artifacts/components-advanced/
+/artifacts/marketplace/
 
 # Local environment files
 .env

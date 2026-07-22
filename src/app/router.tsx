@@ -4,12 +4,15 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { UiSpecPage } from '../pages/UiSpecPage';
 import { FoundationComponentsPage } from '../pages/FoundationComponentsPage';
 import { AdvancedComponentsPage } from '../pages/AdvancedComponentsPage';
+import { MarketplacePage } from '../pages/MarketplacePage';
+import { PurchasePlaceholderPage } from '../pages/PurchasePlaceholderPage';
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
   ADVANCED_COMPONENTS_ROUTE,
   DEFAULT_APP_ROUTE,
   FOUNDATION_COMPONENTS_ROUTE,
+  type AppPageRoute,
 } from './routes';
 
 export const ROUTE_PATHS = Object.freeze({
@@ -20,6 +23,18 @@ export const ROUTE_PATHS = Object.freeze({
   advancedComponents: ADVANCED_COMPONENTS_ROUTE.path,
   fallback: '*',
 });
+
+function appPageElement(route: AppPageRoute) {
+  if (route.pageId === 'MKT-01') {
+    return <MarketplacePage />;
+  }
+
+  if (route.pageId === 'BUY-01' || route.pageId === 'BUY-02') {
+    return <PurchasePlaceholderPage route={route} />;
+  }
+
+  return <ModulePlaceholderPage route={route} />;
+}
 
 export function AppRouter() {
   return (
@@ -32,7 +47,7 @@ export function AppRouter() {
         {APP_PAGE_ROUTES.map((route) => (
           <Route
             path={route.path}
-            element={<ModulePlaceholderPage route={route} />}
+            element={appPageElement(route)}
             key={route.pageId}
           />
         ))}

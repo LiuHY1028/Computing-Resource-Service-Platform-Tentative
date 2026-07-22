@@ -43,7 +43,7 @@
 
 | 页面 ID / 页面 | 布局模板 | 公共组件 | 业务组件 | 核心交互 | 必须覆盖的状态 | 规范外组件与依据 |
 |---|---|---|---|---|---|---|
-| `MKT-01` 资源商城 | `TPL-CATALOG`；云服务器/物理机标题栏 Tab | Tabs、Input/Search、Select、筛选标签、Button、Card Container、Pagination、Tooltip | `ResourceProductCard`、`ResourceSpecSummary`、`SiteFilter`、`AcceleratorSummary` | 切换商品类型；搜索/筛选/清空；查看规格；进入 `BUY-01/02` | `L/E/N/F/D`；规格不可用时禁用购买并说明；筛选切换有反馈 | **需要**：资源规格卡、页面状态、卡片骨架。依据：两类商品及带卡信息 `REQ-002/003/016`；PDF 无资源卡与加载态 |
+| `MKT-01` 资源商城 | `TPL-CATALOG`；云服务器/物理机标题栏 Tab | TitleBarTabs、SearchInput、Select、MultiSelect、FilterTag、Button、Container、Grid、Pagination、Tooltip | `MarketplaceFilters`、`MarketplaceResults`、`MarketplaceStatePanel`、`ResourceProductCard` | 切换商品类型；搜索/组合筛选/清空；查看规格；进入 `BUY-01/02` | `L/E/N/F/D`；规格不可用时禁用配置并说明；筛选切换有反馈；错误可重试 | **需要**：资源规格卡和页面状态组合。依据：两类商品及带卡信息 `REQ-002/003/016`、列表状态 `INF-001/002`；PDF 无资源卡与页面状态 |
 | `BUY-01` 云服务器购买配置 | `TPL-FORM`；分段表单 + 右侧锚点 + 底部确认 | Form、Select、Radio/Card Radio、Checkbox、Input、Tooltip、Container、Button、Modal | `CloudSpecSelector`、`ImageSelector`、`SystemDiskField`、`StorageMountSelector`、`PurchaseSummary` | 选站点/规格/镜像；明确区分内存与系统盘；显示系统盘暂定 30 GB；选择本地/高性能共享存储；提交、取消、返回 | 表单 Normal/Hover/Focus/Error/D；依赖项加载 `L/F/E`；提交 `P/S/F`；不兼容项 D 并解释；保留失败前输入 | **需要**：规格选择卡、存储挂载选择器、购买摘要、提交结果、Toast。依据：`REQ-013/015/021-027`；PDF 无领域组合与异步反馈 |
 | `BUY-02` 物理机购买配置 | `TPL-FORM`；整机规格为主，待确认项不固化 | Form、Select、Radio/Card Radio、Tooltip、Container、Button、Modal | `PhysicalSpecSelector`、`AcceleratorCountSelector`、`PurchaseSummary`、`PendingDecisionNotice` | 选站点、整机规格、卡型/卡数；提交、取消、返回；不默认套用云服务器镜像/系统盘规则 | `L/E/F/D/P/S`；待确认字段以说明态展示；规格不可用与提交失败可恢复 | **需要**：整机规格卡、待确认提示、结果反馈。依据：`REQ-016` 与物理机 OS/镜像冲突 `CON-006`；防止把假设做成规则 |
 | `RES-01` 云服务器列表 | `TPL-LIST`；“我的资源”云服务器 Tab | Tabs、Search Input、Select、Button、Table、Pagination、Tooltip、Checkbox（若批量能力确认） | `ResourceStatusBadge`、`ResourceSpecCell`、`QuickActionMenu` | 搜索/筛选；进入 `RES-02`；发起适用的开机/关机；复制基础连接信息（若列表提供） | 首次 `L`、`E`、`N`、`F`；操作 `P/S/F/D`；分页加载；状态不明时不展示推断操作 | **需要**：状态标识、行操作菜单、异步操作反馈、骨架/错误。依据：`REQ-007/009`；PDF 无状态标识与 Loading |
@@ -66,11 +66,27 @@
 | 组件 | 最小职责 | 可使用字段 | 禁止承载 | 页面 |
 |---|---|---|---|---|
 | `ResourceProductCard` | 比较可购资源并进入配置 | 商品类型、站点、CPU、内存、加速卡型号/数量、可用性说明 | 开关机、SSH、监控；未经确认的价格/计费周期 | `MKT-01` |
+| `MarketplaceFilters` | 组合搜索、站点、计算类型、配置状态和条件式加速卡筛选；回显并移除当前条件 | 目录派生的站点/加速卡选项、搜索文字、界面级配置状态 | “无卡”GPU 型号；正式库存/上下架规则；页面私有复制公共控件 | `MKT-01` |
+| `MarketplaceResults` | 展示筛选后数量，编排三列规格卡、分页和页面状态 | 当前资源类型、查询结果、页面级 Loading/Error/Empty/No Result | 订单提交、资源交付或把界面态命名为后台状态 | `MKT-01` |
+| `MarketplaceStatePanel` | 在结果上下文内统一呈现 Loading、Error、Empty、No Result 及对应下一步 | 中性标题、说明、重试/清除搜索/重置/切换类型操作 | 后台错误码、库存状态机；用同一文案混淆空目录和筛选无结果 | `MKT-01` |
 | `CloudSpecSelector` | 选择云服务器规格 | CPU、内存、加速卡信息、站点可用性 | 把系统盘写成内存；暗含库存/锁定规则 | `BUY-01` |
 | `PhysicalSpecSelector` | 选择整机规格 | CPU、内存、加速卡型号/卡数、站点 | 默认镜像、系统盘或自动开机规则 | `BUY-02` |
 | `SystemDiskField` | 显示系统盘配置 | 标签“系统盘”、暂定默认 `30 GB`、是否可编辑的待确认说明 | K8S Pod 底层术语；将 30 GB 表达为内存 | `BUY-01` |
 | `StorageMountSelector` | 选择已有数据存储 | 本地数据存储/高性能共享存储、名称、站点兼容性 | 将 HostPath/NFS 默认作为主标签；擅自定义多挂载/解绑规则 | `BUY-01`，物理机适用性确认后可复用 |
 | `PurchaseSummary` | 提交前复述用户选择 | 已选择的可确认字段 | 金额、支付、续费、审批、正式订单状态 | `BUY-01/02` |
+
+`MKT-01` 状态组合覆盖：
+
+| 状态 | 判定边界 | 反馈与恢复 |
+|---|---|---|
+| Normal | 当前类型目录和筛选结果均有数据 | 显示数量、规格卡和适用时的分页 |
+| Loading (`L`) | 本地演示数据读取中 | 保留筛选上下文，结果区显示克制加载反馈 |
+| Error (`F`) | 数据读取失败 | 可见错误说明和真实重试操作 |
+| Empty (`E`) | 当前资源类型目录总数为 0 | 说明该类型暂无资源并提供切换类型入口 |
+| No Result (`N`) | 目录有数据但组合条件结果为 0 | 清除搜索和/或重置筛选，不与 Empty 共用文案 |
+| Disabled (`D`) | 单个规格演示为暂不可配置 | 卡片仍可比较；按钮禁用；可见原因与 Tooltip/ARIA 说明 |
+
+以上均为页面反馈状态，不是正式库存、资源、订单或交付状态枚举。
 
 ### 5.2 资源管理与监控
 

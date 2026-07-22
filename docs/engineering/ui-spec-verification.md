@@ -98,6 +98,32 @@
 | 自动化 | 19 个测试文件、101 项测试通过，覆盖交互、ARIA、Portal、算法、泛型渲染和工程约束 |
 | 评审截图 | `artifacts/components-advanced/` 生成 5 张真实浏览器 PNG；1920 × 1080 四张、1366 × 768 一张；目录由 `.gitignore` 排除 |
 
+## Task 05A 资源商城核验
+
+| 项目 | 结果 |
+|---|---|
+| 正式路由 | `/marketplace` 已替换占位页；`/` 仍重定向到资源商城；页面标题和正式菜单选中状态一致，未增加或调整正式菜单项 |
+| 页面结构 | 现有 AppShell 与 PageTitleBar 下依次呈现页面说明、资源类型 Tabs、筛选区、条件回显、结果数量、商品卡和状态反馈；未加入 Hero、Banner、统计图或装饰性背景 |
+| 资源类型 | 云服务器默认展示 6 项演示规格，物理机展示 4 项演示规格；Tabs 鼠标和键盘切换均通过，结果数量同步更新 |
+| URL 状态 | `type=cloud|physical` 可恢复资源类型；`demoState=loading|error|empty` 仅用于开发验收且未进入正式导航；切换类型时会清理不再适用的 GPU 条件 |
+| 搜索与筛选 | 名称、CPU/内存/整机摘要等规格关键字搜索，站点、CPU/GPU、GPU 型号、GPU 数量和可配置状态筛选均通过；多条件组合、条件标签移除与重置结果正确 |
+| GPU 规则 | GPU 型号与数量从当前 Mock 数据派生，仅在 GPU 计算条件下出现；CPU 商品不展示虚假 GPU 字段，GPU 型号选项没有“无卡” |
+| 商品卡 | 云服务器卡正确区分 CPU/内存/加速卡，并把默认系统盘表达为 `30 GB` 存储；物理机卡展示整机 CPU、内存、加速卡和演示整机摘要；不可配置原因使用可见文案且按钮禁用 |
+| 购买入口 | 可配置云服务器进入 `/marketplace/cloud-server/purchase`，可配置物理机进入 `/marketplace/physical-machine/purchase`；占位页标题、Task 05B 边界、选中演示规格和返回商城入口均正常，不创建订单 |
+| 返回商城 | 从两类购买占位页返回后保留资源类型；筛选、分页和滚动位置将在 Task 05B 结合正式购买流程统一接管 |
+| Loading | 筛选区域保留且结果区显示克制加载反馈，结果区预留高度避免明显结构跳动；开发状态不会暴露到正式菜单 |
+| Error 与 Retry | 错误状态有明确文案和重试按钮；重试会执行真实状态转换并恢复当前类型商品列表，不使用浏览器 Alert |
+| Empty 与 No Result | 类型空资源与筛选无结果使用不同标题、说明和操作；空资源操作清除 `demoState`，无结果提供清除搜索与重置筛选 |
+| Select Portal | 站点 MultiSelect 与各 Select 的 listbox 挂载到 `BODY`，z-index 为 30，1920 × 1080 下位于视口内且未被 AppShell 裁切 |
+| 键盘与焦点 | Tabs 方向键、Select 方向键/Enter/Escape、筛选控件 Tab 顺序和 `:focus-visible` 正常；条件标签移除与全部重置后焦点回到搜索框 |
+| 1920 × 1080 | document 与 Main Content 均无横向溢出；三列商品卡宽度约 524.7 px，筛选区、长字段和不可配置说明正常 |
+| 1366 × 768 | document 1366/1366、Main Content 1142/1142；三列商品卡宽度约 340 px，筛选区合理折行，长整机摘要未溢出 |
+| MiSans VF | Font Loading API 返回已加载；浏览器调试协议确认页面标题实际命中 `MiSans VF`，`isCustomFont=true` |
+| 控制台 | 默认商城、两类资源、筛选、状态页、购买入口、404、UI 规范页、基础组件页和高级组件页均无应用 warning/error |
+| 约束扫描 | 商城生产源码未出现 OneAiNexus、价格、按需购买、支付、审批或 AI 开发平台商品；业务组件只从 `src/components/ui` 公共入口导入 UI 组件 |
+| 自动化 | 22 个测试文件、135 项测试通过，包含 Repository、页面、路由、卡片、状态、键盘/ARIA 与业务约束扫描 |
+| 评审截图 | `artifacts/marketplace/` 生成 6 张浏览器原生 PNG：1920 × 1080 五张、1366 × 768 一张；文件尺寸已核验，目录由 `.gitignore` 排除 |
+
 ## 字体补充核验
 
 | 项目 | 结果 |

@@ -23,7 +23,7 @@ Task 03 实现可运行的桌面应用框架，不实现正式业务页面、业
 | `src/app/shell/PageTitleBar.tsx` | 统一页面标题和可选右侧操作区 |
 | `src/app/shell/FloatingAction.tsx` | p.7 壳层私有可选能力；正式页面默认不渲染，不绑定业务用途 |
 | `src/app/shell/icons/AppShellIcons.tsx` | 少量本地线性 SVG 图标，统一使用 `currentColor`，不依赖图标库或远程资产 |
-| `src/pages/ModulePlaceholderPage.tsx` | 15 个稳定页面 ID 的统一占位表现，不包含业务数据和虚假操作 |
+| `src/pages/ModulePlaceholderPage.tsx` | 尚未接入正式业务实现的稳定页面 ID 的统一占位表现，不包含业务数据和虚假操作 |
 
 壳层使用 CSS Grid 组织 56 px 顶栏与剩余视口高度，使用 Flex/Grid 组织侧栏内部和正文。没有用截图或大量绝对定位复刻画板；绝对定位只用于 Tooltip、反馈浮层、滚动遮罩和可选悬浮入口。
 
@@ -92,9 +92,10 @@ PDF 未定义完整动效、层级、Tooltip 方位/触发时序和窄屏断点�
 
 这些补充不宣称来自 PDF，也不形成公共 Tooltip、Button 或浮层组件 API。
 
-## 未实现与后续接入
+## 后续业务接入状态
 
-- 资源商城卡片、购买表单、资源表格、详情、监控、存储、镜像、软件、网络、订单和操作记录仍是统一占位页。
-- 没有业务 Mock 数据、Mock 接口、计费、审批、权限、资源状态或订单状态机。
-- TopNavbar 按钮、收起 Tooltip、悬浮入口均为 AppShell 私有实现；阶段 4 公共组件完成后，应以公共 IconButton、Tooltip、Overlay/Notice 能力替换内部实现，同时保持本文件记录的布局和可访问性契约。
+- `MKT-01` 已由 Task 05A 接入正式资源商城；`BUY-01/02` 已接成明确的购买配置入口占位页，完整购买表单由 Task 05B 实现。其余 12 个稳定业务页面仍使用统一占位页。
+- Task 04A/04B 公共组件已从 `src/components/ui/index.ts` 统一导出，资源商城已复用 Container、Button、输入/选择、Tabs、Tooltip、Grid 和 Pagination；AppShell 结构与正式菜单没有因业务接入而改变。
+- 当前只有资源商城具有类型安全的本地演示数据和最小数据访问层；没有 Mock HTTP 接口、真实 API、计费、审批、权限、资源状态或订单状态机。
+- TopNavbar 按钮、收起 Tooltip、悬浮入口仍为 AppShell 私有实现。后续若统一到公共 IconButton、Tooltip、Overlay/Notice，必须保持本文件记录的布局、菜单和可访问性契约。
 - p.4 的 40 px Hover 标注、p.5 的 48 px 标注与 Demibold 具体视觉仍保留设计确认，不在本阶段扩大为全局规则。
