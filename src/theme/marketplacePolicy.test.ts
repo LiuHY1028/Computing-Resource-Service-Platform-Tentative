@@ -253,7 +253,7 @@ describe('marketplace production-source policies', () => {
     expect(visualWorkflowPolicy).toContain(
       '\u6700\u7ec8\u89c6\u89c9\u9a8c\u6536\u7531\u7528\u6237\u81ea\u884c\u5728\u6d4f\u89c8\u5668\u4e2d\u5b8c\u6210\u3002',
     );
-    expect(gitignore).toContain('/artifacts/marketplace-redesign/');
+    expect(gitignore).toContain('/artifacts/');
     expect(gitignore).toContain('/docs/reference-local/');
   });
 });
