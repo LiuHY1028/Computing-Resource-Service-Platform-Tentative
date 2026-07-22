@@ -4,10 +4,8 @@ node_modules/
 # Build and test output
 dist/
 coverage/
-/artifacts/app-shell/
-/artifacts/components-foundation/
-/artifacts/components-advanced/
-/artifacts/marketplace/
+/artifacts/
+/docs/reference-local/
 
 # Local environment files
 .env

@@ -21,7 +21,10 @@ describe('application routes', () => {
       screen.getByRole('heading', { level: 1, name: '资源商城' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 2, name: '选择适合的机器资源' }),
+      screen.getByRole('heading', {
+        level: 2,
+        name: '发现适合业务的计算资源',
+      }),
     ).toBeInTheDocument();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
   });

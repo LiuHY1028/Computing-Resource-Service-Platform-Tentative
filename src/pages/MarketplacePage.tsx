@@ -272,17 +272,26 @@ export function MarketplacePage() {
 
   return (
     <div className="marketplace-page">
-      <Container as="section" className="marketplace-introduction">
-        <div>
-          <h2>选择适合的机器资源</h2>
+      <Container
+        as="section"
+        className="marketplace-introduction"
+        data-resource-type={resourceType}
+      >
+        <div className="marketplace-introduction__content">
+          <span className="marketplace-introduction__eyebrow">
+            计算资源目录
+          </span>
+          <h2>
+            发现适合业务的<span>计算资源</span>
+          </h2>
           <p>
             比较云服务器与物理机的站点、计算类型和基础规格，再进入对应的配置页面。购买完成后获得独占机器资源，购后管理在“我的资源”中进行。
           </p>
         </div>
-        <p className="marketplace-introduction__data-note">
+        <div className="marketplace-introduction__data-note">
           <strong>演示数据</strong>
-          {MARKETPLACE_DEMO_DATA_NOTICE}
-        </p>
+          <p>{MARKETPLACE_DEMO_DATA_NOTICE}</p>
+        </div>
       </Container>
 
       <Container className="marketplace-tabs-shell">

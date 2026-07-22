@@ -56,6 +56,16 @@ Business requirements override UI examples on behavior. UI specifications govern
 - Preserve documented PDF conflicts; component-specific rules take precedence until design confirms otherwise.
 - New components outside the PDF must be documented in `docs/analysis/08-page-component-mapping.md` with their requirement basis and state coverage.
 
+## Visual review workflow
+
+- Codex不得为用户生成、保存、提交或在最终回复中展示页面评审截图。
+- 不得创建新的页面截图目录或截图文件。
+- 已存在的`artifacts/`仍保持Git忽略。
+- Codex可以使用浏览器工具进行临时视觉检查，但不得将临时截图保留为项目文件。
+- 每次前端页面任务完成后，必须启动本地开发服务器进行浏览器检查。
+- 最终回复只提供启动命令、本地访问地址、需要用户重点检查的页面和交互，以及自动化检查结果。
+- 最终视觉验收由用户自行在浏览器中完成。
+
 ## Checks after code changes
 
 Run the project-defined equivalents of:

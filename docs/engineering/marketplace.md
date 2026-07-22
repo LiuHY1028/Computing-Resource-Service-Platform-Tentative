@@ -31,22 +31,24 @@ Task 05A 将 `MKT-01` 的 `/marketplace` 从统一模块占位页替换为正式
 | p.12 | 复用 Select 与 MultiSelect；浮层继续使用公共 Portal 行为 |
 | p.14 | 使用 TitleBarTabs 切换云服务器和物理机 |
 | p.15 | 不可配置按钮复用 Tooltip 解释原因 |
-| p.16 | 筛选区和商品区使用公共 24 栏 Grid；商品卡为 8 栏三列 |
+| p.16 | 筛选区和商品区使用公共 24 栏 Grid；1920 视口商品卡为 6 栏四列，1366 视口为 8 栏三列 |
 
 资源卡和页面状态是 PDF 未直接提供、但由已确认业务与验收状态要求产生的业务组合；它们已登记在 `docs/analysis/08-page-component-mapping.md`，没有扩展为新的全局组件体系。
+
+本页视觉重构另参考公开权益中心页面和用户提供的 `docs/reference-local/aliyun-benefit-reference.png`，只抽象浅色页面气氛、分区节奏、四列密度、参数层级和彩色操作带。该参考不改变产品需求优先级，也没有带入品牌、Logo、图片、商品文案、价格、优惠或公共云业务规则。详细取舍见 `docs/engineering/marketplace-visual-redesign.md`。
 
 ## 页面结构
 
 `MarketplacePage` 在现有 AppShell 和 PageTitleBar 正文内依次组合：
 
-1. 页面说明与醒目的“演示数据”声明；
-2. 云服务器/物理机 `TitleBarTabs`；
-3. `MarketplaceFilters` 搜索和筛选区；
+1. 低饱和蓝白导视区、核心定位与醒目的“演示数据”声明；
+2. 居中呈现的云服务器/物理机 `TitleBarTabs`；
+3. `MarketplaceFilters` 浅色紧凑搜索和筛选面板；
 4. 当前筛选条件标签与无障碍即时反馈；
-5. `MarketplaceResults` 结果数量、商品网格和分页；
+5. 类型化商品区标题、结果数量、商品网格和分页；
 6. Loading、Error、Empty 或 No Result 状态反馈。
 
-页面最大宽度、间距、圆角、颜色和状态色只消费现有 Token。没有 Hero、Banner、渐变标题、来源品牌、宣传插画、趋势图或购后管理操作。
+页面最大宽度、间距、圆角、控件和功能状态色继续消费现有 Token。新增蓝、青、紫及其浅色表面只集中声明为 `.marketplace-page` 页面级装饰 Token，不修改全局语义色。页面没有大型 Hero、营销 Banner、来源品牌、宣传插画、趋势图或购后管理操作。
 
 ## 业务组件与文件职责
 
@@ -54,7 +56,7 @@ Task 05A 将 `MKT-01` 的 `/marketplace` 从统一模块占位页替换为正式
 |---|---|
 | `src/pages/MarketplacePage.tsx` | 解析查询参数，维护筛选、页码、重试和反馈状态，调用数据访问层并协调路由 |
 | `src/features/marketplace/components/MarketplaceFilters.tsx` | 组合搜索、站点、计算类型、配置状态及条件式 GPU 筛选；回显/移除条件并重置 |
-| `src/features/marketplace/components/MarketplaceResults.tsx` | 展示结果数量、三列商品 Grid、分页，并编排 Loading/Error/Empty/No Result 状态 |
+| `src/features/marketplace/components/MarketplaceResults.tsx` | 展示结果数量、四列/三列响应式商品 Grid、分页，并编排 Loading/Error/Empty/No Result 状态 |
 | `MarketplaceStatePanel` | `MarketplaceResults` 内部的商城状态组合；提供正确的 `status`/`alert` 语义和上下文操作，不定义后台状态机 |
 | `src/features/marketplace/components/ResourceProductCard.tsx` | 展示两类资源的可比较规格、可配置性和购买配置入口 |
 | `src/features/marketplace/types.ts` | 商城商品联合类型、筛选查询、结果和数据访问选项 |
@@ -109,6 +111,8 @@ Task 05A 将 `MKT-01` 的 `/marketplace` 从统一模块占位页替换为正式
 
 不同维度按 AND 组合，同一 MultiSelect 维度按所选集合匹配。输入、选择或移除 `FilterTag` 后从第一页重新计算结果；成功数据每页最多展示 6 项。当前条件在筛选区下方回显，可单独移除。
 
+视觉布局仍使用公共 24 栏 Grid：默认行中搜索占 8 栏、站点 6 栏、计算类型 5 栏、配置状态 5 栏；GPU 型号占 8 栏、数量占 6 栏并只在适用时进入下一行。这里只调整展示跨度，没有改变筛选数据或公共 Grid API。
+
 “重置全部”只在存在活动条件时显示。重置后回到云服务器、空搜索、全部站点、全部计算类型、全部配置状态，并提供 `aria-live` 反馈；操作不刷新页面。开发状态参数会保留，避免验收状态被重置动作意外关闭。
 
 筛选值目前保存在页面会话状态，只有资源类型和开发验收状态进入 URL；Task 05A 不承诺完整筛选深链或跨会话持久化。
@@ -120,6 +124,10 @@ Task 05A 将 `MKT-01` 的 `/marketplace` 从统一模块占位页替换为正式
 物理机卡片展示名称、站点、CPU/GPU 计算类型、整机 CPU 信息、内存、适用时的加速卡型号/数量、整机摘要和配置状态；不擅自增加镜像、操作系统、系统盘、重装系统或电源规则。
 
 CPU 计算商品没有虚假的 GPU 字段。不可配置商品仍参与比较，同时显示“暂不可配置”、可见原因、禁用的“立即配置”按钮和补充 Tooltip；状态不只依赖颜色，禁用原因通过 `aria-describedby` 与文字关联。
+
+视觉重构后的业务卡采用“资源类型与状态 → 规格名称 → 核心指标 → 补充信息 → 浅色操作带”的五层顺序，视觉上由彩色浅底头部、白色主体和极浅类别色操作带三个表面组成。云服务器 CPU/GPU 均保持四个核心槽位；物理机 GPU 将卡数提升到核心 2 × 2 指标区，物理机 CPU 让长 CPU 信息占满一行。站点和整机摘要保持补充信息，长 CPU、GPU 型号和整机摘要可键盘聚焦并通过 Tooltip 读取完整内容。卡片没有固定高度或额外 `min-height`，同一行对齐由一致内容槽位与 Grid 自然拉伸完成，不用弹性空白把按钮推到底部。
+
+1920 宽度下每卡占公共 24 栏中的 6 栏，共四列；在页面局部的 `1599px` 最大宽度媒体条件下切换为 8 栏三列，以覆盖 1366 视口。该条件只改变商城结果项的栅格跨度，没有新增全局断点体系或公共 Grid API。
 
 ## 页面状态与开发验收参数
 
@@ -165,11 +173,11 @@ Task 05A 不创建订单、不提交购买请求、不改变演示数据，也�
 | Select、MultiSelect | 计算类型、配置状态、站点、加速卡型号/数量 |
 | FilterTag | 当前条件回显与单项移除 |
 | Button | 重置、重试、空状态操作和配置入口 |
-| Tooltip | 不可配置原因补充说明 |
-| Grid、GridItem | 24 栏筛选布局和 8 栏商品卡 |
+| Tooltip | 不可配置原因、长 CPU/GPU 型号和整机摘要的完整说明 |
+| Grid、GridItem | 24 栏筛选布局；1920 使用 6 栏商品卡，1366 使用 8 栏商品卡 |
 | Pagination | 超过 6 项时的结果控制 |
 
-商城没有复制这些组件，也没有引入第三方 UI/图标库。业务 CSS 使用现有 Design Token；唯一新增的状态动效遵守全局 `prefers-reduced-motion` 规则。
+商城没有复制这些组件，也没有引入第三方 UI/图标库。业务 CSS 继续使用现有 Design Token，并只在 `.marketplace-page` 集中维护六个商城装饰色 Token；卡片 Hover 的 2 px 上移、轻量阴影和过渡在 `prefers-reduced-motion` 下关闭，键盘 `:focus-within` 和长字段 `:focus-visible` 使用公共焦点语义并保持同等可识别性。
 
 ## 暂定假设与可替换点
 
@@ -220,6 +228,6 @@ Task 05B 需要用正式购买配置页面替换两个占位页，并继续复�
 /marketplace?demoState=empty
 ```
 
-自动化覆盖位于商城 Repository 测试和页面/路由测试。浏览器视口、控制台、键盘、Portal、字体和截图的实际核验结果统一记录在 `docs/engineering/ui-spec-verification.md`，不在本文预先声明通过。
+自动化覆盖位于商城 Repository、页面/路由、分页分支和工程策略测试。浏览器视口、控制台、键盘、Portal、Tooltip、字体和溢出的实际核验结果统一记录在 `docs/engineering/ui-spec-verification.md`。
 
-评审截图输出到 `artifacts/marketplace/`，该目录保持 Git 忽略，不作为产品实现或提交内容。
+根据根目录 `AGENTS.md` 的永久 `Visual review workflow`，当前及后续前端任务只做临时浏览器视觉检查，不生成、保存、提交或在最终回复展示页面评审截图；最终视觉验收由用户在本地浏览器中完成。视觉模式取舍、量化结果和 Task 05B 延续方式见 `docs/engineering/marketplace-visual-redesign.md`。

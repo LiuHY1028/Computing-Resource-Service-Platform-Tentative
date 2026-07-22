@@ -8,6 +8,8 @@ Task 03（应用框架）、Task 04A（基础公共组件）和 Task 04B（高�
 
 Task 05A 已把 `/marketplace` 替换为第一个正式业务页面：资源商城支持云服务器/物理机切换、搜索、站点与规格筛选、条件回显、组合过滤、结果数量、分页、可配置/不可配置商品，以及 Loading、Error/Retry、Empty 和 No Result 状态。商城通过类型安全的本地演示数据访问层工作，不包含真实库存、价格、计费、审批或订单规则。
 
+Task 05A 视觉重构在现有 UI 规范内引入低饱和蓝白商城气氛、居中分类导航、类型化商品分区和“浅色头部 + 2 × 2 核心指标 + 浅色操作带”卡片。1920 为四列、1366 为三列，云服务器与物理机、CPU 与 GPU 通过页面级蓝/青/紫装饰 Token 区分；商品数据、筛选业务、状态逻辑、购买入口和公共组件 API 均未改变。参考取舍与实测对比见 `docs/engineering/marketplace-visual-redesign.md`。
+
 `/marketplace/cloud-server/purchase` 和 `/marketplace/physical-machine/purchase` 已作为明确购买入口接通，目前仍是 Task 05A 的范围说明与返回商城占位页；完整购买配置由 Task 05B 接管。其余业务模块继续使用稳定占位路由。
 
 ## 技术栈
@@ -34,7 +36,17 @@ cp .env.example .env.local
 npm run dev
 ```
 
-默认开发地址由 Vite 在启动时输出。
+默认开发地址由 Vite 在启动时输出。商城视觉与交互可重点检查：
+
+```text
+http://127.0.0.1:5173/marketplace?type=cloud
+http://127.0.0.1:5173/marketplace?type=physical
+http://127.0.0.1:5173/marketplace?demoState=loading
+http://127.0.0.1:5173/marketplace?demoState=error
+http://127.0.0.1:5173/marketplace?demoState=empty
+```
+
+根目录 `AGENTS.md` 规定前端任务只进行临时浏览器检查，不生成、保存或提交页面评审截图；最终视觉验收由用户在本地浏览器完成。
 
 ## 工程检查
 
@@ -114,6 +126,8 @@ src/
 - 基础公共组件说明：`docs/engineering/components-foundation.md`
 - 高级公共组件说明：`docs/engineering/components-advanced.md`
 - 资源商城说明：`docs/engineering/marketplace.md`
+- 资源商城视觉竞品研究：`docs/research/marketplace-visual-benchmark.md`
+- 资源商城视觉重构：`docs/engineering/marketplace-visual-redesign.md`
 - 字体资产与授权边界记录：`docs/engineering/font-assets.md`
 - 逐页映射、冲突、缺口与核验记录：`docs/engineering/ui-spec-*.md`
 

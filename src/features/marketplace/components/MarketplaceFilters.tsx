@@ -69,6 +69,13 @@ export function MarketplaceFilters({
     query.acceleratorModels.length > 0 ||
     query.acceleratorCounts.length > 0 ||
     query.availability !== 'all';
+  const hasVisibleFilterTags =
+    query.search.trim().length > 0 ||
+    query.sites.length > 0 ||
+    query.computeType !== 'all' ||
+    query.acceleratorModels.length > 0 ||
+    query.acceleratorCounts.length > 0 ||
+    query.availability !== 'all';
 
   function update(patch: Partial<MarketplaceQuery>) {
     onQueryChange({ ...query, ...patch });
@@ -134,7 +141,7 @@ export function MarketplaceFilters({
       </div>
 
       <Grid className="marketplace-filters__grid">
-        <GridItem span={6}>
+        <GridItem span={8}>
           <label className="marketplace-filter-field" htmlFor="marketplace-search">
             <span>搜索</span>
             <SearchInput
@@ -150,7 +157,7 @@ export function MarketplaceFilters({
             />
           </label>
         </GridItem>
-        <GridItem span={5}>
+        <GridItem span={6}>
           <label className="marketplace-filter-field" htmlFor="marketplace-sites">
             <span>站点</span>
             <MultiSelect
@@ -163,7 +170,7 @@ export function MarketplaceFilters({
             />
           </label>
         </GridItem>
-        <GridItem span={4}>
+        <GridItem span={5}>
           <label
             className="marketplace-filter-field"
             htmlFor="marketplace-compute-type"
@@ -185,7 +192,7 @@ export function MarketplaceFilters({
             />
           </label>
         </GridItem>
-        <GridItem span={4}>
+        <GridItem span={5}>
           <label
             className="marketplace-filter-field"
             htmlFor="marketplace-availability"
@@ -207,7 +214,7 @@ export function MarketplaceFilters({
         </GridItem>
         {query.computeType === 'gpu' && (
           <>
-            <GridItem span={6}>
+            <GridItem span={8}>
               <label
                 className="marketplace-filter-field"
                 htmlFor="marketplace-accelerator-models"
@@ -225,7 +232,7 @@ export function MarketplaceFilters({
                 />
               </label>
             </GridItem>
-            <GridItem span={4}>
+            <GridItem span={6}>
               <label
                 className="marketplace-filter-field"
                 htmlFor="marketplace-accelerator-counts"
@@ -247,81 +254,77 @@ export function MarketplaceFilters({
         )}
       </Grid>
 
-      <div className="marketplace-filters__active" aria-label="当前筛选条件">
-        <span className="marketplace-filters__active-label">当前条件</span>
-        <div className="marketplace-filters__tags">
-          {!hasActiveFilters && <span>全部资源</span>}
-          {query.resourceType !== 'cloud-server' && (
-            <FilterTag selected onSelectedChange={(selected) => !selected && onReset()}>
-              资源类型：物理机
-            </FilterTag>
-          )}
-          {query.search.trim() && (
-            <FilterTag
-              selected
-              onSelectedChange={(selected) => {
-                if (!selected) {
-                  update({ search: '' });
-                  restoreFocusAfterTagRemoval();
+      {hasVisibleFilterTags && (
+        <div className="marketplace-filters__active" aria-label="当前筛选条件">
+          <span className="marketplace-filters__active-label">当前条件</span>
+          <div className="marketplace-filters__tags">
+            {query.search.trim() && (
+              <FilterTag
+                selected
+                onSelectedChange={(selected) => {
+                  if (!selected) {
+                    update({ search: '' });
+                    restoreFocusAfterTagRemoval();
+                  }
+                }}
+              >
+                搜索：{query.search.trim()}
+              </FilterTag>
+            )}
+            {query.sites.map((site) => (
+              <FilterTag
+                key={site}
+                selected
+                onSelectedChange={(selected) => !selected && removeSite(site)}
+              >
+                站点：{site}
+              </FilterTag>
+            ))}
+            {query.computeType !== 'all' && (
+              <FilterTag
+                selected
+                onSelectedChange={(selected) =>
+                  !selected && removeComputeType()
                 }
-              }}
-            >
-              搜索：{query.search.trim()}
-            </FilterTag>
-          )}
-          {query.sites.map((site) => (
-            <FilterTag
-              key={site}
-              selected
-              onSelectedChange={(selected) => !selected && removeSite(site)}
-            >
-              站点：{site}
-            </FilterTag>
-          ))}
-          {query.computeType !== 'all' && (
-            <FilterTag
-              selected
-              onSelectedChange={(selected) =>
-                !selected && removeComputeType()
-              }
-            >
-              {computeTypeLabel(query.computeType)}
-            </FilterTag>
-          )}
-          {query.acceleratorModels.map((model) => (
-            <FilterTag
-              key={model}
-              selected
-              onSelectedChange={(selected) =>
-                !selected && removeAcceleratorModel(model)
-              }
-            >
-              型号：{model}
-            </FilterTag>
-          ))}
-          {query.acceleratorCounts.map((count) => (
-            <FilterTag
-              key={count}
-              selected
-              onSelectedChange={(selected) =>
-                !selected && removeAcceleratorCount(count)
-              }
-            >
-              数量：{count} 张
-            </FilterTag>
-          ))}
-          {query.availability !== 'all' && (
-            <FilterTag
-              selected
-              onSelectedChange={(selected) =>
-                !selected && removeAvailability()
-              }
-            >
-              {availabilityLabel(query.availability)}
-            </FilterTag>
-          )}
+              >
+                {computeTypeLabel(query.computeType)}
+              </FilterTag>
+            )}
+            {query.acceleratorModels.map((model) => (
+              <FilterTag
+                key={model}
+                selected
+                onSelectedChange={(selected) =>
+                  !selected && removeAcceleratorModel(model)
+                }
+              >
+                型号：{model}
+              </FilterTag>
+            ))}
+            {query.acceleratorCounts.map((count) => (
+              <FilterTag
+                key={count}
+                selected
+                onSelectedChange={(selected) =>
+                  !selected && removeAcceleratorCount(count)
+                }
+              >
+                数量：{count} 张
+              </FilterTag>
+            ))}
+            {query.availability !== 'all' && (
+              <FilterTag
+                selected
+                onSelectedChange={(selected) =>
+                  !selected && removeAvailability()
+                }
+              >
+                {availabilityLabel(query.availability)}
+              </FilterTag>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </Container>
   );
 }

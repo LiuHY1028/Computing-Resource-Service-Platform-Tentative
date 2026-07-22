@@ -58,11 +58,19 @@ function renderMarketplace(path = '/marketplace') {
 }
 
 async function waitForCloudCatalog(total = 6) {
-  await screen.findByText(`共 ${total} 项云服务器结果`);
+  await waitFor(() =>
+    expect(screen.getByText('项结果').parentElement).toHaveTextContent(
+      `${total}项结果`,
+    ),
+  );
 }
 
 async function waitForPhysicalCatalog(total = 4) {
-  await screen.findByText(`共 ${total} 项物理机结果`);
+  await waitFor(() =>
+    expect(screen.getByText('项结果').parentElement).toHaveTextContent(
+      `${total}项结果`,
+    ),
+  );
 }
 
 async function selectOption(
@@ -86,7 +94,10 @@ describe('MarketplacePage', () => {
       screen.getByRole('heading', { level: 1, name: '资源商城' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 2, name: '选择适合的机器资源' }),
+      screen.getByRole('heading', {
+        level: 2,
+        name: '发现适合业务的计算资源',
+      }),
     ).toBeInTheDocument();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
     expect(screen.queryByText('MKT-01')).not.toBeInTheDocument();
@@ -103,17 +114,26 @@ describe('MarketplacePage', () => {
       screen.getByText(/购买完成后获得独占机器资源/),
     ).toBeInTheDocument();
     await waitForCloudCatalog();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '云服务器精选规格' }),
+    ).toBeInTheDocument();
   });
 
   it('restores the resource type from the URL and synchronizes pointer changes', async () => {
     const { user, location } = renderMarketplace('/marketplace?type=physical');
 
     await waitForPhysicalCatalog();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '物理机整机资源' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '物理机' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
     expect(location()).toBe('/marketplace?type=physical');
+    expect(
+      screen.getByRole('button', { name: '重置全部' }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: '云服务器' }));
 
@@ -280,7 +300,7 @@ describe('MarketplacePage', () => {
     expect(search).toHaveValue('');
     await waitFor(() => expect(search).toHaveFocus());
     expect(screen.getByText('已重置全部筛选，当前显示全部云服务器。')).toBeInTheDocument();
-    expect(screen.getByLabelText('当前筛选条件')).toHaveTextContent('全部资源');
+    expect(screen.queryByLabelText('当前筛选条件')).not.toBeInTheDocument();
   });
 
   it('distinguishes no results and supports both clear-search and reset actions', async () => {
@@ -364,6 +384,10 @@ describe('MarketplacePage', () => {
       name: '加速计算 G1，可继续配置',
     });
 
+    expect(cpuCard).toHaveAttribute('data-resource-type', 'cloud-server');
+    expect(cpuCard).toHaveAttribute('data-compute-type', 'cpu');
+    expect(gpuCard).toHaveAttribute('data-resource-type', 'cloud-server');
+    expect(gpuCard).toHaveAttribute('data-compute-type', 'gpu');
     expect(cpuCard).toHaveTextContent('云服务器');
     expect(cpuCard).toHaveTextContent('示例站点 A');
     expect(cpuCard).toHaveTextContent('CPU 计算');
@@ -376,6 +400,23 @@ describe('MarketplacePage', () => {
     expect(gpuCard).toHaveTextContent('GPU 计算');
     expect(gpuCard).toHaveTextContent('加速卡型号示例加速卡 A');
     expect(gpuCard).toHaveTextContent('加速卡数量1 张');
+
+    const catalog = screen.getByLabelText('资源商品列表');
+    const firstGridItem = catalog.querySelector<HTMLElement>(
+      '.marketplace-results__item',
+    );
+    expect(firstGridItem?.style.getPropertyValue('--ui-grid-item-span')).toBe(
+      '6',
+    );
+    expect(
+      within(cpuCard).getByLabelText('核心硬件规格').children,
+    ).toHaveLength(4);
+    expect(cpuCard.querySelector('.resource-product-card__header')).toBeInTheDocument();
+    expect(cpuCard.querySelector('.resource-product-card__body')).toBeInTheDocument();
+    expect(cpuCard.querySelector('.resource-product-card__footer')).toBeInTheDocument();
+    expect(
+      gpuCard.querySelector("[data-metric='accelerator'][data-emphasis='primary']"),
+    ).toBeInTheDocument();
   });
 
   it('renders physical-machine whole-system fields without a cloud system disk', async () => {
@@ -386,7 +427,14 @@ describe('MarketplacePage', () => {
     const card = screen.getByRole('article', {
       name: '整机加速计算 P8，可继续配置',
     });
+    const cpuCard = screen.getByRole('article', {
+      name: '整机通用计算 P1，可继续配置',
+    });
 
+    expect(cpuCard).toHaveAttribute('data-resource-type', 'physical-machine');
+    expect(cpuCard).toHaveAttribute('data-compute-type', 'cpu');
+    expect(card).toHaveAttribute('data-resource-type', 'physical-machine');
+    expect(card).toHaveAttribute('data-compute-type', 'gpu');
     expect(card).toHaveTextContent('物理机');
     expect(card).toHaveTextContent('2 × 48 核通用处理器（演示）');
     expect(card).toHaveTextContent('内存1024 GB');
@@ -394,6 +442,25 @@ describe('MarketplacePage', () => {
     expect(card).toHaveTextContent('加速卡数量8 张');
     expect(card).toHaveTextContent('整机摘要双路处理器、八张加速卡整机规格（演示）');
     expect(card).not.toHaveTextContent('默认系统盘');
+    expect(
+      within(card).getByLabelText('核心硬件规格').children,
+    ).toHaveLength(4);
+    expect(
+      card.querySelector("[data-metric='accelerator-count']"),
+    ).toHaveTextContent('8 张');
+    expect(
+      card.querySelector('.resource-product-card__machine-summary'),
+    ).toHaveAttribute('tabindex', '0');
+    expect(
+      card.querySelector(
+        "[data-metric='cpu-long'] .resource-product-card__metric-value",
+      ),
+    ).toHaveAttribute('tabindex', '0');
+    expect(
+      card.querySelector(
+        "[data-metric='accelerator'] .resource-product-card__metric-value",
+      ),
+    ).toHaveAttribute('tabindex', '0');
   });
 
   it('routes configurable products and keeps unavailable products disabled in place', async () => {

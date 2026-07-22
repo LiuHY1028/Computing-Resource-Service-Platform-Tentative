@@ -77,17 +77,29 @@ export function MarketplaceResults({
   onSwitchResourceType,
 }: MarketplaceResultsProps) {
   const total = state.status === 'success' ? state.result.total : undefined;
+  const heading =
+    resourceType === 'cloud-server'
+      ? { resource: '云服务器', collection: '精选规格' }
+      : { resource: '物理机', collection: '整机资源' };
 
   return (
-    <section className="marketplace-results" aria-labelledby="marketplace-results-title">
+    <section
+      className="marketplace-results"
+      aria-labelledby="marketplace-results-title"
+      data-resource-type={resourceType}
+    >
       <div className="marketplace-results__header">
-        <div>
-          <h2 id="marketplace-results-title">资源规格</h2>
-          <p>
-            {total === undefined
-              ? '正在更新结果数量'
-              : `共 ${total} 项${resourceTypeLabel(resourceType)}结果`}
-          </p>
+        <div className="marketplace-results__heading">
+          <span className="marketplace-results__eyebrow">当前资源目录</span>
+          <h2 id="marketplace-results-title">
+            <span>{heading.resource}</span>
+            {heading.collection}
+          </h2>
+          <p>清晰比较核心硬件规格，并从本地演示资源进入配置。</p>
+        </div>
+        <div className="marketplace-results__count" aria-live="polite">
+          <strong>{total ?? '—'}</strong>
+          <span>{total === undefined ? '正在更新' : '项结果'}</span>
         </div>
       </div>
 
@@ -153,7 +165,11 @@ export function MarketplaceResults({
             {state.result.items
               .slice((page - 1) * pageSize, page * pageSize)
               .map((product) => (
-                <GridItem span={8} key={product.id}>
+                <GridItem
+                  className="marketplace-results__item"
+                  span={6}
+                  key={product.id}
+                >
                   <ResourceProductCard
                     product={product}
                     onConfigure={onConfigure}

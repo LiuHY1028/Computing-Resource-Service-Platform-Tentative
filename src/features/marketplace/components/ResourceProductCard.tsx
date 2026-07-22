@@ -15,12 +15,102 @@ function computeTypeLabel(product: MarketplaceProduct) {
   return product.computeType === 'gpu' ? 'GPU 计算' : 'CPU 计算';
 }
 
+type ProductMetric = Readonly<{
+  label: string;
+  value: string;
+  metric: 'accelerator' | 'accelerator-count' | 'compute' | 'cpu' | 'cpu-long' | 'cpu-wide' | 'memory' | 'system-disk';
+  emphasis?: boolean;
+  tooltip?: boolean;
+}>;
+
+function productMetrics(product: MarketplaceProduct): readonly ProductMetric[] {
+  const cpuMetric: ProductMetric = {
+    label: 'CPU 规格',
+    value: product.cpu,
+    metric:
+      product.resourceType === 'physical-machine'
+        ? product.accelerator
+          ? 'cpu-long'
+          : 'cpu-wide'
+        : 'cpu',
+    emphasis: !product.accelerator,
+    tooltip: product.resourceType === 'physical-machine',
+  };
+  const memoryMetric: ProductMetric = {
+    label: '内存',
+    value: `${product.memoryGb} GB`,
+    metric: 'memory',
+  };
+
+  if (product.resourceType === 'physical-machine') {
+    return product.accelerator
+      ? [
+          {
+            label: '加速卡型号',
+            value: product.accelerator.model,
+            metric: 'accelerator',
+            emphasis: true,
+            tooltip: true,
+          },
+          {
+            label: '加速卡数量',
+            value: `${product.accelerator.count} 张`,
+            metric: 'accelerator-count',
+          },
+          cpuMetric,
+          memoryMetric,
+        ]
+      : [
+          cpuMetric,
+          memoryMetric,
+          {
+            label: '计算类型',
+            value: computeTypeLabel(product),
+            metric: 'compute',
+          },
+        ];
+  }
+
+  const cloudMetrics: ProductMetric[] = product.accelerator
+    ? [
+        {
+          label: '加速卡型号',
+          value: product.accelerator.model,
+          metric: 'accelerator',
+          emphasis: true,
+          tooltip: true,
+        },
+        cpuMetric,
+        memoryMetric,
+      ]
+    : [
+        cpuMetric,
+        memoryMetric,
+        {
+          label: '计算类型',
+          value: computeTypeLabel(product),
+          metric: 'compute',
+        },
+      ];
+
+  if (product.defaultSystemDiskGb !== undefined) {
+    cloudMetrics.push({
+      label: '默认系统盘',
+      value: `${product.defaultSystemDiskGb} GB`,
+      metric: 'system-disk',
+    });
+  }
+
+  return cloudMetrics;
+}
+
 export function ResourceProductCard({
   product,
   onConfigure,
 }: ResourceProductCardProps) {
   const unavailableReasonId = useId();
   const availabilityLabel = product.configurable ? '可继续配置' : '暂不可配置';
+  const metrics = productMetrics(product);
   const configureButton = (
     <Button
       variant="primary"
@@ -39,69 +129,98 @@ export function ResourceProductCard({
       as="article"
       className="resource-product-card"
       data-configurable={product.configurable ? 'true' : 'false'}
+      data-resource-type={product.resourceType}
+      data-compute-type={product.computeType}
       data-product-id={product.id}
       aria-label={`${product.name}，${availabilityLabel}`}
     >
       <header className="resource-product-card__header">
-        <div className="resource-product-card__identity">
-          <span className="resource-product-card__type">
-            {resourceTypeLabel(product)}
+        <div className="resource-product-card__header-meta">
+          <div className="resource-product-card__classification">
+            <span className="resource-product-card__type">
+              {resourceTypeLabel(product)}
+            </span>
+            <span className="resource-product-card__compute-type">
+              {computeTypeLabel(product)}
+            </span>
+          </div>
+          <span
+            className="resource-product-card__availability"
+            data-status={product.configurable ? 'available' : 'unavailable'}
+          >
+            <span aria-hidden="true" />
+            {availabilityLabel}
           </span>
-          <h3>{product.name}</h3>
         </div>
-        <span
-          className="resource-product-card__availability"
-          data-status={product.configurable ? 'available' : 'unavailable'}
-        >
-          <span aria-hidden="true" />
-          {availabilityLabel}
-        </span>
+        <h3>{product.name}</h3>
       </header>
 
-      <div className="resource-product-card__summary">
-        <span>{product.site}</span>
-        <span>{computeTypeLabel(product)}</span>
+      <div className="resource-product-card__body">
+        <dl
+          className="resource-product-card__metrics"
+          aria-label="核心硬件规格"
+        >
+          {metrics.map((metric) => (
+            <div
+              className="resource-product-card__metric"
+              data-emphasis={metric.emphasis ? 'primary' : undefined}
+              data-metric={metric.metric}
+              key={metric.metric}
+            >
+              <dt>{metric.label}</dt>
+              <dd>
+                {metric.tooltip ? (
+                  <Tooltip content={metric.value}>
+                    <span
+                      className="resource-product-card__metric-value"
+                      tabIndex={0}
+                    >
+                      {metric.value}
+                    </span>
+                  </Tooltip>
+                ) : (
+                  metric.value
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        <div
+          className="resource-product-card__details"
+          aria-label="补充规格信息"
+        >
+          <span className="resource-product-card__detail">
+            <span>站点</span>
+            <strong>{product.site}</strong>
+          </span>
+          {product.resourceType === 'cloud-server' && product.accelerator && (
+            <span className="resource-product-card__detail">
+              <span>加速卡数量</span>
+              <strong>{product.accelerator.count} 张</strong>
+            </span>
+          )}
+          {product.resourceType === 'physical-machine' &&
+            product.machineSummary && (
+              <Tooltip content={product.machineSummary}>
+                <span
+                  className="resource-product-card__machine-summary"
+                  tabIndex={0}
+                >
+                  <span>整机摘要</span>
+                  <strong>{product.machineSummary}</strong>
+                </span>
+              </Tooltip>
+            )}
+        </div>
       </div>
 
-      <dl className="resource-product-card__specifications">
-        <div>
-          <dt>CPU 规格</dt>
-          <dd>{product.cpu}</dd>
-        </div>
-        <div>
-          <dt>内存</dt>
-          <dd>{product.memoryGb} GB</dd>
-        </div>
-        {product.accelerator && (
-          <>
-            <div>
-              <dt>加速卡型号</dt>
-              <dd>{product.accelerator.model}</dd>
-            </div>
-            <div>
-              <dt>加速卡数量</dt>
-              <dd>{product.accelerator.count} 张</dd>
-            </div>
-          </>
-        )}
-        {product.resourceType === 'cloud-server' &&
-          product.defaultSystemDiskGb !== undefined && (
-            <div>
-              <dt>默认系统盘</dt>
-              <dd>{product.defaultSystemDiskGb} GB</dd>
-            </div>
-          )}
-        {product.resourceType === 'physical-machine' &&
-          product.machineSummary && (
-            <div>
-              <dt>整机摘要</dt>
-              <dd>{product.machineSummary}</dd>
-            </div>
-          )}
-      </dl>
-
       <footer className="resource-product-card__footer">
-        {!product.configurable && (
+        {product.configurable ? (
+          <p className="resource-product-card__action-note">
+            进入配置页继续选择
+          </p>
+        ) : (
           <p
             className="resource-product-card__unavailable-reason"
             id={unavailableReasonId}
