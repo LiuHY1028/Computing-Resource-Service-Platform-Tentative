@@ -29,6 +29,12 @@ export type AppPageRoute = Readonly<{
   relatedPageIds: readonly PageId[];
 }>;
 
+export type DevelopmentShellRoute = Readonly<{
+  path: string;
+  pageTitle: string;
+  navigationItemId: string;
+}>;
+
 export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   {
     pageId: 'MKT-01',
@@ -199,6 +205,12 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
 
 export const DEFAULT_APP_ROUTE = APP_PAGE_ROUTES[0];
 
+export const FOUNDATION_COMPONENTS_ROUTE: DevelopmentShellRoute = Object.freeze({
+  path: '/__dev/components/foundation',
+  pageTitle: '基础交互组件',
+  navigationItemId: '',
+});
+
 export function getAppPageRoute(pageId: PageId) {
   const route = APP_PAGE_ROUTES.find((candidate) => candidate.pageId === pageId);
 
@@ -212,5 +224,17 @@ export function getAppPageRoute(pageId: PageId) {
 export function findAppPageRoute(pathname: string) {
   return APP_PAGE_ROUTES.find((route) =>
     matchPath({ path: route.path, end: true }, pathname),
+  );
+}
+
+export function findShellPageRoute(pathname: string) {
+  return (
+    findAppPageRoute(pathname) ??
+    (matchPath(
+      { path: FOUNDATION_COMPONENTS_ROUTE.path, end: true },
+      pathname,
+    )
+      ? FOUNDATION_COMPONENTS_ROUTE
+      : undefined)
   );
 }

@@ -21,14 +21,14 @@
 | p.5 | Sidebar 展开/收起、菜单分组、选中/Hover、独立滚动、固定底部、渐变遮罩与收起 Tooltip | 正式公共 Tooltip | 48 px 未误设为全局菜单项高度；超量菜单由测试 fixture 覆盖 |
 | p.6 | Navbar/Sidebar/Main Content 关系、8 px 间隙、自适应列宽和视口内滚动 | 正式业务正文 | CSS Grid/Flex 实现应用框架，无大面积绝对定位 |
 | p.7 | 64 px 标题栏、20 px 内边距、8 px 操作间距和可选悬浮能力 | 正式业务操作 | 悬浮能力默认不在正式页面显示，未虚构业务用途 |
-| p.8 | 容器语义色、边框、圆角、三类阴影 | 正式容器组件 | 成功背景与透明填充冲突已单独记录 |
-| p.9 | 32/24 px 高度、内边距、图标尺寸、按钮相关颜色基础值 | 正式 Button/IconButton | 未建立公共组件 API |
-| p.10 | Input/Textarea 高度、内边距、清除/拖拽色、Focus/Error 阴影 | 正式 Input/Textarea | 组件错误色与全局错误色分离 |
-| p.11 | Radio/Checkbox 卡片高度、间距和排版基础值 | 正式 Radio/Checkbox | 静态页未提供的完整状态不补设计 |
-| p.12 | Select 高度、圆角、边框、下拉阴影和状态基础值 | 正式 Select | Loading/Empty/Error 等列为缺口 |
+| p.8 | 容器语义色、边框、圆角、三类显式阴影及 `Container` | 后续业务语义绑定 | 成功背景与透明填充冲突已单独记录 |
+| p.9 | 32/24 px 高度、内边距、图标尺寸及 Button 完整体系 | PDF 未定义 Loading | 公共 API、交互状态、disabled 与 ref 已建立 |
+| p.10 | Input/SearchInput/Textarea、清空、计数、Error/Focus 与 ARIA 关联 | 密码/日期/数字等未定义类型 | 组件错误色与全局错误色分离，Resize 工程补充已记录 |
+| p.11 | Radio/RadioGroup/CardRadio、Checkbox/CheckboxGroup 全部图示状态 | 精确 16 px 尺寸待确认 | 使用原生 input 语义；选中不只依赖颜色 |
+| p.12 | Select/MultiSelect、标签折叠、ARIA、键盘与 Portal | 异步 Loading/Empty/Error/远程搜索 | 本地通用选项能力完成，浮层不受 AppShell 裁切 |
 | p.13 | 弹窗头/底 64 px、20 px 内边距、8 px 圆角 | 正式 Modal | 宽度、遮罩、层级和焦点规则列为缺口 |
 | p.14 | Title Bar Tab 40 px、Tab 32 px 与间距基础值 | 正式 Tabs | 未补溢出和 Disabled 规则 |
-| p.15 | Tooltip 220 px 最大宽度、6/8/12 px 内间距基础值 | 正式 Tooltip | 背景精确值、箭头、方位和时序列为缺口 |
+| p.15 | Tooltip 220 px 最大宽度、五类内容、Hover/Focus/Escape 和 Portal | 箭头及正式方位/时序 | 最小方位与延时作为工程补充集中维护 |
 | p.16 | 24 栏、1704 px 内容宽度、20 px 边距/栏距及常用组合示意 | 响应式断点 | 验证页在两种视口无横向溢出 |
 | p.17 | 表格水平内边距、多行留白/间距和排版基础值 | 正式 Table/Pagination、行高/列宽等 | 未把静态示例补成业务规则 |
 | p.18 | 表单分组/字段/标签/锚点间距和 800 px 上传区宽度 | 正式 Form/Upload、窄屏规则 | 组合基础值已落地 |
@@ -50,6 +50,29 @@
 | 键盘 Focus | Tab 键触发 `:focus-visible`；1 px 主色轮廓、4 px 偏移清晰可见 |
 | 控制台 | 正式路由、404、验证页和交互过程均无 warning 或 error |
 | 评审截图 | `artifacts/app-shell/` 已生成 4 张 PNG；目录由 `.gitignore` 排除 |
+
+## Task 04A 基础组件核验
+
+| 项目 | 结果 |
+|---|---|
+| 验证路由 | `/__dev/components/foundation` 使用现有 AppShell；正式导航内没有开发路由链接 |
+| 组件范围 | Container、Button、IconButton、TextButton、FilterTag、Input、SearchInput、Textarea、Radio/Group/CardRadio、Checkbox/Group、Select、MultiSelect、Tooltip 均由公共入口导入 |
+| Button | 主要/次要/警示/危险/幽灵、文字、图标、文字图标、悬浮和筛选标签均完成点击；disabled 不可用；Focus 计算样式含 1 px 主色轮廓与 Focus 阴影 |
+| Input | 清空后 value 为空；SearchInput Enter 提交 `交互验证`；Error Input 实际获得焦点且显示可见错误文字 |
+| Radio/Checkbox | label 点击、RadioGroup 方向键、CardRadio 选择、CheckboxGroup 多选及 disabled 均在浏览器与自动化测试中通过 |
+| Select | 鼠标选中 Alpha、键盘选中 Gamma；Escape 关闭后焦点返回触发器；外部点击关闭；disabled 不响应 |
+| MultiSelect | 添加 Delta、移除 Alpha、过量标签折叠、Escape 关闭与焦点返回通过 |
+| Select Portal | listbox 的父节点为 `BODY`，z-index 为 30；1920 × 1080 核验时边界为 left 274/right 558/top 785/bottom 955，完全位于视口内 |
+| Tooltip | Focus 打开、Escape 关闭、正文内操作与 Portal 清理通过；Hover 路径由自动化用例覆盖；交互内容点击后保持打开 |
+| Tooltip Portal | 父节点为 `BODY`；1920 × 1080 核验时边界为 left 429/right 585/top 943/bottom 991，完全位于视口内；触发器使用 `aria-describedby` |
+| 1920 × 1080 | document 1920/1920，Main Content 1696/1696，无横向溢出 |
+| 1366 × 768 | document 1366/1366，Main Content 1142/1142，可纵向滚动且无横向溢出 |
+| 正式默认页 | `/` 重定向 `/marketplace`，标题为“资源商城”，无横向溢出 |
+| UI 规范页 | `/__dev/ui-spec` 正常；MiSans VF 命中；可进入基础组件验证页；无横向溢出 |
+| 404 | 标题与返回 `/marketplace` 链接正常，无横向溢出 |
+| 控制台 | 全部浏览器路线及交互完成后 warning/error 列表为空 |
+| 自动化 | 12 个测试文件、73 项测试通过，包含组件交互、ARIA、Portal 清理与工程约束扫描 |
+| 评审截图 | `artifacts/components-foundation/` 生成 5 张真实浏览器 PNG；1920 × 1080 四张、1366 × 768 一张；目录由 `.gitignore` 排除 |
 
 ## 字体补充核验
 
@@ -81,5 +104,6 @@
 ## 后续处理
 
 - p.4-p.7 的应用框架已经落地；下一阶段只需把正式业务内容和公共组件接入现有 Outlet 与标题栏操作插槽。
-- p.8-p.15、p.17-p.18 的正式公共组件在后续组件阶段实现，并继续遵守冲突与缺口记录。
+- p.8-p.12、p.15 的第一批正式公共组件已由 Task 04A 实现；目录、API、键盘与工程补充见 `components-foundation.md`。
+- p.13-p.14、p.17-p.18 的 Modal、Tabs、Table、Pagination 和 Form 组合继续留给 Task 04B。
 - p.4 的 40 px、p.5 的 48 px、p.8 的成功容器标注仍需设计确认；p.5 的 Demibold 已按字体命名实例映射到 450，但是否就是设计预期仍需确认。

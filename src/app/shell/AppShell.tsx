@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { productConfig } from '../../config/product';
-import { findAppPageRoute } from '../routes';
+import { findShellPageRoute } from '../routes';
 import { MainContent } from './MainContent';
 import { SideNavigation } from './SideNavigation';
 import { TopNavbar } from './TopNavbar';
@@ -10,7 +10,7 @@ import './AppShell.css';
 export function AppShell() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const currentRoute = findAppPageRoute(location.pathname);
+  const currentRoute = findShellPageRoute(location.pathname);
 
   useEffect(() => {
     if (currentRoute) {

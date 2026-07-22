@@ -324,7 +324,10 @@ export function UiSpecPage() {
         <p>
           原始设计依据：<code>docs/source/03-ui-design-spec.pdf.pdf</code>
         </p>
-        <Link to="/marketplace">返回资源商城</Link>
+        <div className="ui-spec-page__links">
+          <Link to="/marketplace">返回资源商城</Link>
+          <Link to="/__dev/components/foundation">查看基础交互组件</Link>
+        </div>
       </header>
 
       <section className="ui-spec-section" aria-labelledby="brand-boundary-title">
@@ -506,7 +509,7 @@ export function UiSpecPage() {
           <h2 id="component-foundations-title">组件基础数值与状态</h2>
         </div>
         <p>
-          这里只验证尺寸、圆角、边框和 Focus Token；未建立 Button、Input、Select 等正式公共组件 API。
+          本页验证基础数值；Button、Input、Select 等正式公共组件请在基础交互组件验证页操作。
         </p>
         <div className="ui-spec-metric-grid">
           {controlMetrics.map((item) => (

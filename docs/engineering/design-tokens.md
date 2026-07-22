@@ -4,7 +4,7 @@
 
 - 原始视觉依据：`docs/source/03-ui-design-spec.pdf.pdf`，18 页。
 - 辅助索引：`docs/analysis/07-ui-spec-extraction.md`。
-- 本阶段只建立 Token、默认浅色主题、全局基础样式和开发验证页；不建立正式公共组件或业务页面。
+- 基础 Token 阶段建立默认浅色主题；Task 04A 在不增加业务页面的前提下消费这些 Token 建立第一批正式公共组件。
 - 来源规范中的品牌名称与 Logo 不作为当前产品品牌。产品身份继续由 `src/config/product.ts` 集中配置。
 
 ## 单一事实来源
@@ -35,7 +35,7 @@ src/styles/tokens.css
 | 间距 | `--space-4` 至 `--space-40` | p.5、p.7、p.9-p.18 | 只收录 PDF 明确或重复标注的值 |
 | 圆角与边框 | `--radius-control`、`--radius-container`、`--border-control` | p.5-p.13 | 控件线宽为工程暂定，颜色来自组件专用页 |
 | 阴影与 Focus | `--shadow-button-hover`、`--shadow-dropdown`、`--shadow-focus-control` | p.8、p.10 | 不增加 PDF 以外的阴影层级 |
-| 控件尺寸 | `--height-control-default`、`--height-textarea-default`、图标尺寸 | p.9-p.15 | 仅供后续组件实现消费，本阶段不建立组件 API |
+| 控件尺寸 | `--height-control-default`、`--height-textarea-default`、图标尺寸 | p.9-p.15 | 已由 Task 04A 的 Button、Input、选择控件和 Tooltip 消费 |
 | 应用布局 | Navbar、Sidebar、Main Content、标题栏尺寸 | p.4-p.7 | 本阶段只做 Token 与关系示意，正式框架在阶段 3 |
 | 栅格与表单组合 | 24 栏、1704 px、边距/栏距、表单间距、上传区宽度 | p.16-p.18 | 窄屏断点未在 PDF 中定义 |
 
@@ -73,6 +73,10 @@ CSS 入口加载顺序为 `reset.css` → `fonts.css` → `tokens.css` → `them
 | `--layout-navbar-hover-area-temporary` | p.4 标注 40 px，但无法确认是宽度还是最小点击区 | 应用框架阶段确认 |
 | `--engineering-focus-outline-width`、`--engineering-focus-outline-offset` | p.10 只有输入控件 Focus，项目仍需全局键盘可见性 | 公共组件无障碍规范完成后替换 |
 | `--engineering-reduced-motion-duration` | PDF 未给动效时长，基础主题必须响应降低动态效果偏好 | 后续动效规范统一确认 |
+| `--size-selection-control-engineering` | p.11 可见 Radio/Checkbox 尺寸但未可靠文字标注 | 设计确认基础控件尺寸后替换 |
+| `--engineering-select-listbox-max-height`、`--engineering-select-tag-max-width` | p.12 未定义视口边界和长标签上限 | 后续选择器规范确认后替换 |
+| `--engineering-overlay-viewport-padding`、`--engineering-overlay-offset` | Select/Tooltip Portal 必须避免视口裁切 | 后续浮层规范统一确认 |
+| `--engineering-tooltip-open-delay`、`--engineering-tooltip-close-delay` | p.15 未定义触发时序，交互内容需要可移入 | 后续 Tooltip 规范确认后替换 |
 
 ## 基础浅色主题
 
@@ -107,5 +111,6 @@ CSS 入口加载顺序为 `reset.css` → `fonts.css` → `tokens.css` → `them
 ## 验证入口
 
 - 开发路由：`/__dev/ui-spec`
+- 基础组件路由：`/__dev/components/foundation`
 - 路由不加入正式产品菜单。
 - 页面按 PDF p.1-p.18 顺序展示已 Token 化内容，并显示对应 CSS 变量名称供核验。

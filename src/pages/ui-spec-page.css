@@ -24,6 +24,12 @@
   line-height: var(--line-height-title-large);
 }
 
+.ui-spec-page__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+}
+
 .ui-spec-section {
   margin-top: var(--space-40);
 }

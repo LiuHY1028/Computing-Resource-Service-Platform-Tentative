@@ -1,0 +1,45 @@
+.ui-tooltip-trigger {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.ui-tooltip {
+  position: fixed;
+  z-index: var(--engineering-z-index-overlay);
+  max-width: var(--max-width-tooltip);
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-container);
+  color: var(--color-surface-default);
+  background: var(--color-tooltip-background);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-light);
+  line-height: var(--line-height-caption);
+  overflow-wrap: anywhere;
+}
+
+.ui-tooltip__title {
+  margin-bottom: var(--space-4);
+  font-weight: var(--font-weight-medium);
+}
+
+.ui-tooltip__content a,
+.ui-tooltip__content button,
+.ui-tooltip__action a,
+.ui-tooltip__action button {
+  color: var(--color-tooltip-action);
+}
+
+.ui-tooltip__content button,
+.ui-tooltip__action button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ui-tooltip__action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-8);
+}

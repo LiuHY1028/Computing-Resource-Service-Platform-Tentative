@@ -1,0 +1,65 @@
+.ui-container {
+  border: var(--border-default);
+  border-radius: var(--radius-container);
+  background: var(--color-surface-default);
+}
+
+.ui-container[data-variant='borderless'] {
+  border-color: transparent;
+  background: transparent;
+}
+
+.ui-container[data-variant='disabled'] {
+  border-color: transparent;
+  background: var(--color-container-disabled);
+}
+
+.ui-container[data-variant='dashed'] {
+  border-style: dashed;
+}
+
+.ui-container[data-variant='danger'] {
+  border-color: var(--color-error);
+}
+
+.ui-container[data-variant='focus'] {
+  border-color: var(--color-primary);
+}
+
+.ui-container[data-variant='marked'] {
+  border-color: transparent;
+  color: var(--color-surface-default);
+  background: var(--color-error);
+}
+
+.ui-container[data-variant='info'] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-background);
+}
+
+.ui-container[data-variant='urgent'] {
+  border-color: var(--color-error);
+  background: var(--color-error-background);
+}
+
+.ui-container[data-variant='success'] {
+  border-color: var(--color-success);
+  background: var(--color-success-background);
+}
+
+.ui-container[data-variant='attention'] {
+  border-color: var(--color-warning);
+  background: var(--color-warning-background);
+}
+
+.ui-container[data-shadow='button-hover'] {
+  box-shadow: var(--shadow-button-hover);
+}
+
+.ui-container[data-shadow='dropdown'] {
+  box-shadow: var(--shadow-dropdown);
+}
+
+.ui-container[data-shadow='floating'] {
+  box-shadow: var(--shadow-floating);
+}

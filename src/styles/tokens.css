@@ -56,6 +56,11 @@
   --color-textarea-resize: #bcbcbc; /* p.10 */
   --color-icon-button-hover-background: rgb(205 208 220 / 15%); /* p.9 */
   --color-icon-button-hover-foreground: rgb(62 70 84 / 82%); /* p.9 */
+  --color-selection-control-disabled: var(--color-button-disabled-text); /* p.11 visual state */
+  --color-selection-control-disabled-background: var(--color-background-page); /* p.11 visual state */
+  --color-select-option-hover: #f9fafa; /* p.12 */
+  --color-tooltip-background: var(--color-text-body); /* p.15 visual relationship */
+  --color-tooltip-action: #65b5ff; /* p.15 text action visual sample */
 
   /* p.3 Typography */
   --font-family-base: "MiSans VF", "MiSans", "PingFang SC", "Microsoft YaHei",
@@ -114,6 +119,7 @@
   --size-icon-sidebar: 14px;
   --size-avatar: 30px;
   --size-resize-handle: 8px;
+  --size-selection-control-engineering: 16px;
   --max-width-tooltip: 220px;
   --height-tabs-title-area: 40px;
   --height-tabs-item: 32px;
@@ -153,4 +159,10 @@
   --engineering-shell-motion-duration: 160ms;
   --engineering-z-index-shell: 10;
   --engineering-z-index-overlay: 30;
+  --engineering-select-listbox-max-height: 240px;
+  --engineering-select-tag-max-width: 120px;
+  --engineering-overlay-viewport-padding: 8px;
+  --engineering-overlay-offset: 8px;
+  --engineering-tooltip-open-delay: 80ms;
+  --engineering-tooltip-close-delay: 120ms;
 }

@@ -55,6 +55,16 @@ describe('application routes', () => {
     expect(screen.getByText('Demibold')).toBeInTheDocument();
   });
 
+  it('renders foundation components inside AppShell without adding a formal menu item', () => {
+    renderRoute('/__dev/components/foundation');
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: '基础交互组件' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Select 与 MultiSelect' })).toBeInTheDocument();
+    expect(document.querySelector('nav a[href="/__dev/components/foundation"]')).toBeNull();
+  });
+
   it('shows the not-found page for an unknown route', () => {
     renderRoute('/unknown-route');
 

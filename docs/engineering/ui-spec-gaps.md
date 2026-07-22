@@ -11,11 +11,11 @@
 | Drawer | 较长轻量任务可能不适合小弹窗 | 上传、安装、网络规则 | 阶段 4 先定义，再由阶段 9 使用 | 设计 |
 | 通用 Error Page、Empty State | PDF 只有空表格示例 | 全部列表、详情和异步区域 | 阶段 4 PageState | 设计与产品 |
 | 响应式断点、最低宽度、移动/平板方案 | 1366 等视口需要稳定适配 | 应用框架、表格、表单、栅格 | 阶段 3 应用框架，阶段 4 组件补充 | 设计与工程 |
-| 全局键盘 Focus、对比度、焦点管理 | PDF 只有部分输入/分页 Focus | 全部可交互元素、Modal | 阶段 4 无障碍状态矩阵 | 设计与工程 |
+| 完整对比度规范与 Modal 焦点管理 | PDF 只有部分输入/分页 Focus；Task 04A 已为基础控件补充键盘 Focus | 后续公共组件、Modal | Task 04B 无障碍状态矩阵 | 设计与工程 |
 | 弹窗遮罩、宽度、z-index、滚动、关闭策略 | 静态图不能定义行为 | Modal、提示弹窗 | 阶段 4 Modal | 设计与产品 |
-| Tooltip 箭头、方位与触发时序 | 收起 Sidebar 和图标按钮需要稳定提示 | Tooltip、Sidebar、IconButton | 阶段 4 Tooltip；阶段 3 消费 | 设计 |
+| Tooltip 箭头及正式方位/触发时序 | Task 04A 已以工程 Token 实现视口定位和最小延时，但 PDF 未给定正式规则 | Tooltip、Sidebar、IconButton | 设计确认后替换工程暂定值 | 设计 |
 | 表格行高、列宽、排序、固定列、横向滚动 | 企业列表页面必需 | Table、资源/订单/记录列表 | 阶段 4 Table，业务阶段再定义列 | 设计与产品 |
-| Select 异步 Loading、无选项、Error、搜索 | 站点/镜像/存储选项来自异步数据 | Select、购买与筛选表单 | 阶段 4 Select | 设计 |
+| Select 异步 Loading、无选项、Error、搜索 | Task 04A 只实现 PDF p.12 的通用本地选项选择；异步边界不能由基础组件臆造 | Select、购买与筛选表单 | 后续业务接入前由设计和产品确认 | 设计 |
 | Tabs 溢出、路由同步、Disabled | 多功能页面与窄屏可能出现 | Tabs、资源详情 | 阶段 4 Tabs | 设计与工程 |
 | 状态 Badge 与业务状态语义 | 资源、订单、操作记录需要紧凑状态 | StatusBadge | 阶段 4 只建视觉能力；业务枚举另行确认 | 产品与设计 |
 | 监控图表、坐标轴、曲线和 Tooltip | CPU/内存/加速卡监控已确认 | MetricChart | 阶段 8 资源详情和监控 | 设计与监控负责人 |
@@ -23,4 +23,4 @@
 
 ## 本阶段暂定的可访问性桥接
 
-基础主题必须提供可见 `:focus-visible` 和 `prefers-reduced-motion`。由于 PDF 没有全局规则，本阶段只加入最小工程暂定 Token，并在命名中明确 `engineering`；阶段 4 应以完整状态矩阵替换。
+基础主题和 Task 04A 组件提供可见 `:focus-visible` 与 `prefers-reduced-motion`。由于 PDF 没有完整全局规则，当前只加入最小工程暂定 Token，并在命名中明确 `engineering`；后续 Modal、Tabs、Table 等组件继续补全状态矩阵。

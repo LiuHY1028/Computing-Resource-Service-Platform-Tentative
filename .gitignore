@@ -5,6 +5,7 @@ node_modules/
 dist/
 coverage/
 /artifacts/app-shell/
+/artifacts/components-foundation/
 
 # Local environment files
 .env
