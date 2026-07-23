@@ -5,25 +5,34 @@ export type PresetStorageSpace = Readonly<{
   displayCapacity: string;
 }>;
 
-export const PRESET_STORAGE_SPACES = [
-  {
-    id: 'preset-shared-space-east',
-    name: '通用共享存储',
-    site: '东部算力中心',
-    displayCapacity: '2 TB',
-  },
-  {
-    id: 'preset-shared-space-west',
-    name: '高性能共享存储',
-    site: '西部算力中心',
-    displayCapacity: '4 TB',
-  },
-] as const satisfies readonly PresetStorageSpace[];
+import {
+  findStorageSpace,
+  getStorageSpacesForSite,
+} from '../../storage';
+
+function displayCapacity(capacityGb: number) {
+  return capacityGb >= 1024
+    ? `${Number((capacityGb / 1024).toFixed(1))} TB`
+    : `${capacityGb} GB`;
+}
 
 export function getPresetStorageSpaceById(id: string) {
-  return PRESET_STORAGE_SPACES.find((space) => space.id === id);
+  const space = findStorageSpace(id);
+  return space
+    ? {
+        id: space.id,
+        name: space.name,
+        site: space.site,
+        displayCapacity: displayCapacity(space.capacityGb),
+      }
+    : undefined;
 }
 
 export function getPresetStorageSpacesForSite(site: string) {
-  return PRESET_STORAGE_SPACES.filter((space) => space.site === site);
+  return getStorageSpacesForSite(site).map((space) => ({
+    id: space.id,
+    name: space.name,
+    site: space.site,
+    displayCapacity: displayCapacity(space.capacityGb),
+  }));
 }

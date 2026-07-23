@@ -46,6 +46,12 @@ export {
 } from './Select/Select';
 export { Tooltip, type TooltipProps } from './Tooltip/Tooltip';
 export {
+  StatusBadge,
+  type StatusBadgeProps,
+  type StatusBadgeTone,
+} from './StatusBadge/StatusBadge';
+export { PageState, type PageStateProps } from './PageState/PageState';
+export {
   Modal,
   PromptModal,
   type ModalAction,

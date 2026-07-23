@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Button,
   Container,
@@ -8,6 +9,11 @@ import {
   type TableColumn,
 } from '../../../components/ui';
 import {
+  getStorageMountsForResource,
+  type StorageMount,
+  type StorageSpace,
+} from '../../storage';
+import {
   COMPUTE_TYPE_LABELS,
   EXPIRY_STATE_LABELS,
   formatAccelerator,
@@ -15,7 +21,6 @@ import {
   OPERATION_STATUS_LABELS,
 } from '../formatters';
 import type {
-  CloudDataDisk,
   InstalledSoftware,
   OperationRecord,
   PortRule,
@@ -117,54 +122,63 @@ export function ResourceOverview({
 export function ResourceStorage({
   resource,
 }: Readonly<{ resource: Resource }>) {
-  if (resource.resourceType === 'physical-machine') {
-    return (
-      <DefinitionSection
-        eyebrow="整机存储"
-        title="存储摘要"
-        fields={[
-          ['整机型号', resource.machineModel],
-          ['存储配置', resource.storageSummary],
-          ['管理范围', '当前仅提供整机存储信息查看'],
-        ]}
-      />
-    );
-  }
-
-  const columns: readonly TableColumn<CloudDataDisk>[] = [
-    { key: 'name', title: '名称', render: (disk) => disk.name },
+  const relations = getStorageMountsForResource(resource.id);
+  const columns: readonly TableColumn<{
+    space: StorageSpace;
+    mount: StorageMount;
+  }>[] = [
+    {
+      key: 'name',
+      title: '名称',
+      render: ({ space }) => (
+        <Link to={`/storage/${space.id}`}>{space.name}</Link>
+      ),
+    },
     {
       key: 'type',
       title: '类型',
-      render: (disk) => disk.displayType,
+      render: ({ space }) =>
+        space.type === 'local' ? '本地数据存储' : '高性能共享存储',
     },
     {
       key: 'mountPath',
       title: '挂载路径',
-      render: (disk) => <code>{disk.mountPath}</code>,
+      render: ({ mount }) => <code>{mount.mountPath}</code>,
     },
     {
       key: 'capacity',
       title: '容量',
-      render: (disk) => `${disk.capacityGb} GB`,
+      render: ({ space }) => `${space.capacityGb} GB`,
     },
     {
       key: 'readOnly',
       title: '访问模式',
-      render: (disk) => (disk.readOnly ? '只读' : '可读写'),
+      render: ({ mount }) => (mount.readOnly ? '只读' : '可读写'),
     },
   ];
 
   return (
     <div className="resource-detail-stack">
-      <DefinitionSection
-        eyebrow="系统与运行环境"
-        title="系统盘"
-        fields={[
-          ['系统盘容量', `${resource.systemDiskGb} GB`],
-          ['管理范围', '当前仅提供容量信息查看'],
-        ]}
-      />
+      {resource.resourceType === 'cloud-server' ? (
+        <DefinitionSection
+          eyebrow="系统与运行环境"
+          title="系统盘"
+          fields={[
+            ['系统盘容量', `${resource.systemDiskGb} GB`],
+            ['管理范围', '当前仅提供容量信息查看'],
+          ]}
+        />
+      ) : (
+        <DefinitionSection
+          eyebrow="整机存储"
+          title="存储摘要"
+          fields={[
+            ['整机型号', resource.machineModel],
+            ['存储配置', resource.storageSummary],
+            ['管理范围', '当前仅提供整机存储信息查看'],
+          ]}
+        />
+      )}
       <Container as="section" className="resource-section">
         <div className="resource-section__heading">
           <div>
@@ -175,8 +189,8 @@ export function ResourceStorage({
         <Table
           aria-label="数据存储列表"
           columns={columns}
-          rows={resource.dataDisks}
-          getRowKey={(disk) => disk.id}
+          rows={relations}
+          getRowKey={({ mount }) => mount.id}
           empty={
             <EmptyTable
               title="未关联数据存储"

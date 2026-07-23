@@ -46,12 +46,11 @@ describe('application routes', () => {
     ).toBeInTheDocument();
   });
 
-  it('presents unavailable modules as a product service status', () => {
+  it('renders the storage management page instead of a service placeholder', async () => {
     renderRoute('/storage');
 
-    expect(screen.getByText('服务状态')).toBeInTheDocument();
-    expect(screen.getByText(/该服务当前暂未开放/)).toBeInTheDocument();
-    expect(screen.queryByText(/模块占位页面|后续任务实现|页面 ID/)).not.toBeInTheDocument();
+    expect(await screen.findByRole('table', { name: '存储空间列表' })).toBeInTheDocument();
+    expect(screen.queryByText(/服务状态|暂未开放/)).not.toBeInTheDocument();
   });
 
   it('registers every stable page route', () => {

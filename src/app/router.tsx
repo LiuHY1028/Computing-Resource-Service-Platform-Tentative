@@ -8,6 +8,7 @@ import { MarketplacePage } from '../pages/MarketplacePage';
 import { PurchasePage } from '../pages/PurchasePage';
 import { ResourceListPage } from '../pages/ResourceListPage';
 import { ResourceDetailPage } from '../pages/ResourceDetailPage';
+import { StorageDetailPage, StorageListPage } from '../pages/StoragePage';
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
@@ -59,6 +60,14 @@ function appPageElement(route: AppPageRoute) {
         }
       />
     );
+  }
+
+  if (route.pageId === 'STO-01') {
+    return <StorageListPage />;
+  }
+
+  if (route.pageId === 'STO-02') {
+    return <StorageDetailPage />;
   }
 
   return <ModulePlaceholderPage route={route} />;
