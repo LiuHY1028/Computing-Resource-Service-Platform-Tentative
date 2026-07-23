@@ -1,4 +1,5 @@
 import { createInitialResourceCatalog } from '../data/resourceCatalog';
+import { recordOperation } from '../../operations';
 import type {
   OperationRecord,
   Resource,
@@ -345,6 +346,16 @@ export async function submitResourceAction(
     updated,
     ...resources.slice(index + 1),
   ];
+  recordOperation({
+    module: 'resource',
+    action: record.action,
+    targetId: updated.id,
+    targetName: updated.name,
+    status: record.status,
+    message: record.message,
+    targetPath: `/resources/${updated.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${updated.id}`,
+    createdAt: record.createdAt,
+  });
   return { resource: clone(updated), record: clone(record) };
 }
 

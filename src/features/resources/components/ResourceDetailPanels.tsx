@@ -21,6 +21,11 @@ import {
   getNetworkRulesForResource,
   type NetworkAccessRule,
 } from '../../network';
+import { getOrdersForResource } from '../../orders';
+import {
+  getOperationsForTarget,
+  type PlatformOperationRecord,
+} from '../../operations';
 import {
   COMPUTE_TYPE_LABELS,
   EXPIRY_STATE_LABELS,
@@ -28,10 +33,7 @@ import {
   formatDateTime,
   OPERATION_STATUS_LABELS,
 } from '../formatters';
-import type {
-  OperationRecord,
-  Resource,
-} from '../types';
+import type { Resource } from '../types';
 import { ResourceStatusBadge } from './ResourceStatusBadge';
 
 function DefinitionSection({
@@ -102,6 +104,7 @@ export function ResourceOverview({
           ['认证方式', resource.connection.authenticationMethod ?? '未提供'],
           ['整机存储', resource.storageSummary],
         ];
+  const relatedOrders = getOrdersForResource(resource.id);
 
   return (
     <div className="resource-detail-stack">
@@ -121,6 +124,22 @@ export function ResourceOverview({
         }
         fields={specificFields}
       />
+      <Container as="section" className="resource-section">
+        <div className="resource-section__heading">
+          <div><span>配置申请</span><h3>相关申请</h3></div>
+        </div>
+        {relatedOrders.length ? (
+          <div className="management-related-links">
+            {relatedOrders.map((order) => (
+              <Link to={`/orders/${order.id}`} key={order.id}>
+                {order.id} · {order.status === 'delivered' ? '已交付' : '处理中'}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <EmptyTable title="暂无相关申请" />
+        )}
+      </Container>
     </div>
   );
 }
@@ -339,9 +358,10 @@ export function ResourceSoftware({
 }
 
 export function ResourceOperations({
-  records,
-}: Readonly<{ records: readonly OperationRecord[] }>) {
-  const columns: readonly TableColumn<OperationRecord>[] = [
+  resourceId,
+}: Readonly<{ resourceId: string }>) {
+  const records = getOperationsForTarget(resourceId);
+  const columns: readonly TableColumn<PlatformOperationRecord>[] = [
     { key: 'action', title: '操作类型', render: (record) => record.action },
     { key: 'actor', title: '操作主体', render: (record) => record.actor },
     {

@@ -70,6 +70,7 @@ export type PurchaseSummaryItem = Readonly<{
 
 export type PurchaseSubmissionResult = Readonly<{
   applicationId: string;
+  orderId: string;
   resourceType: MarketplaceResourceType;
   productName: string;
   summary: readonly PurchaseSummaryItem[];

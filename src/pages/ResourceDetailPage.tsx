@@ -230,7 +230,7 @@ export function ResourceDetailPage({
               value: 'operations',
               label: '操作记录',
               panel: (
-                <ResourceOperations records={resource.operationRecords} />
+                <ResourceOperations resourceId={resource.id} />
               ),
             },
           ]}

@@ -132,7 +132,7 @@ describe('ResourceDetailPage', () => {
     expect(
       screen.getByRole('table', { name: '资源操作记录' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('资源信息同步')).toBeInTheDocument();
+    expect(screen.getByText('启动资源')).toBeInTheDocument();
   });
 
   it('covers missing resources and recoverable detail errors', async () => {

@@ -236,12 +236,9 @@ export function PurchasePage({ resourceType }: PurchasePageProps) {
       <PurchaseSuccessState
         result={result}
         onReturn={returnToMarketplace}
-        onModify={() => {
-          setResult(undefined);
-          setDirty(true);
-          if (product && product.resourceType === 'cloud-server' && cloudConfiguration) savePurchaseDraft(product.id, resourceType, cloudConfiguration);
-          if (product && product.resourceType === 'physical-machine' && physicalConfiguration) savePurchaseDraft(product.id, resourceType, physicalConfiguration);
-        }}
+        onViewOrder={(orderId) =>
+          navigate(`/orders/${encodeURIComponent(orderId)}`)
+        }
       />
     );
   }

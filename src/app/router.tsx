@@ -12,6 +12,11 @@ import { StorageDetailPage, StorageListPage } from '../pages/StoragePage';
 import { ImagesPage } from '../pages/ImagesPage';
 import { SoftwarePage } from '../pages/SoftwarePage';
 import { NetworkAccessPage } from '../pages/NetworkAccessPage';
+import {
+  OperationRecordsPage,
+  OrderDetailPage,
+  OrderListPage,
+} from '../pages/OrdersPage';
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
@@ -83,6 +88,18 @@ function appPageElement(route: AppPageRoute) {
 
   if (route.pageId === 'NET-01') {
     return <NetworkAccessPage />;
+  }
+
+  if (route.pageId === 'ORD-01') {
+    return <OrderListPage />;
+  }
+
+  if (route.pageId === 'ORD-02') {
+    return <OrderDetailPage />;
+  }
+
+  if (route.pageId === 'OPS-01') {
+    return <OperationRecordsPage />;
   }
 
   return <ModulePlaceholderPage route={route} />;

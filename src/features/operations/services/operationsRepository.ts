@@ -13,6 +13,18 @@ const VERSION = 1;
 
 const INITIAL_RECORDS: readonly PlatformOperationRecord[] = [
   {
+    id: 'operation-seed-resource-start-visual',
+    module: 'resource',
+    action: '启动资源',
+    targetId: 'cs-east-002',
+    targetName: '视觉训练节点-02',
+    actor: '当前用户',
+    createdAt: '2026-07-22T03:15:00.000Z',
+    status: 'completed',
+    message: '资源启动操作已完成。',
+    targetPath: '/resources/cloud-servers/cs-east-002',
+  },
+  {
     id: 'operation-seed-resource-start',
     module: 'resource',
     action: '启动资源',

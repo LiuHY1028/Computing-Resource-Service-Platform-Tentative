@@ -69,7 +69,7 @@ describe('PurchasePage', () => {
     await user.click(submit);
     expect(submit).toBeDisabled();
     expect(await screen.findByRole('heading', { name: '配置已提交' }, { timeout: 2000 })).toBeInTheDocument();
-    expect(screen.getByText('APP-CLOUD-001')).toBeInTheDocument();
+    expect(screen.getByText(/^REQ-\d{8}-\d{4}$/)).toBeInTheDocument();
     expect(screen.getByText('等待资源准备')).toBeInTheDocument();
     expect(screen.getByText('连接信息将在资源就绪后生成。')).toBeInTheDocument();
   });
@@ -124,7 +124,7 @@ describe('PurchasePage', () => {
     expect(screen.queryByLabelText(/主机路径/)).not.toBeInTheDocument();
     expect(screen.getByText(/底层挂载方式：NFS/)).toBeInTheDocument();
     await user.click(screen.getByRole('combobox', { name: /共享存储空间/ }));
-    await user.click(screen.getByRole('option', { name: /通用共享存储/ }));
+    await user.click(screen.getByRole('option', { name: /研发共享存储/ }));
     await user.type(screen.getByLabelText(/^挂载路径/), '/workspace/shared');
     expect(screen.getAllByText(/高性能共享存储/).length).toBeGreaterThan(0);
 
@@ -183,7 +183,7 @@ describe('PurchasePage', () => {
     expect(pageTitle.closest('.page-title-bar')).toBeInTheDocument();
     expect(document.querySelector('.purchase-guide')).toBeNull();
     expect(screen.getByRole('heading', { name: '交付方式' })).toBeInTheDocument();
-    expect(screen.getByText('支付完成后开始部署和基础初始化')).toBeInTheDocument();
+    expect(screen.getByText('申请受理后进入资源准备和基础初始化')).toBeInTheDocument();
     expect(screen.getByText(/资源交付完成后，可在“我的资源”中查看服务器连接信息/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '交付信息' })).toBeInTheDocument();
     expect(screen.getByText(/资源名称、资源 ID、资源状态、所属站点/)).toBeInTheDocument();
@@ -201,7 +201,7 @@ describe('PurchasePage', () => {
     expect(within(summary).getByRole('heading', { name: '商品摘要' })).toBeInTheDocument();
     expect(within(summary).getByRole('heading', { name: '配置摘要' })).toBeInTheDocument();
     expect(['auto', 'scroll']).not.toContain(getComputedStyle(summary).overflowY);
-    expect(summary).toHaveTextContent('交付方式支付成功后部署与基础初始化');
+    expect(summary).toHaveTextContent('交付方式申请受理后进入资源准备与基础初始化');
     expect(summary).toHaveTextContent('认证方式SSH 密钥');
     expect(summary).toHaveTextContent('连接信息资源交付完成后在“我的资源”提供');
 
@@ -210,13 +210,13 @@ describe('PurchasePage', () => {
     await user.type(screen.getByLabelText(/SSH 允许来源/), '192.0.2.0/24');
     await user.click(screen.getAllByRole('button', { name: '确认配置' })[0]!);
     const confirmation = screen.getByRole('dialog', { name: '确认配置' });
-    expect(confirmation).toHaveTextContent('交付方式支付成功后部署与基础初始化');
+    expect(confirmation).toHaveTextContent('交付方式申请受理后进入资源准备与基础初始化');
     expect(confirmation).toHaveTextContent('认证方式SSH 密钥');
     expect(confirmation).toHaveTextContent('连接信息资源交付完成后在“我的资源”提供');
     await user.click(screen.getByRole('button', { name: '提交配置' }));
-    expect(await screen.findByText('APP-PHYSICAL-001', {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(await screen.findByText(/^REQ-\d{8}-\d{4}$/, {}, { timeout: 2000 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '交付流程' })).toBeInTheDocument();
-    expect(screen.getByText('完成支付后开始部署')).toBeInTheDocument();
+    expect(screen.getByText('申请受理后进入资源准备')).toBeInTheDocument();
     expect(screen.getByText('部署完成后将在“我的资源”中提供连接信息。')).toBeInTheDocument();
     expect(screen.getAllByText('等待资源交付').length).toBeGreaterThan(0);
     expect(screen.getByText('按网络策略分配')).toBeInTheDocument();

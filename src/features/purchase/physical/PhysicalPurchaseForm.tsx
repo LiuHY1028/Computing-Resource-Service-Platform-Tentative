@@ -47,7 +47,7 @@ export function PhysicalPurchaseForm({ value, errors, onChange, onConfirm, onRet
         <div className="purchase-delivery-notice">
           <span className="purchase-delivery-notice__mark" aria-hidden="true">i</span>
           <div>
-            <strong>支付完成后开始部署和基础初始化</strong>
+            <strong>申请受理后进入资源准备和基础初始化</strong>
             <p>资源交付完成后，可在“我的资源”中查看服务器连接信息并开始使用。</p>
             <ul>
               <li>实际部署时间以资源和网络准备情况为准。</li>

@@ -61,8 +61,9 @@ describe('purchase prototype repository', () => {
       { delayMs: 0 },
     );
 
-    expect(cloud.applicationId).toBe('APP-CLOUD-001');
-    expect(physical.applicationId).toBe('APP-PHYSICAL-001');
+    expect(cloud.applicationId).toMatch(/^REQ-\d{8}-\d{4}$/);
+    expect(physical.applicationId).toMatch(/^REQ-\d{8}-\d{4}$/);
+    expect(cloud.orderId).toBe(cloud.applicationId);
     expect({ ...window.sessionStorage }).toEqual(before);
   });
 });

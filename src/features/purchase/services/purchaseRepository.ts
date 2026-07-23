@@ -2,6 +2,7 @@ import {
   getMarketplaceProductById,
   type MarketplaceResourceType,
 } from '../../marketplace';
+import { createPurchaseOrder } from '../../orders';
 import type {
   CloudPurchaseConfiguration,
   PurchaseSubmissionResult,
@@ -57,9 +58,14 @@ export async function submitConfiguration(
   options: Readonly<{ delayMs?: number }> = {},
 ): Promise<PurchaseSubmissionResult> {
   await wait(options.delayMs ?? DEFAULT_SUBMIT_DELAY_MS);
+  const order = await createPurchaseOrder({
+    resourceType,
+    productName,
+    summary,
+  });
   return {
-    applicationId:
-      resourceType === 'cloud-server' ? 'APP-CLOUD-001' : 'APP-PHYSICAL-001',
+    applicationId: order.id,
+    orderId: order.id,
     resourceType,
     productName,
     summary,
