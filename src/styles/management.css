@@ -23,6 +23,8 @@
   grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(140px, 1fr));
   gap: var(--space-12);
 }
+.management-filter-grid--four { grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(140px, 1fr)); }
+.management-list-stack { display: grid; gap: var(--space-16); padding-top: var(--space-16); }
 .management-toolbar__actions,
 .management-detail-actions,
 .management-form-actions {
@@ -57,6 +59,20 @@
 }
 .management-table .ui-table { min-width: 1100px; }
 .management-primary-cell { display: grid; gap: var(--space-4); min-width: 170px; }
+.management-link-button {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  color: var(--color-primary);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.management-link-button:hover { color: var(--color-primary-hover); }
+.management-link-button:focus-visible { outline: var(--engineering-focus-outline-width) solid var(--color-primary); outline-offset: var(--engineering-focus-outline-offset); }
+.management-row-actions,
+.management-related-links { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.management-related-links { margin-top: var(--space-20); }
 .management-results .ui-pagination { margin-top: var(--space-16); }
 .management-detail-header { padding: var(--space-16) var(--space-20); }
 .management-detail-header__main { align-items: center; margin: var(--space-12) 0 0; }
