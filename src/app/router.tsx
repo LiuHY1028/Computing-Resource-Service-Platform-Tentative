@@ -6,6 +6,8 @@ import { FoundationComponentsPage } from '../pages/FoundationComponentsPage';
 import { AdvancedComponentsPage } from '../pages/AdvancedComponentsPage';
 import { MarketplacePage } from '../pages/MarketplacePage';
 import { PurchasePage } from '../pages/PurchasePage';
+import { ResourceListPage } from '../pages/ResourceListPage';
+import { ResourceDetailPage } from '../pages/ResourceDetailPage';
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
@@ -34,6 +36,26 @@ function appPageElement(route: AppPageRoute) {
       <PurchasePage
         resourceType={
           route.pageId === 'BUY-01' ? 'cloud-server' : 'physical-machine'
+        }
+      />
+    );
+  }
+
+  if (route.pageId === 'RES-01' || route.pageId === 'RES-03') {
+    return (
+      <ResourceListPage
+        resourceType={
+          route.pageId === 'RES-01' ? 'cloud-server' : 'physical-machine'
+        }
+      />
+    );
+  }
+
+  if (route.pageId === 'RES-02' || route.pageId === 'RES-04') {
+    return (
+      <ResourceDetailPage
+        resourceType={
+          route.pageId === 'RES-02' ? 'cloud-server' : 'physical-machine'
         }
       />
     );

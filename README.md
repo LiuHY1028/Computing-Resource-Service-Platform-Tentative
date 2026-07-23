@@ -10,6 +10,8 @@ AppShell 提供顶部导航、可展开侧栏、自适应主内容区、标准�
 
 `/marketplace/cloud-server/purchase` 与 `/marketplace/physical-machine/purchase` 共用配置骨架、实时摘要、全表校验、确认 Modal、提交状态、草稿与离开提醒。云服务器支持固定 30 GB 系统盘、HostPath/NFS 数据存储、可选镜像和网络配置；物理机提供标准交付说明和网络访问意向。提交反馈使用正式的申请与处理中状态，不声明支付、订单或资源已由外部系统完成。
 
+`/resources/cloud-servers` 与 `/resources/physical-machines` 提供两类资源列表、组合筛选、URL 状态恢复、分页和完整页面状态。详情页提供概览、监控、存储、网络与访问、软件与环境、操作记录；云服务器可提交启动、停止、重启和修改名称请求，物理机电源与两类资源释放能力在需求确认前保持禁用。
+
 ## 技术栈
 
 - React 19
@@ -45,6 +47,10 @@ http://127.0.0.1:5173/marketplace?viewState=empty
 http://127.0.0.1:5173/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east
 http://127.0.0.1:5173/marketplace/cloud-server/purchase?product=catalog-cloud-gpu-g1-east
 http://127.0.0.1:5173/marketplace/physical-machine/purchase?product=catalog-physical-cpu-p1-east
+http://127.0.0.1:5173/resources/cloud-servers
+http://127.0.0.1:5173/resources/cloud-servers/cs-east-001
+http://127.0.0.1:5173/resources/physical-machines
+http://127.0.0.1:5173/resources/physical-machines/pm-east-002
 ```
 
 根目录 `AGENTS.md` 规定前端任务只进行临时浏览器检查，不生成、保存或提交页面评审截图；最终视觉验收由用户在本地浏览器完成。
@@ -78,8 +84,9 @@ src/
 ├── config/             产品身份与运行模式配置
 ├── features/
 │   ├── marketplace/    商城业务组件、类型、资源目录、访问层和返回上下文
-│   └── purchase/       两类购买配置、共享网络编辑器、校验、摘要和提交状态
-├── pages/              商城、购买配置、服务状态、内部组件检查和 404 页
+│   ├── purchase/       两类购买配置、共享网络编辑器、校验、摘要和提交状态
+│   └── resources/      两类资源模型、访问层、列表详情组件和基础操作
+├── pages/              商城、购买配置、资源管理、服务状态、内部组件检查和 404 页
 ├── shared/types/       后续共享类型入口
 ├── styles/             Token、浅色主题、Reset 与基础样式
 ├── test/               Vitest/jsdom 测试环境初始化
@@ -96,7 +103,11 @@ src/
 - `/marketplace/cloud-server/purchase?product=<ID>`：`BUY-01` 云服务器配置
 - `/marketplace/physical-machine/purchase?product=<ID>`：`BUY-02` 物理机配置
 - 两个购买页支持 `viewState=loading|error` 状态入口，不进入正式菜单
-- `/resources/cloud-servers`：`RES-01` 云服务器列表；服务未开放时显示统一服务状态
+- `/resources/cloud-servers`：`RES-01` 云服务器列表
+- `/resources/cloud-servers/:resourceId`：`RES-02` 云服务器详情
+- `/resources/physical-machines`：`RES-03` 物理机列表
+- `/resources/physical-machines/:resourceId`：`RES-04` 物理机详情
+- 两类资源列表支持 `viewState=loading|error|empty`，详情支持 `viewState=loading|error`；这些状态入口不进入正式菜单
 - `/storage`、`/images`、`/software`、`/network-access`：对应正式模块入口
 - `/orders`、`/operation-records`：订单与操作记录入口
 - `/__dev/components/foundation`：基础公共组件内部检查页，不加入正式菜单
@@ -132,6 +143,7 @@ src/
 - 资源商城视觉竞品研究：`docs/research/marketplace-visual-benchmark.md`
 - 资源商城视觉重构：`docs/engineering/marketplace-visual-redesign.md`
 - 购买配置说明：`docs/engineering/purchase-configuration.md`
+- 资源管理说明：`docs/engineering/resource-management.md`
 - 字体资产与授权边界记录：`docs/engineering/font-assets.md`
 - 逐页映射、冲突、缺口与核验记录：`docs/engineering/ui-spec-*.md`
 
@@ -142,8 +154,9 @@ src/
 ## 当前未实现
 
 - 字体在目标 Windows/macOS 环境的像素级渲染复核与书面授权归档
-- 我的资源、存储、镜像、软件、网络、订单和操作记录完整业务能力
-- 商城之外的数据访问服务和真实 API 客户端
+- 存储、镜像、软件、网络、订单和操作记录的独立完整业务能力
+- 商城与资源管理之外的数据访问服务和真实 API 客户端
+- 资源查询、监控、操作受理、物理机电源、资源释放和 BMC 授权的真实后端能力
 - 价格、支付、审批、权限、计费、资源状态或订单状态规则
 
 `30 GB` 作为云服务器当前固定系统盘容量。完整筛选不进入 URL；同一浏览会话从购买页返回时通过版本化导航上下文恢复，直接刷新商城则只由 URL 恢复资源类型。状态参数不属于正式业务能力。
