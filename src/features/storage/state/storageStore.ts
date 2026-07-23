@@ -1,4 +1,5 @@
 import { recordOperation } from '../../operations';
+import { createApplicationOrder } from '../../orders';
 import {
   readVersionedState,
   removeVersionedState,
@@ -10,9 +11,10 @@ import type {
   StorageQuery,
   StorageSpace,
 } from '../types';
+import { getResourceByAnyId } from '../../resources/state/resourceStore';
 
 const STORAGE_KEY = 'computing-platform:storage';
-const VERSION = 1;
+const VERSION = 2;
 
 const INITIAL_SPACES: readonly StorageSpace[] = [
   {
@@ -23,6 +25,11 @@ const INITIAL_SPACES: readonly StorageSpace[] = [
     technology: 'NFS',
     capacityGb: 2048,
     usedGb: 780,
+    protocol: 'NFS',
+    mountPath: '/data/shared',
+    readWriteStatus: 'read-write',
+    expiresAt: '2027-06-30T23:59:59+08:00',
+    performance: { readThroughputMbs: 620, writeThroughputMbs: 480, readIops: 18500, writeIops: 14200, averageLatencyMs: 1.8 },
     status: 'available',
     createdAt: '2026-06-18T02:20:00.000Z',
     updatedAt: '2026-07-21T09:30:00.000Z',
@@ -46,6 +53,11 @@ const INITIAL_SPACES: readonly StorageSpace[] = [
     technology: 'HostPath',
     capacityGb: 500,
     usedGb: 342,
+    protocol: 'HostPath',
+    mountPath: '/data/local',
+    readWriteStatus: 'read-write',
+    expiresAt: '2027-06-30T23:59:59+08:00',
+    performance: { readThroughputMbs: 410, writeThroughputMbs: 365, readIops: 12400, writeIops: 10800, averageLatencyMs: 1.3 },
     status: 'available',
     createdAt: '2026-07-02T06:10:00.000Z',
     updatedAt: '2026-07-20T11:00:00.000Z',
@@ -69,6 +81,11 @@ const INITIAL_SPACES: readonly StorageSpace[] = [
     technology: 'NFS',
     capacityGb: 4096,
     usedGb: 860,
+    protocol: 'NFS',
+    mountPath: '/data/shared',
+    readWriteStatus: 'read-write',
+    expiresAt: '2027-09-30T23:59:59+08:00',
+    performance: { readThroughputMbs: 720, writeThroughputMbs: 560, readIops: 21600, writeIops: 16800, averageLatencyMs: 2.1 },
     status: 'available',
     createdAt: '2026-06-25T03:40:00.000Z',
     updatedAt: '2026-07-19T05:20:00.000Z',
@@ -86,6 +103,8 @@ function isSpace(value: unknown): value is StorageSpace {
     typeof space.site === 'string' &&
     typeof space.capacityGb === 'number' &&
     typeof space.usedGb === 'number' &&
+    typeof space.expiresAt === 'string' &&
+    typeof space.performance === 'object' &&
     Array.isArray(space.mounts)
   );
 }
@@ -102,6 +121,16 @@ function readSpaces() {
 
 function writeSpaces(spaces: readonly StorageSpace[]) {
   writeVersionedState(STORAGE_KEY, VERSION, spaces);
+}
+
+function withCurrentResourceNames(space: StorageSpace) {
+  return {
+    ...space,
+    mounts: space.mounts.map((mount) => {
+      const resource = getResourceByAnyId(mount.resourceId);
+      return resource ? { ...mount, resourceName: resource.name } : mount;
+    }),
+  };
 }
 
 function updateSpace(
@@ -139,7 +168,8 @@ export function queryStorageSpaces(query: StorageQuery = {}) {
 }
 
 export function getStorageSpace(storageId: string) {
-  return readSpaces().find((space) => space.id === storageId);
+  const space = readSpaces().find((item) => item.id === storageId);
+  return space ? withCurrentResourceNames(space) : undefined;
 }
 
 export function findStorageSpace(storageId: string) {
@@ -159,7 +189,10 @@ export function getStorageMountsForResource(resourceId: string) {
   return readSpaces().flatMap((space) =>
     space.mounts
       .filter((mount) => mount.resourceId === resourceId)
-      .map((mount) => ({ space, mount })),
+      .map((mount) => {
+        const resource = getResourceByAnyId(mount.resourceId);
+        return { space, mount: resource ? { ...mount, resourceName: resource.name } : mount };
+      }),
   );
 }
 
@@ -178,6 +211,17 @@ export async function createStorageSpace(input: CreateStorageInput) {
     technology: input.type === 'shared' ? 'NFS' : 'HostPath',
     capacityGb: input.capacityGb,
     usedGb: 0,
+    protocol: input.type === 'shared' ? 'NFS' : 'HostPath',
+    mountPath: input.type === 'shared' ? '/data/shared' : '/data/local',
+    readWriteStatus: 'read-write',
+    expiresAt: new Date(new Date(createdAt).setUTCFullYear(new Date(createdAt).getUTCFullYear() + 1)).toISOString(),
+    performance: {
+      readThroughputMbs: input.type === 'shared' ? 520 : 360,
+      writeThroughputMbs: input.type === 'shared' ? 420 : 310,
+      readIops: input.type === 'shared' ? 16000 : 10800,
+      writeIops: input.type === 'shared' ? 12400 : 9200,
+      averageLatencyMs: input.type === 'shared' ? 2.0 : 1.4,
+    },
     status: 'processing',
     createdAt,
     updatedAt: createdAt,
@@ -227,12 +271,27 @@ export async function requestStorageExpansion(
   }
   recordOperation({
     module: 'storage',
-    action: '提交扩容请求',
+    action: '提交扩容申请',
     targetId: current.id,
     targetName: current.name,
     status: 'submitted',
-    message: `扩容至 ${capacityGb} GB 的请求已提交，当前容量保持不变。`,
+    message: `扩容至 ${capacityGb} GB 的申请已提交，当前容量保持不变。`,
     targetPath: `/storage/${current.id}`,
+  });
+  createApplicationOrder({
+    applicationType: 'storage-expansion',
+    resourceType: 'storage',
+    storageId: current.id,
+    resourceName: current.name,
+    site: current.site,
+    configurationChanges: `${current.capacityGb} GB → ${capacityGb} GB`,
+    summary: [
+      { label: '申请类型', value: '存储扩容' },
+      { label: '存储空间', value: `${current.name}（${current.id}）` },
+      { label: '当前容量', value: `${current.capacityGb} GB` },
+      { label: '目标容量', value: `${capacityGb} GB` },
+      { label: '处理说明', value: '申请处理完成前当前容量保持不变' },
+    ],
   });
   return current;
 }
@@ -241,6 +300,10 @@ export async function requestStorageMount(
   storageId: string,
   input: Omit<StorageMount, 'id' | 'status'>,
 ) {
+  const resource = getResourceByAnyId(input.resourceId);
+  if (!resource || resource.resourceType !== input.resourceType) {
+    throw new Error(`未找到有效的挂载资源：${input.resourceId}`);
+  }
   const updated = updateSpace(storageId, (space) => {
     if (space.mounts.some((mount) => mount.resourceId === input.resourceId)) {
       throw new Error('该资源已存在挂载关系或挂载请求。');
@@ -252,6 +315,7 @@ export async function requestStorageMount(
         ...space.mounts,
         {
           ...input,
+          resourceName: resource.name,
           id: `mount-${Date.now()}`,
           status: 'processing',
         },

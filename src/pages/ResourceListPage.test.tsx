@@ -40,7 +40,8 @@ describe('ResourceListPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('研发计算节点-01')).toBeInTheDocument();
     expect(screen.getByText('共 8 个结果')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: '镜像' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '镜像与系统' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '计费模式' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '第 2 页' }));
     expect(location()).toContain('page=2');
@@ -87,19 +88,19 @@ describe('ResourceListPage', () => {
     );
     expect(await screen.findByText('研发物理节点-01')).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: '操作系统' }),
+      screen.getByRole('columnheader', { name: '系统与主机名' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('columnheader', { name: '镜像' }),
+      screen.queryByRole('columnheader', { name: '镜像与系统' }),
     ).not.toBeInTheDocument();
   });
 
   it('opens details and connection information through stable routes', async () => {
     const { user, location } = renderResource();
     await screen.findByText('研发计算节点-01');
-    const detailButtons = screen.getAllByRole('button', { name: '查看详情' });
-    expect(detailButtons).toHaveLength(5);
-    await user.click(detailButtons[0]!);
+    const menus = screen.getAllByRole('button', { name: /更多操作/ });
+    await user.click(menus[0]!);
+    await user.click(screen.getByRole('menuitem', { name: '查看详情' }));
     expect(location()).toBe('/resources/cloud-servers/cs-east-001');
   });
 });

@@ -9,6 +9,8 @@ export type NetworkAccessRule = Readonly<{
   id: string;
   resourceId: string;
   resourceName: string;
+  project?: string;
+  tags?: readonly string[];
   resourceType: 'cloud-server' | 'physical-machine';
   site: string;
   privateIp: string;
@@ -35,6 +37,8 @@ export type NetworkQuery = Readonly<{
 export type NetworkRuleInput = Readonly<{
   resourceId: string;
   resourceName: string;
+  project?: string;
+  tags?: readonly string[];
   resourceType: 'cloud-server' | 'physical-machine';
   site: string;
   privateIp: string;

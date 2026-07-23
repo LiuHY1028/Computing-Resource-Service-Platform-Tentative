@@ -52,6 +52,20 @@ export {
 } from './StatusBadge/StatusBadge';
 export { PageState, type PageStateProps } from './PageState/PageState';
 export {
+  DropdownMenu,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  type DropdownMenuGroupProps,
+  type DropdownMenuItemProps,
+  type DropdownMenuProps,
+} from './DropdownMenu/DropdownMenu';
+export {
+  Progress,
+  type ProgressProps,
+  type ProgressTone,
+} from './Progress/Progress';
+export {
   Modal,
   PromptModal,
   type ModalAction,

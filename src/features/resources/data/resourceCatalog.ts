@@ -175,18 +175,63 @@ function operationRecords(index: number): readonly OperationRecord[] {
   ];
 }
 
-function disks(index: number): readonly CloudDataDisk[] {
-  if (index % 4 === 0) return [];
-  return [
+function disks(index: number, expiresAt: string): readonly CloudDataDisk[] {
+  const performance = {
+    readThroughputMbs: 128 + index * 6,
+    writeThroughputMbs: 96 + index * 4,
+    readIops: 3200 + index * 180,
+    writeIops: 2600 + index * 140,
+    averageLatencyMs: Number((1.4 + index * 0.12).toFixed(2)),
+  };
+  const result: CloudDataDisk[] = [
+    {
+      id: `disk-system-${index}`,
+      name: '系统盘',
+      role: 'system',
+      displayType: '系统盘',
+      diskType: '高性能云盘',
+      mountPath: '/',
+      deviceName: '/dev/vda',
+      fileSystem: 'ext4',
+      capacityGb: 30,
+      usedGb: 17 + (index % 8),
+      readOnly: false,
+      status: index === 6 ? 'warning' : 'in-use',
+      releaseWithInstance: true,
+      expiresAt,
+      performance,
+    },
+  ];
+  if (index % 4 === 0) return result;
+  result.push(
     {
       id: `disk-${index}-1`,
       name: index % 2 === 0 ? '研发共享数据' : '业务数据空间',
+      role: 'data',
       displayType: index % 2 === 0 ? '高性能共享存储' : '本地数据存储',
+      diskType: index % 2 === 0 ? '共享存储' : '高性能云盘',
       mountPath: '/data',
+      deviceName: '/dev/vdb',
+      fileSystem: 'xfs',
       capacityGb: index % 2 === 0 ? 1024 : 500,
+      usedGb: index % 2 === 0 ? 386 : 342,
       readOnly: false,
+      status: index === 6 ? 'warning' : 'in-use',
+      releaseWithInstance: false,
+      expiresAt,
+      performance: {
+        ...performance,
+        readThroughputMbs: performance.readThroughputMbs + 40,
+        writeThroughputMbs: performance.writeThroughputMbs + 28,
+      },
+      storageId: index === 1
+        ? 'storage-local-east-001'
+        : index === 2
+          ? 'storage-shared-east-001'
+          : undefined,
     },
-  ];
+  );
+  return result;
 }
 
 type ResourceSeed = Readonly<{
@@ -229,6 +274,8 @@ const PHYSICAL_SEEDS: readonly ResourceSeed[] = [
 ];
 
 function createCloudResource(seed: ResourceSeed, index: number): CloudServerResource {
+  const imageId = seed.accelerator ? 'preset-image-gpu-runtime' : 'preset-image-base-linux';
+  const warning = seed.status === 'abnormal' || seed.expiryState === 'expired';
   return {
     ...seed,
     resourceType: 'cloud-server',
@@ -236,15 +283,35 @@ function createCloudResource(seed: ResourceSeed, index: number): CloudServerReso
     ip: { privateIp: seed.privateIp, publicIp: seed.publicIp },
     createdAt: `2026-0${(index % 6) + 1}-12T10:00:00+08:00`,
     owner: '平台研发组',
+    tags: seed.accelerator ? ['GPU', '重点资源'] : ['通用计算'],
+    lifecycleRequestState: 'none',
+    health: {
+      status: warning ? 'warning' : seed.status === 'preparing' ? 'checking' : 'normal',
+      summary: warning ? '存在需要关注的检查项' : seed.status === 'preparing' ? '资源检查中' : '实例检查正常',
+      items: [
+        { name: '实例状态', status: seed.status === 'abnormal' ? 'warning' : 'normal', message: seed.status === 'abnormal' ? '运行状态异常' : '实例状态正常' },
+        { name: '网络', status: 'normal', message: '网络连通性正常' },
+        { name: '存储', status: index === 6 ? 'warning' : 'normal', message: index === 6 ? '磁盘使用率需要关注' : '磁盘状态正常' },
+        { name: '监控', status: seed.status === 'preparing' ? 'checking' : 'normal', message: seed.status === 'preparing' ? '等待监控数据' : '指标采集正常' },
+      ],
+    },
     lastOperatedAt: '2026-07-23T09:15:00+08:00',
     connection: connection(seed.privateIp, seed.publicIp, seed.available ?? true),
     monitoring: monitoringMetrics(Boolean(seed.accelerator)),
     networkRules: networkRules(index),
     software: software(index),
     operationRecords: operationRecords(index),
-    image: seed.accelerator ? 'GPU 计算基础环境 2026.06' : 'Linux 基础环境 2026.06',
+    instanceSpec: seed.accelerator ? `g${index}.gpu` : `c${index}.standard`,
+    vCpu: Number(seed.cpu.match(/\d+/)?.[0] ?? 8),
+    imageId,
+    image: seed.accelerator ? 'GPU 计算运行镜像' : '基础 Linux 运行镜像',
+    operatingSystem: seed.accelerator ? 'Linux LTS 22.04' : 'Linux LTS 24.04',
     systemDiskGb: 30,
-    dataDisks: disks(index),
+    dataDisks: disks(index, seed.expiresAt),
+    vpc: index % 2 === 0 ? '研发业务网络' : '生产业务网络',
+    sshEnabled: true,
+    billingMode: index === 3 || index === 5 ? 'pay-as-you-go' : 'subscription',
+    autoRenewal: { enabled: index === 1 || index === 8, periodMonths: index === 8 ? 12 : 3 },
     instanceInformation: seed.accelerator ? 'GPU 计算实例' : '通用计算实例',
   };
 }
@@ -253,6 +320,9 @@ function createPhysicalResource(
   seed: ResourceSeed,
   index: number,
 ): PhysicalMachineResource {
+  const warning = seed.status === 'abnormal' || seed.expiryState === 'expired';
+  const diskCount = seed.accelerator ? 4 : 6;
+  const perDiskCapacityGb = seed.accelerator ? 3840 : 8000;
   return {
     ...seed,
     resourceType: 'physical-machine',
@@ -260,19 +330,53 @@ function createPhysicalResource(
     ip: { privateIp: seed.privateIp, publicIp: seed.publicIp },
     createdAt: `2026-0${(index % 6) + 1}-18T11:00:00+08:00`,
     owner: '基础设施使用组',
+    tags: seed.accelerator ? ['GPU 集群', '专属整机'] : ['通用整机'],
+    lifecycleRequestState: 'none',
+    health: {
+      status: warning ? 'warning' : seed.status === 'preparing' ? 'checking' : 'normal',
+      summary: warning ? '硬件检查存在告警' : seed.status === 'preparing' ? '交付检查中' : '硬件健康正常',
+      items: [
+        { name: 'CPU', status: 'normal', message: '处理器检查正常' },
+        { name: '内存', status: 'normal', message: '内存检查正常' },
+        { name: 'GPU', status: seed.status === 'abnormal' && seed.accelerator ? 'warning' : 'normal', message: seed.status === 'abnormal' && seed.accelerator ? '检测到加速卡告警' : '加速卡检查正常' },
+        { name: '磁盘', status: index === 6 ? 'warning' : 'normal', message: index === 6 ? '一块磁盘需要关注' : '磁盘检查正常' },
+        { name: '电源与温度', status: 'normal', message: '电源与温度正常' },
+      ],
+    },
     lastOperatedAt: '2026-07-23T09:15:00+08:00',
     connection: connection(seed.privateIp, seed.publicIp, seed.available ?? true),
     monitoring: monitoringMetrics(Boolean(seed.accelerator)),
     networkRules: networkRules(index + 20),
     software: software(index, true),
     operationRecords: operationRecords(index + 20),
+    assetNumber: `ASSET-EAST-${String(index).padStart(4, '0')}`,
     machineModel: seed.accelerator ? '高密度加速计算服务器' : '通用双路计算服务器',
+    cpuModel: seed.accelerator ? '64 核服务器处理器' : '32 核服务器处理器',
+    cpuSockets: 2,
     hostname: `compute-pm-${String(index).padStart(2, '0')}`,
     operatingSystem: 'Linux 服务器操作系统 2026.06',
     storageSummary: seed.accelerator
       ? '2 × 1.92 TB NVMe 系统存储，4 × 3.84 TB NVMe 数据存储'
       : '2 × 1.92 TB NVMe 系统存储，4 × 8 TB 企业级数据存储',
-    bmcAccess: index % 3 === 0 ? 'not-provided' : 'restricted',
+    room: index % 2 === 0 ? 'A2 机房' : 'B1 机房',
+    rack: `R-${String(20 + index).padStart(2, '0')}`,
+    rackUnit: `U${12 + index}`,
+    managementNetwork: `10.24.${10 + index}.0/24`,
+    businessNetwork: seed.publicIp ? '业务内网 / 公网接入' : '业务内网',
+    localStorage: {
+      diskCount,
+      perDiskCapacityGb,
+      totalCapacityGb: diskCount * perDiskCapacityGb,
+      usedCapacityGb: Math.round(diskCount * perDiskCapacityGb * (index === 6 ? 0.88 : 0.42 + index * 0.025)),
+      raidLevel: seed.accelerator ? 'RAID 10' : 'RAID 5',
+      health: index === 6 ? 'warning' : 'normal',
+      fileSystem: 'XFS',
+      logicalVolume: 'vg-data/lv-workload',
+      mountPoint: '/data/local',
+    },
+    bmcAccess: index % 3 === 0 ? 'not-provided' : index % 2 === 0 ? 'authorized' : 'restricted',
+    deliveryStatus: seed.status === 'preparing' ? 'preparing' : 'delivered',
+    extensionStatus: 'none',
   };
 }
 

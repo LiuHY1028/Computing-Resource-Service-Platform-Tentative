@@ -3,13 +3,20 @@ import {
   getOperationRecords,
   getResourceActionAvailability,
   getResourceById,
+  getRenewalAvailability,
   getResourceFilterOptions,
   queryResources,
   resetResourceStore,
   ResourceActionError,
   submitResourceAction,
+  submitExtensionRequest,
+  submitRenewalRequest,
+  updateAutoRenewal,
+  updateResourceMetadata,
 } from './resourceStore';
 import type { ResourceQuery } from '../types';
+import { getOrdersForResource, resetOrderStore } from '../../orders';
+import { resetOperationsStore } from '../../operations';
 
 const cloudQuery: ResourceQuery = {
   resourceType: 'cloud-server',
@@ -24,8 +31,16 @@ const cloudQuery: ResourceQuery = {
   operatingSystem: 'all',
 };
 
-beforeEach(resetResourceStore);
-afterEach(resetResourceStore);
+beforeEach(() => {
+  resetResourceStore();
+  resetOrderStore();
+  resetOperationsStore();
+});
+afterEach(() => {
+  resetResourceStore();
+  resetOrderStore();
+  resetOperationsStore();
+});
 
 describe('resourceStore', () => {
   it('returns distinct typed catalogs with complete filter options', () => {
@@ -66,7 +81,7 @@ describe('resourceStore', () => {
     expect(result.items.map((item) => item.id)).toEqual(['cs-east-002']);
   });
 
-  it('keeps cloud and physical power capabilities distinct', () => {
+  it('uses state-based power and release capabilities for both resource types', () => {
     const cloud = getResourceById('cloud-server', 'cs-west-003');
     const physical = getResourceById('physical-machine', 'pm-west-003');
 
@@ -75,10 +90,10 @@ describe('resourceStore', () => {
     });
     expect(
       physical && getResourceActionAvailability(physical, 'start'),
-    ).toMatchObject({ enabled: false });
+    ).toEqual({ enabled: true });
     expect(
       cloud && getResourceActionAvailability(cloud, 'release'),
-    ).toMatchObject({ enabled: false });
+    ).toEqual({ enabled: true });
   });
 
   it('updates a resource and its operation records through one data source', async () => {
@@ -116,5 +131,65 @@ describe('resourceStore', () => {
     expect(
       getResourceById('cloud-server', 'cs-east-001')?.name,
     ).toBe('研发计算节点-01');
+  });
+
+  it('keeps cloud and physical domain facts structurally distinct', () => {
+    const cloud = getResourceById('cloud-server', 'cs-east-001');
+    const physical = getResourceById('physical-machine', 'pm-east-001');
+    expect(cloud?.resourceType === 'cloud-server' && cloud.instanceSpec).toBeTruthy();
+    expect(cloud?.resourceType === 'cloud-server' && cloud.imageId).toBe('preset-image-base-linux');
+    expect(physical?.resourceType === 'physical-machine' && physical.assetNumber).toBeTruthy();
+    expect(physical?.resourceType === 'physical-machine' && physical.localStorage.raidLevel).toBe('RAID 5');
+  });
+
+  it('submits renewal without changing the formal expiry and creates a linked order', () => {
+    const before = getResourceById('cloud-server', 'cs-east-002');
+    const result = submitRenewalRequest({
+      resourceIds: ['cs-east-002'],
+      periodMonths: 3,
+      renewStorage: true,
+      renewNetwork: false,
+    });
+    const after = getResourceById('cloud-server', 'cs-east-002');
+    expect(after?.expiresAt).toBe(before?.expiresAt);
+    expect(after?.lifecycleRequestState).toBe('renewal-processing');
+    expect(after?.pendingExpiresAt).not.toBe(before?.expiresAt);
+    expect(result[0]?.order.applicationType).toBe('cloud-renewal');
+    expect(getOrdersForResource('cs-east-002')[0]?.status).toBe('pending');
+  });
+
+  it('does not offer renewal to pay-as-you-go resources and saves auto-renewal state', () => {
+    const metered = getResourceById('cloud-server', 'cs-west-004');
+    expect(metered && getRenewalAvailability(metered)).toMatchObject({ enabled: false });
+    updateAutoRenewal(['cs-east-001'], true, 6);
+    const updated = getResourceById('cloud-server', 'cs-east-001');
+    expect(updated?.resourceType === 'cloud-server' && updated.autoRenewal).toEqual({ enabled: true, periodMonths: 6 });
+    expect(getOrdersForResource('cs-east-001')[0]?.applicationType).toBe('auto-renewal');
+  });
+
+  it('submits a physical extension without changing the formal term', () => {
+    const before = getResourceById('physical-machine', 'pm-east-001');
+    const result = submitExtensionRequest({
+      resourceIds: ['pm-east-001'],
+      periodMonths: 6,
+      reason: '项目执行周期需要延长',
+    });
+    const after = getResourceById('physical-machine', 'pm-east-001');
+    expect(after?.expiresAt).toBe(before?.expiresAt);
+    expect(after?.resourceType === 'physical-machine' && after.extensionStatus).toBe('pending');
+    expect(result[0]?.order.applicationType).toBe('physical-extension');
+  });
+
+  it('synchronizes project and tags into the resource operation record', () => {
+    updateResourceMetadata(['cs-east-001'], {
+      project: '研发服务平台',
+      tagsToAdd: ['关键任务'],
+    });
+    const updated = getResourceById('cloud-server', 'cs-east-001');
+    expect(updated?.project).toBe('研发服务平台');
+    expect(updated?.tags).toContain('关键任务');
+    const message = getOperationRecords('cloud-server', 'cs-east-001')[0]?.message;
+    expect(message).toContain('项目归属：研发服务平台');
+    expect(message).toContain('关键任务');
   });
 });

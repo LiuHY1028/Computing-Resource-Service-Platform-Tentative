@@ -9,6 +9,7 @@ import {
   Modal,
   PageState,
   Pagination,
+  Progress,
   SearchInput,
   Select,
   StatusBadge,
@@ -25,6 +26,9 @@ import {
   requestStorageExpansion,
   requestStorageMount,
   requestStorageUnmount,
+  storageAvailableGb,
+  storageCapacityState,
+  storageUsagePercent,
   type StorageMount,
   type StorageSpace,
   type StorageStatus,
@@ -65,6 +69,15 @@ function mountStatus(mount: StorageMount) {
   return { label: '挂载处理中', tone: 'info' as const };
 }
 
+function capacityView(space: StorageSpace) {
+  const state = storageCapacityState(space);
+  return state === 'critical'
+    ? { label: '容量不足', tone: 'critical' as const, badge: 'error' as const }
+    : state === 'high'
+      ? { label: '使用率偏高', tone: 'warning' as const, badge: 'warning' as const }
+      : { label: '正常', tone: 'normal' as const, badge: 'success' as const };
+}
+
 const STORAGE_COLUMNS: readonly TableColumn<StorageSpace>[] = [
   {
     key: 'name',
@@ -79,10 +92,15 @@ const STORAGE_COLUMNS: readonly TableColumn<StorageSpace>[] = [
   { key: 'type', title: '存储类型', render: (space) => typeLabel(space.type) },
   { key: 'capacity', title: '总容量', render: (space) => formatCapacity(space.capacityGb) },
   { key: 'used', title: '已使用', render: (space) => formatCapacity(space.usedGb) },
+  { key: 'available', title: '可用容量', render: (space) => formatCapacity(storageAvailableGb(space)) },
   {
     key: 'usage',
-    title: '使用率',
-    render: (space) => `${Math.round((space.usedGb / space.capacityGb) * 100)}%`,
+    title: '使用率与容量状态',
+    multiline: true,
+    render: (space) => {
+      const view = capacityView(space);
+      return <div className="management-storage-usage"><Progress value={space.usedGb} max={space.capacityGb} label={view.label} tone={view.tone} /><StatusBadge tone={view.badge}>{view.label}</StatusBadge></div>;
+    },
   },
   { key: 'mounts', title: '挂载资源', render: (space) => `${space.mounts.length} 个` },
   {
@@ -373,6 +391,7 @@ export function StorageDetailPage() {
     );
   }
   const currentSpace = space;
+  const currentCapacity = capacityView(currentSpace);
 
   async function submitAction() {
     setError('');
@@ -382,7 +401,7 @@ export function StorageDetailPage() {
         setFeedback('存储名称已更新。');
       } else if (action === 'expand') {
         await requestStorageExpansion(currentSpace.id, Number(value));
-        setFeedback('扩容请求已提交，当前容量保持不变。');
+        setFeedback('扩容申请已提交，当前容量保持不变。');
       } else if (action === 'mount') {
         const resource = resources.find((item) => item.id === selectedResourceId);
         if (!resource) throw new Error('请选择目标资源。');
@@ -448,24 +467,43 @@ export function StorageDetailPage() {
         </div>
         <div className="management-detail-actions">
           <Button onClick={() => { setValue(space.name); setAction('rename'); }}>修改名称</Button>
-          <Button onClick={() => { setValue(String(space.capacityGb + 100)); setAction('expand'); }}>提交扩容请求</Button>
+          <Button onClick={() => { setValue(String(space.capacityGb + 100)); setAction('expand'); }}>提交扩容申请</Button>
           <Button onClick={() => setAction('mount')}>挂载资源</Button>
           <Button variant="danger" disabled={space.mounts.length > 0} title={space.mounts.length ? '存在挂载关系时不能删除' : undefined} onClick={() => setAction('delete')}>删除</Button>
         </div>
       </Container>
       {feedback && <Container className="management-feedback" role="status">{feedback}</Container>}
       <div className="management-detail-grid">
-        <Container as="section" className="management-detail-section">
+        <Container as="section" className="management-detail-section management-detail-section--wide">
           <h3>概览与容量使用</h3>
+          <div className="management-capacity-summary">
+            <div><span>总容量</span><strong>{formatCapacity(space.capacityGb)}</strong></div>
+            <div><span>已使用</span><strong>{formatCapacity(space.usedGb)}</strong></div>
+            <div><span>可用容量</span><strong>{formatCapacity(storageAvailableGb(space))}</strong></div>
+            <div><span>使用率</span><strong>{storageUsagePercent(space)}%</strong></div>
+          </div>
+          <Progress value={space.usedGb} max={space.capacityGb} label={currentCapacity.label} tone={currentCapacity.tone} />
           <dl className="management-definition-grid">
             <div><dt>存储类型</dt><dd>{typeLabel(space.type)}</dd></div>
             <div><dt>技术信息</dt><dd>{space.technology}</dd></div>
-            <div><dt>总容量</dt><dd>{formatCapacity(space.capacityGb)}</dd></div>
-            <div><dt>已使用容量</dt><dd>{formatCapacity(space.usedGb)}</dd></div>
-            <div><dt>使用率</dt><dd>{Math.round((space.usedGb / space.capacityGb) * 100)}%</dd></div>
+            <div><dt>容量状态</dt><dd><StatusBadge tone={currentCapacity.badge}>{currentCapacity.label}</StatusBadge></dd></div>
+            <div><dt>协议</dt><dd>{space.protocol}</dd></div>
+            <div><dt>挂载路径</dt><dd>{space.mountPath}</dd></div>
+            <div><dt>读写状态</dt><dd>{space.readWriteStatus === 'read-write' ? '可读写' : '只读'}</dd></div>
             <div><dt>挂载资源</dt><dd>{space.mounts.length} 个</dd></div>
             <div><dt>创建时间</dt><dd>{formatDate(space.createdAt)}</dd></div>
+            <div><dt>到期时间</dt><dd>{formatDate(space.expiresAt)}</dd></div>
             <div><dt>最近更新时间</dt><dd>{formatDate(space.updatedAt)}</dd></div>
+          </dl>
+        </Container>
+        <Container as="section" className="management-detail-section">
+          <h3>稳定性能指标</h3>
+          <dl className="management-definition-grid">
+            <div><dt>读吞吐</dt><dd>{space.performance.readThroughputMbs} MB/s</dd></div>
+            <div><dt>写吞吐</dt><dd>{space.performance.writeThroughputMbs} MB/s</dd></div>
+            <div><dt>读 IOPS</dt><dd>{space.performance.readIops}</dd></div>
+            <div><dt>写 IOPS</dt><dd>{space.performance.writeIops}</dd></div>
+            <div><dt>平均延迟</dt><dd>{space.performance.averageLatencyMs} ms</dd></div>
           </dl>
         </Container>
         <Container as="section" className="management-detail-section">
@@ -498,7 +536,7 @@ export function StorageDetailPage() {
 
       <Modal
         open={Boolean(action)}
-        title={action === 'rename' ? '修改存储名称' : action === 'expand' ? '提交扩容请求' : action === 'mount' ? '挂载资源' : '确认删除'}
+        title={action === 'rename' ? '修改存储名称' : action === 'expand' ? '提交扩容申请' : action === 'mount' ? '挂载资源' : '确认删除'}
         onClose={() => setAction(undefined)}
         role={action === 'delete' ? 'alertdialog' : 'dialog'}
         primaryAction={{

@@ -5,6 +5,7 @@ import {
   writeVersionedState,
 } from '../../platform/persistence';
 import type {
+  ApplicationType,
   OrderQuery,
   OrderResourceType,
   OrderSummaryItem,
@@ -12,11 +13,12 @@ import type {
 } from '../types';
 
 const STORAGE_KEY = 'computing-platform:orders';
-const VERSION = 1;
+const VERSION = 3;
 
 const INITIAL_ORDERS: readonly PurchaseOrder[] = [
   {
     id: 'REQ-20260718-0001',
+    applicationType: 'new-purchase',
     resourceType: 'cloud-server',
     productName: '通用计算 C8',
     specificationSummary: '16 vCPU · 64 GB · Linux LTS · 30 GB 系统盘',
@@ -45,6 +47,7 @@ const INITIAL_ORDERS: readonly PurchaseOrder[] = [
   },
   {
     id: 'REQ-20260720-0002',
+    applicationType: 'new-purchase',
     resourceType: 'physical-machine',
     productName: '整机加速计算 P8',
     specificationSummary: '2 × 64 核处理器 · 1024 GB · 8 张加速卡',
@@ -72,7 +75,12 @@ function isOrder(value: unknown): value is PurchaseOrder {
   const order = value as Partial<PurchaseOrder>;
   return (
     typeof order.id === 'string' &&
-    (order.resourceType === 'cloud-server' || order.resourceType === 'physical-machine') &&
+    typeof order.applicationType === 'string' &&
+    (
+      order.resourceType === 'cloud-server' ||
+      order.resourceType === 'physical-machine' ||
+      order.resourceType === 'storage'
+    ) &&
     typeof order.productName === 'string' &&
     typeof order.status === 'string' &&
     Array.isArray(order.summary) &&
@@ -125,6 +133,7 @@ export function createPurchaseOrder(input: Readonly<{
   const quantity = Number(summaryValue(input.summary, '数量')) || 1;
   const order: PurchaseOrder = {
     id,
+    applicationType: 'new-purchase',
     resourceType: input.resourceType,
     productName: input.productName,
     specificationSummary: input.summary
@@ -160,16 +169,71 @@ export function createPurchaseOrder(input: Readonly<{
   return order;
 }
 
+export function createApplicationOrder(input: Readonly<{
+  applicationType: Exclude<ApplicationType, 'new-purchase'>;
+  resourceType: OrderResourceType;
+  resourceId?: string;
+  storageId?: string;
+  resourceIds?: readonly string[];
+  resourceName: string;
+  site: string;
+  summary: readonly OrderSummaryItem[];
+  expectedExpiresAt?: string;
+  configurationChanges?: string;
+}>) {
+  const submittedAt = new Date().toISOString();
+  const id = nextApplicationId(new Date(submittedAt));
+  const order: PurchaseOrder = {
+    id,
+    applicationType: input.applicationType,
+    resourceType: input.resourceType,
+    productName: input.resourceName,
+    specificationSummary: input.configurationChanges ?? input.summary.map((item) => item.value).join(' · '),
+    quantity: input.resourceIds?.length ?? 1,
+    site: input.site,
+    applicant: '当前用户',
+    submittedAt,
+    status: 'pending',
+    resourceId: input.resourceId,
+    storageId: input.storageId,
+    resourceIds: input.resourceIds ?? (input.resourceId ? [input.resourceId] : []),
+    resourceName: input.resourceName,
+    expectedExpiresAt: input.expectedExpiresAt,
+    configurationChanges: input.configurationChanges,
+    summary: input.summary.map((item) => ({ ...item })),
+    timeline: [{
+      label: '申请已提交',
+      time: submittedAt,
+      status: 'current',
+      description: '申请已提交，等待处理。',
+    }],
+  };
+  writeOrders([order, ...readOrders()]);
+  recordOperation({
+    module: 'order',
+    action: '提交申请',
+    targetId: order.id,
+    targetName: order.id,
+    status: 'submitted',
+    message: '申请已提交，等待处理。',
+    targetPath: `/orders/${order.id}`,
+    createdAt: submittedAt,
+  });
+  return order;
+}
+
 export function queryOrders(query: OrderQuery = {}) {
   const search = query.search?.trim().toLocaleLowerCase() ?? '';
   return readOrders().filter((order) => {
     if (search && ![order.id, order.productName, order.resourceId ?? '', order.resourceName ?? ''].join(' ').toLocaleLowerCase().includes(search)) return false;
+    if (query.applicationType && query.applicationType !== 'all' && order.applicationType !== query.applicationType) return false;
     if (query.resourceType && query.resourceType !== 'all' && order.resourceType !== query.resourceType) return false;
     if (query.status && query.status !== 'all' && order.status !== query.status) return false;
     if (query.site && query.site !== 'all' && order.site !== query.site) return false;
     if (query.submittedAfter && order.submittedAt.slice(0, 10) < query.submittedAfter) return false;
-    if (query.related === 'yes' && !order.resourceId) return false;
-    if (query.related === 'no' && order.resourceId) return false;
+    const hasRelatedObject = Boolean(order.resourceId || order.storageId);
+    if (query.related === 'yes' && !hasRelatedObject) return false;
+    if (query.related === 'no' && hasRelatedObject) return false;
     return true;
   });
 }

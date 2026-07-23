@@ -13,6 +13,7 @@ import type {
   NetworkQuery,
   NetworkRuleInput,
 } from '../types';
+import { getResourceByAnyId } from '../../resources/state/resourceStore';
 
 const STORAGE_KEY = 'computing-platform:network';
 const VERSION = 1;
@@ -126,8 +127,11 @@ function validateInput(input: NetworkRuleInput, editingId?: string) {
 
 export function queryNetworkRules(query: NetworkQuery = {}) {
   const search = query.search?.trim().toLocaleLowerCase() ?? '';
-  return readRules().filter((rule) => {
-    if (search && ![rule.resourceId, rule.resourceName, rule.privateIp, rule.publicIp ?? '', rule.description].join(' ').toLocaleLowerCase().includes(search)) return false;
+  return readRules().map((rule) => {
+    const resource = getResourceByAnyId(rule.resourceId);
+    return resource ? { ...rule, resourceName: resource.name, project: resource.project, tags: resource.tags } : rule;
+  }).filter((rule) => {
+    if (search && ![rule.resourceId, rule.resourceName, rule.project ?? '', rule.tags?.join(' ') ?? '', rule.privateIp, rule.publicIp ?? '', rule.description].join(' ').toLocaleLowerCase().includes(search)) return false;
     if (query.resourceType && query.resourceType !== 'all' && rule.resourceType !== query.resourceType) return false;
     if (query.site && query.site !== 'all' && rule.site !== query.site) return false;
     if (query.protocol && query.protocol !== 'all' && rule.protocol !== query.protocol) return false;
@@ -137,7 +141,10 @@ export function queryNetworkRules(query: NetworkQuery = {}) {
 }
 
 export function getNetworkRulesForResource(resourceId: string) {
-  return readRules().filter((rule) => rule.resourceId === resourceId);
+  const resource = getResourceByAnyId(resourceId);
+  return readRules().filter((rule) => rule.resourceId === resourceId).map((rule) =>
+    resource ? { ...rule, resourceName: resource.name, project: resource.project, tags: resource.tags } : rule,
+  );
 }
 
 export async function createNetworkRule(input: NetworkRuleInput) {

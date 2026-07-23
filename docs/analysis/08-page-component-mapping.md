@@ -136,6 +136,8 @@
 | `CopyButton` | IP/端口/SSH 信息需要复制反馈 | Normal、Hover、Focus、Copied、Failure、Disabled | 按钮取 p.9、Tooltip 取 p.15；Copied/Failure 为扩展 |
 | `MetricChart` | 已确认资源监控无法由表格替代 | Loading、Empty、Error、Normal、Hover Tooltip | 色彩/字体/Tooltip 取 p.2、p.3、p.15；图表轴线/曲线规范待设计 |
 | `Progress` | 上传镜像、安装软件、异步交付需要过程反馈 | Indeterminate、Determinate（仅有数据时）、Success、Failure | PDF 缺失；不得虚构百分比 |
+| `DropdownMenu` / `DropdownMenuItem` / `DropdownMenuGroup` / `DropdownMenuSeparator` | 资源列表和详情需要在触发器附近承载分组操作，避免使用大型弹窗导航 | Closed、Open、Keyboard focus、Disabled、Danger、Viewport edge | Task 09；使用 Portal 避免表格裁切，具体操作仍由 Modal 承担确认或填写 |
+| `CapacityProgress` | 存储详情必须同时表达总量、已用、可用和使用率，并以文字区分正常、偏高、容量不足 | Normal、High、Critical、Unknown | Task 09；复用 `Progress` 的确定值能力，不引入随机或服务端指标 |
 | `PendingDecisionNotice` | 防止将待确认项实现成确定规则 | Inline、Section、Blocking | 使用 p.8 信息/注意容器；文案明确“暂定/待确认” |
 
 ## 7. 公共组件状态覆盖要求

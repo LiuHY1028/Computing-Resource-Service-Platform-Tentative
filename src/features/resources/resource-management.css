@@ -227,6 +227,220 @@
   }
 }
 
+/* Resource lifecycle and cross-module refinement */
+.resource-page[data-resource-type='cloud-server'] {
+  --resource-accent: var(--color-primary);
+  --resource-accent-soft: var(--color-primary-background);
+}
+
+.resource-page[data-resource-type='physical-machine'] {
+  --resource-accent: var(--color-brand-gradient-end);
+  --resource-accent-soft: var(--color-success-background);
+}
+
+.resource-page[data-resource-type] .resource-type-tabs,
+.resource-page[data-resource-type] .resource-detail-header {
+  border-top: 3px solid var(--resource-accent);
+}
+
+.resource-overview {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-12);
+}
+
+.resource-overview__item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border: var(--border-default);
+  background: var(--color-surface-default);
+}
+
+.resource-overview__item span {
+  color: var(--color-text-secondary);
+}
+
+.resource-overview__item strong {
+  color: var(--resource-accent);
+  font-size: var(--font-size-title);
+}
+
+.resource-expiry-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  border-color: var(--color-warning-disabled);
+  background: var(--color-warning-background);
+}
+
+.resource-expiry-alert > div {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.resource-expiry-alert span {
+  color: var(--color-text-secondary);
+}
+
+.resource-results__tools,
+.resource-batch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.resource-results__tools {
+  justify-content: flex-end;
+}
+
+.resource-batch-toolbar {
+  margin-bottom: var(--space-12);
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-primary-disabled);
+  border-radius: var(--radius-control);
+  background: var(--color-primary-background);
+}
+
+.resource-batch-toolbar strong {
+  margin-right: var(--space-8);
+}
+
+.resource-table .ui-table {
+  min-width: 1320px;
+}
+
+.resource-table__primary,
+.resource-table__status-stack,
+.resource-capacity-cell {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.resource-table__primary {
+  min-width: 150px;
+}
+
+.resource-table__primary > span,
+.resource-capacity-cell > span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.resource-table__status-stack {
+  align-content: start;
+  justify-items: start;
+  min-width: 92px;
+}
+
+.resource-table__actions {
+  white-space: nowrap;
+}
+
+.resource-table__actions .ui-dropdown-menu__trigger {
+  min-height: 30px;
+}
+
+.resource-lifecycle-summary {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-16);
+  padding: var(--space-12);
+  border: var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-background-header);
+}
+
+.resource-lifecycle-summary span,
+.resource-lifecycle-note {
+  color: var(--color-text-secondary);
+}
+
+.resource-lifecycle-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-12);
+  margin: 0 0 var(--space-16);
+}
+
+.resource-lifecycle-facts > div {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.resource-lifecycle-facts dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.resource-lifecycle-facts dd {
+  margin: 0;
+}
+
+.resource-lifecycle-checks {
+  display: grid;
+  gap: var(--space-12);
+}
+
+.resource-capacity-overview {
+  gap: var(--space-16);
+}
+
+.resource-capacity-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-12);
+}
+
+.resource-capacity-metrics > div {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  border: var(--border-default);
+  border-radius: var(--radius-control);
+}
+
+.resource-capacity-metrics span {
+  color: var(--color-text-secondary);
+}
+
+.resource-capacity-metrics strong {
+  font-size: var(--font-size-subtitle);
+}
+
+.resource-capacity-cell {
+  min-width: 240px;
+}
+
+@media (max-width: 1440px) {
+  .resource-overview {
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+  }
+
+  .resource-overview__item {
+    padding: var(--space-12);
+  }
+
+  .resource-overview__item strong {
+    font-size: var(--font-size-subtitle);
+  }
+}
+
+@media (max-width: 960px) {
+  .resource-overview,
+  .resource-capacity-metrics,
+  .resource-lifecycle-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .resource-detail-page {
   display: grid;
   gap: var(--space-16);

@@ -28,7 +28,7 @@ const INITIAL_IMAGES: readonly PlatformImage[] = [
     description: '适用于通用计算工作负载的基础系统环境。',
     status: 'available',
     createdAt: '2026-05-12T06:00:00.000Z',
-    resourceIds: ['cs-east-001'],
+    resourceIds: ['cs-east-001', 'cs-west-003', 'cs-east-005', 'cs-south-007'],
   },
   {
     id: 'preset-image-gpu-runtime',
@@ -44,7 +44,7 @@ const INITIAL_IMAGES: readonly PlatformImage[] = [
     description: '面向 GPU 计算资源的平台运行环境。',
     status: 'available',
     createdAt: '2026-05-18T06:00:00.000Z',
-    resourceIds: ['cs-east-002'],
+    resourceIds: ['cs-east-002', 'cs-west-004', 'cs-south-006', 'cs-east-008'],
   },
   {
     id: 'preset-image-development',

@@ -24,6 +24,8 @@ export type SoftwareInstallation = Readonly<{
   version: string;
   resourceId: string;
   resourceName: string;
+  project?: string;
+  tags?: readonly string[];
   status: InstallationStatus;
   submittedAt: string;
 }>;

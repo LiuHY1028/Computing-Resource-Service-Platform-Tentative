@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -44,8 +44,8 @@ describe('ResourceDetailPage', () => {
     expect(
       await screen.findByRole('heading', { name: '研发计算节点-01' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('云服务器信息')).toBeInTheDocument();
-    expect(screen.getByText('Linux 基础环境 2026.06')).toBeInTheDocument();
+    expect(screen.getByText('云服务器配置')).toBeInTheDocument();
+    expect(screen.getByText('基础 Linux 运行镜像')).toBeInTheDocument();
     expect(screen.getByText('30 GB')).toBeInTheDocument();
     expect(screen.queryByText('整机型号')).not.toBeInTheDocument();
   });
@@ -108,7 +108,7 @@ describe('ResourceDetailPage', () => {
       '/resources/physical-machines/pm-east-002',
     );
     await screen.findByRole('heading', { name: '训练物理节点-02' });
-    expect(screen.getByText('物理机信息')).toBeInTheDocument();
+    expect(screen.getByText('物理机配置')).toBeInTheDocument();
     expect(screen.getByText('高密度加速计算服务器')).toBeInTheDocument();
     expect(screen.queryByText('系统盘')).not.toBeInTheDocument();
 
@@ -125,8 +125,9 @@ describe('ResourceDetailPage', () => {
     const { user } = renderDetail('/resources/cloud-servers/cs-east-002');
     await screen.findByRole('heading', { name: '视觉训练节点-02' });
     await user.click(screen.getByRole('tab', { name: '存储' }));
-    expect(screen.getByText('系统盘容量')).toBeInTheDocument();
-    expect(screen.getByRole('table', { name: '数据存储列表' })).toBeInTheDocument();
+    expect(screen.getByText('系统盘与数据盘')).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: '云服务器磁盘' })).toBeInTheDocument();
+    expect(screen.getAllByText(/IOPS/).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole('tab', { name: '操作记录' }));
     expect(
@@ -153,15 +154,14 @@ describe('ResourceDetailPage', () => {
       '/resources/cloud-servers/cs-east-001',
     );
     await screen.findByRole('heading', { name: '研发计算节点-01' });
-    await user.click(screen.getByRole('button', { name: '管理操作' }));
-    await user.click(screen.getByRole('button', { name: '修改名称' }));
-    const input = screen.getByLabelText(/资源名称/);
-    await user.clear(input);
-    await user.type(input, '研发服务节点-A');
+    await user.click(screen.getByRole('button', { name: /更多操作/ }));
+    await user.click(screen.getByRole('menuitem', { name: '修改名称' }));
+    const input = screen.getByRole('textbox', { name: '资源名称必填' });
+    fireEvent.change(input, { target: { value: '研发服务节点-A' } });
     await user.click(screen.getByRole('button', { name: '保存名称' }));
 
     expect(
-      await screen.findByText('操作请求已提交，状态更新中。'),
+      await screen.findByText('资源名称已更新。'),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: '研发服务节点-A' }),

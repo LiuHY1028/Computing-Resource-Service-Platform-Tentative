@@ -22,11 +22,15 @@ import type {
 type FilterKey =
   | 'search'
   | 'site'
+  | 'room'
   | 'status'
+  | 'healthStatus'
   | 'computeType'
   | 'acceleratorModel'
   | 'expiryState'
+  | 'billingMode'
   | 'scope'
+  | 'tag'
   | 'image'
   | 'operatingSystem';
 
@@ -71,6 +75,12 @@ export function ResourceFilters({
       label: `状态：${RESOURCE_STATUS_LABELS[query.status]}`,
     });
   }
+  if (query.healthStatus && query.healthStatus !== 'all') {
+    activeFilters.push({ key: 'healthStatus', label: `健康：${query.healthStatus === 'normal' ? '正常' : query.healthStatus === 'warning' ? '告警' : '检查中'}` });
+  }
+  if (query.room && query.room !== 'all') {
+    activeFilters.push({ key: 'room', label: `机房：${query.room}` });
+  }
   if (query.computeType !== 'all') {
     activeFilters.push({
       key: 'computeType',
@@ -89,11 +99,17 @@ export function ResourceFilters({
       label: `到期状态：${EXPIRY_STATE_LABELS[query.expiryState]}`,
     });
   }
+  if (query.billingMode && query.billingMode !== 'all') {
+    activeFilters.push({ key: 'billingMode', label: `计费模式：${query.billingMode === 'subscription' ? '包年包月' : '按量计费'}` });
+  }
   if (query.scope !== 'all') {
     activeFilters.push({
       key: 'scope',
       label: `项目或用途：${query.scope}`,
     });
+  }
+  if (query.tag && query.tag !== 'all') {
+    activeFilters.push({ key: 'tag', label: `标签：${query.tag}` });
   }
   if (query.image !== 'all') {
     activeFilters.push({ key: 'image', label: `镜像：${query.image}` });
@@ -137,6 +153,14 @@ export function ResourceFilters({
             />
           </label>
         </GridItem>
+        {resourceType === 'physical-machine' && (
+          <GridItem span={4}>
+            <label className="resource-filter-field" htmlFor="resource-room">
+              <span>机房</span>
+              <Select id="resource-room" options={optionsWithAll(options.rooms, '全部机房')} value={query.room ?? 'all'} onValueChange={(value) => onChange('room', value)} />
+            </label>
+          </GridItem>
+        )}
         <GridItem span={4}>
           <label className="resource-filter-field" htmlFor="resource-status">
             <span>运行状态</span>
@@ -151,6 +175,22 @@ export function ResourceFilters({
               ]}
               value={query.status}
               onValueChange={(value) => onChange('status', value)}
+            />
+          </label>
+        </GridItem>
+        <GridItem span={4}>
+          <label className="resource-filter-field" htmlFor="resource-health">
+            <span>{resourceType === 'cloud-server' ? '实例健康' : '硬件健康'}</span>
+            <Select
+              id="resource-health"
+              value={query.healthStatus ?? 'all'}
+              onValueChange={(value) => onChange('healthStatus', value)}
+              options={[
+                { value: 'all', label: '全部健康状态' },
+                { value: 'normal', label: '正常' },
+                { value: 'warning', label: '告警' },
+                { value: 'checking', label: '检查中' },
+              ]}
             />
           </label>
         </GridItem>
@@ -200,13 +240,27 @@ export function ResourceFilters({
         </GridItem>
         <GridItem span={5}>
           <label className="resource-filter-field" htmlFor="resource-scope">
-            <span>项目归属或用途</span>
+            <span>{resourceType === 'cloud-server' ? '项目归属' : '项目或责任人'}</span>
             <Select
               id="resource-scope"
               options={optionsWithAll(options.scopes, '全部项目与用途')}
               value={query.scope}
               onValueChange={(value) => onChange('scope', value)}
             />
+          </label>
+        </GridItem>
+        {resourceType === 'cloud-server' && (
+          <GridItem span={4}>
+            <label className="resource-filter-field" htmlFor="resource-billing">
+              <span>计费模式</span>
+              <Select id="resource-billing" value={query.billingMode ?? 'all'} onValueChange={(value) => onChange('billingMode', value)} options={[{ value: 'all', label: '全部计费模式' }, { value: 'subscription', label: '包年包月' }, { value: 'pay-as-you-go', label: '按量计费' }]} />
+            </label>
+          </GridItem>
+        )}
+        <GridItem span={4}>
+          <label className="resource-filter-field" htmlFor="resource-tag">
+            <span>标签</span>
+            <Select id="resource-tag" value={query.tag ?? 'all'} onValueChange={(value) => onChange('tag', value)} options={optionsWithAll(options.tags, '全部标签')} />
           </label>
         </GridItem>
         <GridItem span={5}>

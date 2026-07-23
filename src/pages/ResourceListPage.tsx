@@ -1,19 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  useLocation,
-  useNavigate,
-  useSearchParams,
-} from 'react-router-dom';
-import { Container, Pagination, TitleBarTabs } from '../components/ui';
+  Button,
+  Container,
+  DropdownMenu,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  Modal,
+  Pagination,
+  TitleBarTabs,
+  type TableKey,
+} from '../components/ui';
 import {
   getResourceFilterOptions,
   queryResources,
   ResourceActionDialog,
   ResourceFilters,
+  ResourceLifecycleDialog,
   ResourceTable,
+  submitBatchPowerAction,
+  type BillingModeFilter,
   type ComputeTypeFilter,
   type ExpiryStateFilter,
+  type HealthStatusFilter,
+  type LifecycleDialogAction,
   type Resource,
+  type ResourceAction,
+  type ResourceMenuAction,
   type ResourceQuery,
   type ResourceStatusFilter,
   type ResourceType,
@@ -21,6 +34,18 @@ import {
 import '../features/resources/resource-management.css';
 
 const PAGE_SIZE = 5;
+const CLOUD_COLUMNS = ['specification', 'platform', 'network', 'billing', 'expiry', 'scope'] as const;
+const PHYSICAL_COLUMNS = ['hardware', 'location', 'platform', 'network', 'expiry', 'scope'] as const;
+const COLUMN_LABELS: Readonly<Record<string, string>> = {
+  specification: '实例规格',
+  hardware: '整机配置',
+  location: '物理位置',
+  platform: '镜像或操作系统',
+  network: '网络',
+  billing: '计费模式',
+  expiry: '有效期',
+  scope: '项目与标签',
+};
 
 function validValue(value: string | null, allowed: readonly string[]) {
   return value && allowed.includes(value) ? value : 'all';
@@ -31,90 +56,93 @@ function parsePositiveInteger(value: string | null) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
-export function ResourceListPage({
-  resourceType,
-}: Readonly<{ resourceType: ResourceType }>) {
+function isResourceAction(value: ResourceMenuAction): value is ResourceAction {
+  return ['start', 'stop', 'restart', 'rename', 'release'].includes(value);
+}
+
+export function ResourceListPage({ resourceType }: Readonly<{ resourceType: ResourceType }>) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const options = useMemo(
-    () => getResourceFilterOptions(resourceType),
-    [resourceType],
-  );
-  const query = useMemo<ResourceQuery>(
-    () => ({
-      resourceType,
-      search: searchParams.get('q') ?? '',
-      site: validValue(searchParams.get('site'), options.sites),
-      status: validValue(searchParams.get('status'), options.statuses) as ResourceStatusFilter,
-      computeType: validValue(searchParams.get('compute'), [
-        'cpu',
-        'gpu',
-      ]) as ComputeTypeFilter,
-      acceleratorModel: validValue(
-        searchParams.get('gpu'),
-        options.acceleratorModels,
-      ),
-      expiryState: validValue(searchParams.get('expiry'), [
-        'active',
-        'expiring',
-        'expired',
-      ]) as ExpiryStateFilter,
-      scope: validValue(searchParams.get('scope'), options.scopes),
-      image: validValue(searchParams.get('image'), options.images),
-      operatingSystem: validValue(
-        searchParams.get('os'),
-        options.operatingSystems,
-      ),
-    }),
-    [options, resourceType, searchParams],
-  );
+  const options = useMemo(() => getResourceFilterOptions(resourceType), [resourceType]);
+  const query = useMemo<ResourceQuery>(() => ({
+    resourceType,
+    search: searchParams.get('q') ?? '',
+    site: validValue(searchParams.get('site'), options.sites),
+    room: validValue(searchParams.get('room'), options.rooms),
+    status: validValue(searchParams.get('status'), options.statuses) as ResourceStatusFilter,
+    healthStatus: validValue(searchParams.get('health'), ['normal', 'warning', 'checking']) as HealthStatusFilter,
+    computeType: validValue(searchParams.get('compute'), ['cpu', 'gpu']) as ComputeTypeFilter,
+    acceleratorModel: validValue(searchParams.get('gpu'), options.acceleratorModels),
+    expiryState: validValue(searchParams.get('expiry'), ['active', 'expiring', 'expired']) as ExpiryStateFilter,
+    billingMode: validValue(searchParams.get('billing'), ['subscription', 'pay-as-you-go']) as BillingModeFilter,
+    scope: validValue(searchParams.get('scope'), options.scopes),
+    tag: validValue(searchParams.get('tag'), options.tags),
+    image: validValue(searchParams.get('image'), options.images),
+    operatingSystem: validValue(searchParams.get('os'), options.operatingSystems),
+  }), [options, resourceType, searchParams]);
   const [revision, setRevision] = useState(0);
-  const [selectedResource, setSelectedResource] = useState<Resource>();
-  const [actionFeedback, setActionFeedback] = useState('');
+  const [selectedByType, setSelectedByType] = useState<Readonly<Record<ResourceType, readonly TableKey[]>>>({
+    'cloud-server': [],
+    'physical-machine': [],
+  });
+  const defaultColumns = resourceType === 'cloud-server' ? CLOUD_COLUMNS : PHYSICAL_COLUMNS;
+  const [columnsByType, setColumnsByType] = useState<Readonly<Record<ResourceType, readonly string[]>>>({
+    'cloud-server': CLOUD_COLUMNS,
+    'physical-machine': PHYSICAL_COLUMNS,
+  });
+  const selectedKeys = selectedByType[resourceType];
+  const visibleColumns = columnsByType[resourceType];
+  const [resourceAction, setResourceAction] = useState<{ resource: Resource; action: ResourceAction }>();
+  const [lifecycleAction, setLifecycleAction] = useState<{ resources: readonly Resource[]; action: LifecycleDialogAction }>();
+  const [batchPower, setBatchPower] = useState<'start' | 'stop' | 'restart'>();
+  const [feedback, setFeedback] = useState('');
+  const [batchError, setBatchError] = useState('');
   const page = parsePositiveInteger(searchParams.get('page'));
-  const result = useMemo(
-    () => {
-      void revision;
-      return queryResources(query);
-    },
-    [query, revision],
-  );
+  const result = useMemo(() => {
+    void revision;
+    return queryResources(query);
+  }, [query, revision]);
+  const allTypedResources = useMemo(() => {
+    void revision;
+    return queryResources({ ...query, search: '', site: 'all', room: 'all', status: 'all', healthStatus: 'all', computeType: 'all', acceleratorModel: 'all', expiryState: 'all', billingMode: 'all', scope: 'all', tag: 'all', image: 'all', operatingSystem: 'all' }).items;
+  }, [query, revision]);
   const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const pageItems = result.items.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
-  );
+  const pageItems = result.items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const selectedResources = allTypedResources.filter((resource) => selectedKeys.includes(resource.id));
+
+  function setSelectedKeys(keys: readonly TableKey[]) {
+    setSelectedByType((current) => ({ ...current, [resourceType]: keys }));
+  }
+
+  function setVisibleColumns(update: readonly string[] | ((current: readonly string[]) => readonly string[])) {
+    setColumnsByType((current) => ({
+      ...current,
+      [resourceType]: typeof update === 'function' ? update(current[resourceType]) : update,
+    }));
+  }
 
   useEffect(() => {
     if (page !== safePage) {
       const next = new URLSearchParams(searchParams);
-      if (safePage === 1) next.delete('page');
-      else next.set('page', String(safePage));
+      if (safePage === 1) next.delete('page'); else next.set('page', String(safePage));
       setSearchParams(next, { replace: true });
     }
   }, [page, safePage, searchParams, setSearchParams]);
 
   function setParam(key: string, value: string, resetPage = true) {
     const next = new URLSearchParams(searchParams);
-    if (!value || value === 'all') next.delete(key);
-    else next.set(key, value);
+    if (!value || value === 'all') next.delete(key); else next.set(key, value);
     if (resetPage) next.delete('page');
     setSearchParams(next);
   }
 
   function updateFilter(key: string, value: string) {
-    const parameterMap: Readonly<Record<string, string>> = {
-      search: 'q',
-      site: 'site',
-      status: 'status',
-      computeType: 'compute',
-      acceleratorModel: 'gpu',
-      expiryState: 'expiry',
-      scope: 'scope',
-      image: 'image',
-      operatingSystem: 'os',
+    const map: Readonly<Record<string, string>> = {
+      search: 'q', site: 'site', room: 'room', status: 'status', healthStatus: 'health',
+      computeType: 'compute', acceleratorModel: 'gpu', expiryState: 'expiry',
+      billingMode: 'billing', scope: 'scope', tag: 'tag', image: 'image', operatingSystem: 'os',
     };
     if (key === 'computeType' && value === 'cpu') {
       const next = new URLSearchParams(searchParams);
@@ -124,128 +152,168 @@ export function ResourceListPage({
       setSearchParams(next);
       return;
     }
-    setParam(parameterMap[key] ?? key, value);
-  }
-
-  function resetFilters() {
-    setSearchParams(new URLSearchParams());
+    setParam(map[key] ?? key, value);
   }
 
   function detailPath(resource: Resource, tab?: string) {
-    const root =
-      resource.resourceType === 'cloud-server'
-        ? '/resources/cloud-servers'
-        : '/resources/physical-machines';
-    const tabQuery = tab ? `?tab=${tab}` : '';
-    navigate(`${root}/${encodeURIComponent(resource.id)}${tabQuery}`, {
-      state: {
-        fromResourceList: `${location.pathname}?${searchParams.toString()}`,
-      },
+    const root = resource.resourceType === 'cloud-server' ? '/resources/cloud-servers' : '/resources/physical-machines';
+    navigate(`${root}/${encodeURIComponent(resource.id)}${tab ? `?tab=${tab}` : ''}`, {
+      state: { fromResourceList: `${location.pathname}?${searchParams.toString()}` },
     });
   }
 
+  function handleAction(resource: Resource, action: ResourceMenuAction) {
+    if (isResourceAction(action)) {
+      setResourceAction({ resource, action });
+      return;
+    }
+    if (['renew', 'auto-renew', 'extend', 'metadata', 'configuration-change', 'os-reinstall'].includes(action)) {
+      setLifecycleAction({ resources: [resource], action: action as LifecycleDialogAction });
+      return;
+    }
+    const tabs: Partial<Record<ResourceMenuAction, string>> = {
+      storage: 'storage', network: 'network', monitoring: 'monitoring', operations: 'operations',
+      'hardware-health': 'health', bmc: 'delivery',
+    };
+    if (action === 'image') navigate(`/images?resource=${encodeURIComponent(resource.id)}`);
+    else detailPath(resource, tabs[action]);
+  }
+
+  function openBatch(action: LifecycleDialogAction | 'start' | 'stop' | 'restart') {
+    setBatchError('');
+    if (!selectedResources.length) {
+      setFeedback('请先选择资源。');
+      return;
+    }
+    if (action === 'start' || action === 'stop' || action === 'restart') setBatchPower(action);
+    else setLifecycleAction({ resources: selectedResources, action });
+  }
+
+  const overview = resourceType === 'cloud-server'
+    ? [
+        ['资源总数', allTypedResources.length],
+        ['运行中', allTypedResources.filter((item) => item.status === 'running').length],
+        ['已停止', allTypedResources.filter((item) => item.status === 'stopped').length],
+        ['异常', allTypedResources.filter((item) => item.status === 'abnormal').length],
+        ['即将到期', allTypedResources.filter((item) => item.expiryState === 'expiring').length],
+      ]
+    : [
+        ['资源总数', allTypedResources.length],
+        ['运行中', allTypedResources.filter((item) => item.status === 'running').length],
+        ['离线', allTypedResources.filter((item) => item.status === 'stopped').length],
+        ['硬件告警', allTypedResources.filter((item) => item.health.status === 'warning').length],
+        ['即将到期', allTypedResources.filter((item) => item.expiryState === 'expiring').length],
+      ];
+  const expiringCount = allTypedResources.filter((item) => item.expiryState !== 'active').length;
+
   const listContent = (
     <div className="resource-list__content">
-      <ResourceFilters
-        resourceType={resourceType}
-        query={query}
-        options={options}
-        onChange={updateFilter}
-        onReset={resetFilters}
-      />
-      {actionFeedback && (
-        <Container className="resource-action-feedback" role="status">
-          {actionFeedback}
+      <div className="resource-overview" aria-label={`${resourceType === 'cloud-server' ? '云服务器' : '物理机'}资源概览`}>
+        {overview.map(([label, value]) => <Container key={label} className="resource-overview__item"><span>{label}</span><strong>{value}</strong></Container>)}
+      </div>
+      {expiringCount > 0 && (
+        <Container className="resource-expiry-alert" role="status">
+          <div><strong>{expiringCount} 个资源存在到期风险</strong><span>可筛选查看剩余天数，并从行内菜单快速处理有效期。</span></div>
+          <Button variant="secondary" onClick={() => setParam('expiry', 'expiring')}>查看即将到期</Button>
         </Container>
       )}
+      <ResourceFilters resourceType={resourceType} query={query} options={options} onChange={updateFilter} onReset={() => setSearchParams({})} />
+      {feedback && <Container className="resource-action-feedback" role="status">{feedback}</Container>}
       <Container as="section" className="resource-results">
         <div className="resource-results__header">
-          <div>
-            <span>资源管理</span>
-            <h2>
-              {resourceType === 'cloud-server' ? '云服务器' : '物理机'}资源
-            </h2>
+          <div><span>{resourceType === 'cloud-server' ? '云实例资源' : '整机硬件资源'}</span><h2>{resourceType === 'cloud-server' ? '云服务器' : '物理机'}资源</h2></div>
+          <div className="resource-results__tools">
+            <p aria-live="polite">共 {result.total} 个结果</p>
+            <DropdownMenu trigger="列设置" aria-label="列表列设置">
+              <DropdownMenuGroup label="可选列">
+                {defaultColumns.map((column) => (
+                  <DropdownMenuItem key={column} onSelect={() => setVisibleColumns((current) => current.includes(column) ? current.filter((item) => item !== column) : [...current, column])}>
+                    {visibleColumns.includes(column) ? '✓ ' : ''}{COLUMN_LABELS[column]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+              <DropdownMenuItem onSelect={() => setVisibleColumns(defaultColumns)}>恢复默认列</DropdownMenuItem>
+            </DropdownMenu>
           </div>
-          <p aria-live="polite">共 {result.total} 个结果</p>
         </div>
+        {selectedResources.length > 0 && (
+          <div className="resource-batch-toolbar" role="toolbar" aria-label="批量操作">
+            <strong>已选择 {selectedResources.length} 个资源</strong>
+            <Button variant="secondary" onClick={() => openBatch('start')}>批量启动</Button>
+            <Button variant="secondary" onClick={() => openBatch('stop')}>批量停止</Button>
+            <Button variant="secondary" onClick={() => openBatch('restart')}>批量重启</Button>
+            {resourceType === 'cloud-server' ? (
+              <>
+                <Button variant="secondary" onClick={() => openBatch('renew')}>批量续费</Button>
+                <Button variant="secondary" onClick={() => openBatch('auto-renew')}>批量自动续费</Button>
+              </>
+            ) : <Button variant="secondary" onClick={() => openBatch('extend')}>批量申请延期</Button>}
+            <Button variant="secondary" onClick={() => openBatch('metadata')}>批量项目与标签</Button>
+            <Button variant="ghost" onClick={() => setSelectedKeys([])}>清除选择</Button>
+          </div>
+        )}
         <ResourceTable
           resourceType={resourceType}
           rows={pageItems}
           loading={false}
           catalogEmpty={result.catalogTotal === 0}
+          selectedKeys={selectedKeys}
+          visibleOptionalColumns={visibleColumns}
+          onSelectionChange={setSelectedKeys}
           onRetry={() => undefined}
-          onResetFilters={resetFilters}
-          onGoMarketplace={() =>
-            navigate(
-              resourceType === 'cloud-server'
-                ? '/marketplace?type=cloud'
-                : '/marketplace?type=physical',
-            )
-          }
-          onViewDetails={(resource) => detailPath(resource)}
+          onResetFilters={() => setSearchParams({})}
+          onGoMarketplace={() => navigate(resourceType === 'cloud-server' ? '/marketplace?type=cloud' : '/marketplace?type=physical')}
           onConnection={(resource) => detailPath(resource, 'network')}
-          onMore={setSelectedResource}
+          onAction={handleAction}
         />
-        {result.total > 0 && (
-          <Pagination
-            className="resource-results__pagination"
-            page={safePage}
-            totalPages={totalPages}
-            totalItems={result.total}
-            onPageChange={(nextPage) =>
-              setParam('page', String(nextPage), false)
-            }
-          />
-        )}
+        {result.total > 0 && <Pagination className="resource-results__pagination" page={safePage} totalPages={totalPages} totalItems={result.total} onPageChange={(next) => setParam('page', String(next), false)} />}
       </Container>
-      {selectedResource && (
-        <ResourceActionDialog
-          resource={selectedResource}
-          open
-          onClose={() => setSelectedResource(undefined)}
-          onCompleted={(actionResult) => {
-            setActionFeedback(actionResult.record.message);
-            setSelectedResource(undefined);
-            setRevision((value) => value + 1);
-          }}
-        />
-      )}
     </div>
   );
 
   const commonQuery = new URLSearchParams(searchParams);
-  commonQuery.delete('image');
-  commonQuery.delete('os');
-  commonQuery.delete('page');
-  const commonSuffix = commonQuery.toString()
-    ? `?${commonQuery.toString()}`
-    : '';
+  ['image', 'os', 'room', 'billing', 'page'].forEach((key) => commonQuery.delete(key));
+  const suffix = commonQuery.toString() ? `?${commonQuery.toString()}` : '';
 
   return (
-    <div className="resource-page">
+    <div className="resource-page" data-resource-type={resourceType}>
       <Container className="resource-type-tabs">
         <TitleBarTabs
           aria-label="我的资源类型"
           value={resourceType === 'cloud-server' ? 'cloud' : 'physical'}
-          onValueChange={(value) => {
-            if (
-              (value === 'cloud' && resourceType === 'cloud-server') ||
-              (value === 'physical' && resourceType === 'physical-machine')
-            ) {
-              return;
-            }
-            navigate(
-              value === 'cloud'
-                ? `/resources/cloud-servers${commonSuffix}`
-                : `/resources/physical-machines${commonSuffix}`,
-            );
-          }}
+          onValueChange={(value) => navigate(value === 'cloud' ? `/resources/cloud-servers${suffix}` : `/resources/physical-machines${suffix}`)}
           items={[
-            { value: 'cloud', label: '云服务器', panel: listContent },
-            { value: 'physical', label: '物理机', panel: listContent },
+            { value: 'cloud', label: <><span aria-hidden="true">☁</span> 云服务器</>, panel: listContent },
+            { value: 'physical', label: <><span aria-hidden="true">▤</span> 物理机</>, panel: listContent },
           ]}
         />
       </Container>
+      {resourceAction && <ResourceActionDialog resource={resourceAction.resource} action={resourceAction.action} open onClose={() => setResourceAction(undefined)} onCompleted={(resultValue) => { setFeedback(resultValue.record.message); setResourceAction(undefined); setRevision((value) => value + 1); }} />}
+      {lifecycleAction && <ResourceLifecycleDialog resources={lifecycleAction.resources} action={lifecycleAction.action} open onClose={() => setLifecycleAction(undefined)} onCompleted={(message) => { setFeedback(message); setLifecycleAction(undefined); setSelectedKeys([]); setRevision((value) => value + 1); }} />}
+      <Modal
+        open={Boolean(batchPower)}
+        title={`批量${batchPower === 'start' ? '启动' : batchPower === 'stop' ? '停止' : '重启'}资源`}
+        onClose={() => setBatchPower(undefined)}
+        primaryAction={{
+          label: '确认提交',
+          variant: batchPower === 'start' ? 'primary' : 'danger',
+          onClick: () => {
+            if (!batchPower) return;
+            void submitBatchPowerAction(selectedResources.map((resource) => resource.id), batchPower)
+              .then(() => {
+                setFeedback(`${selectedResources.length} 个资源的批量操作已提交。`);
+                setBatchPower(undefined);
+                setSelectedKeys([]);
+                setRevision((value) => value + 1);
+              })
+              .catch((error: unknown) => setBatchError(error instanceof Error ? error.message : '批量操作失败。'));
+          },
+        }}
+        secondaryAction={{ label: '取消', onClick: () => setBatchPower(undefined) }}
+      >
+        <p>将对已选择的 {selectedResources.length} 个资源执行兼容性检查后提交操作。</p>
+        {batchError && <p className="resource-action-dialog__error" role="alert">{batchError}</p>}
+      </Modal>
     </div>
   );
 }

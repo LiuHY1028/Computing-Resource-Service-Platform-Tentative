@@ -78,15 +78,14 @@ export function recordOperation(
   input: CreateOperationInput,
 ): PlatformOperationRecord {
   const createdAt = input.createdAt ?? new Date().toISOString();
+  const currentRecords = readRecords();
   const record: PlatformOperationRecord = {
     ...input,
-    id: `operation-${createdAt.replace(/\D/g, '')}-${Math.random()
-      .toString(36)
-      .slice(2, 7)}`,
+    id: `operation-${createdAt.replace(/\D/g, '')}-${String(currentRecords.length + 1).padStart(4, '0')}`,
     actor: '当前用户',
     createdAt,
   };
-  writeRecords([record, ...readRecords()]);
+  writeRecords([record, ...currentRecords]);
   return record;
 }
 

@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetOperationsStore } from '../../operations';
+import { queryOrders, resetOrderStore } from '../../orders';
+import {
+  storageAvailableGb,
+  storageCapacityState,
+  storageUsagePercent,
+} from '../types';
 import {
   createStorageSpace,
   deleteStorageSpace,
@@ -25,12 +31,20 @@ describe('storageStore', () => {
     });
     resetStorageStore();
     resetOperationsStore();
+    resetOrderStore();
   });
 
   it('filters storage spaces and exposes canonical resource mounts', async () => {
     const shared = await queryStorageSpaces({ type: 'shared', mounted: 'yes' });
     expect(shared).toHaveLength(1);
     expect(getStorageMountsForResource('cs-east-001')).toHaveLength(2);
+    const space = shared[0]!;
+    expect(storageAvailableGb(space)).toBe(space.capacityGb - space.usedGb);
+    expect(storageUsagePercent(space)).toBe(Math.round((space.usedGb / space.capacityGb) * 100));
+    expect(storageCapacityState(space)).toBe('normal');
+    expect(storageCapacityState({ capacityGb: 100, usedGb: 80 })).toBe('high');
+    expect(storageCapacityState({ capacityGb: 100, usedGb: 92 })).toBe('critical');
+    expect(space.performance.readIops).toBeGreaterThan(0);
   });
 
   it('persists a submitted storage request and keeps capacity unchanged on expansion', async () => {
@@ -45,11 +59,16 @@ describe('storageStore', () => {
 
     await requestStorageExpansion(created.id, 1000);
     expect((await queryStorageSpaces({ search: created.id }))[0]?.capacityGb).toBe(800);
+    expect(queryOrders({ applicationType: 'storage-expansion' })[0]).toMatchObject({
+      resourceType: 'storage',
+      storageId: created.id,
+      status: 'pending',
+    });
   });
 
   it('blocks deletion while a mount relation exists', async () => {
     await requestStorageMount('storage-shared-west-001', {
-      resourceId: 'cs-west-001',
+      resourceId: 'cs-west-003',
       resourceName: '西部计算节点',
       resourceType: 'cloud-server',
       mountPath: '/data/shared',

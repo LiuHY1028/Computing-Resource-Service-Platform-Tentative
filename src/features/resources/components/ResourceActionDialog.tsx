@@ -1,28 +1,7 @@
-import { useCallback, useState } from 'react';
-import {
-  Button,
-  Form,
-  FormField,
-  Input,
-  Modal,
-} from '../../../components/ui';
-import {
-  getResourceActionAvailability,
-  submitResourceAction,
-} from '../state/resourceStore';
-import type {
-  Resource,
-  ResourceAction,
-  ResourceActionResult,
-} from '../types';
-
-const ACTIONS: readonly ResourceAction[] = [
-  'start',
-  'stop',
-  'restart',
-  'rename',
-  'release',
-];
+import { useState } from 'react';
+import { Form, FormField, Input, Modal } from '../../../components/ui';
+import { getResourceActionAvailability, submitResourceAction } from '../state/resourceStore';
+import type { Resource, ResourceAction, ResourceActionResult } from '../types';
 
 const ACTION_LABELS: Readonly<Record<ResourceAction, string>> = {
   start: '启动',
@@ -32,186 +11,107 @@ const ACTION_LABELS: Readonly<Record<ResourceAction, string>> = {
   release: '释放资源',
 };
 
-type SubmitAction = (
-  request: Parameters<typeof submitResourceAction>[0],
-) => Promise<ResourceActionResult>;
+const ACTION_TITLES: Readonly<Record<ResourceAction, string>> = {
+  start: '启动资源',
+  stop: '停止资源',
+  restart: '重启资源',
+  rename: '修改资源名称',
+  release: '提交资源释放申请',
+};
 
 type ResourceActionDialogProps = Readonly<{
   resource: Resource | undefined;
+  action: ResourceAction;
   open: boolean;
   onClose: () => void;
   onCompleted: (result: ResourceActionResult) => void;
-  submitAction?: SubmitAction;
+  submitAction?: typeof submitResourceAction;
 }>;
-
-function validateName(value: string, currentName: string) {
-  const nextName = value.trim();
-  if (!nextName) return '请输入资源名称。';
-  if (nextName.length > 48) return '资源名称不能超过 48 个字符。';
-  if (nextName === currentName) return '请输入与当前名称不同的资源名称。';
-  return '';
-}
 
 export function ResourceActionDialog({
   resource,
+  action,
   open,
   onClose,
   onCompleted,
   submitAction = submitResourceAction,
 }: ResourceActionDialogProps) {
-  const [selectedAction, setSelectedAction] = useState<ResourceAction>();
   const [nextName, setNextName] = useState(resource?.name ?? '');
-  const [nameError, setNameError] = useState('');
-  const [submitError, setSubmitError] = useState('');
+  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-
-  const close = useCallback(() => {
-    if (!busy) onClose();
-  }, [busy, onClose]);
-
-  if (!open || !resource) return null;
-  const currentResource = resource;
-
-  function chooseAction(action: ResourceAction) {
-    const availability = getResourceActionAvailability(currentResource, action);
-    if (!availability.enabled) return;
-    setSubmitError('');
-    setNameError('');
-    setSelectedAction(action);
-  }
+  if (!resource || !open) return null;
+  const availability = getResourceActionAvailability(resource, action);
 
   async function submit() {
-    if (!selectedAction || busy) return;
-    if (selectedAction === 'rename') {
-      const validationError = validateName(nextName, currentResource.name);
-      setNameError(validationError);
-      if (validationError) return;
+    if (!resource || busy) return;
+    setError('');
+    const name = nextName.trim();
+    if (action === 'rename') {
+      if (!name) return setError('请输入资源名称。');
+      if (name.length > 48) return setError('资源名称不能超过 48 个字符。');
+      if (name === resource.name) return setError('请输入与当前名称不同的资源名称。');
     }
-
+    if (!availability.enabled) return setError(availability.reason ?? '当前操作不可用。');
     setBusy(true);
-    setSubmitError('');
     try {
-      const result = await submitAction({
-        resourceType: currentResource.resourceType,
-        resourceId: currentResource.id,
-        action: selectedAction,
-        nextName: selectedAction === 'rename' ? nextName.trim() : undefined,
-      });
-      onCompleted(result);
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : '操作请求提交失败，请稍后重试。',
-      );
+      onCompleted(await submitAction({
+        resourceType: resource.resourceType,
+        resourceId: resource.id,
+        action,
+        nextName: action === 'rename' ? name : undefined,
+      }));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : '操作提交失败。');
       setBusy(false);
     }
   }
 
-  const modalTitle = selectedAction
-    ? `${ACTION_LABELS[selectedAction]}资源`
-    : '管理资源';
-
   return (
     <Modal
-      open={open}
-      title={modalTitle}
-      onClose={close}
+      open
+      title={ACTION_TITLES[action]}
+      onClose={() => !busy && onClose()}
       busy={busy}
-      role={selectedAction === 'release' ? 'alertdialog' : 'dialog'}
-      primaryAction={
-        selectedAction
-          ? {
-              label:
-                selectedAction === 'rename'
-                  ? '保存名称'
-                  : `确认${ACTION_LABELS[selectedAction]}`,
-              variant:
-                selectedAction === 'stop' ||
-                selectedAction === 'restart' ||
-                selectedAction === 'release'
-                  ? 'danger'
-                  : 'primary',
-              onClick: submit,
-            }
-          : { label: '关闭', onClick: close, variant: 'secondary' }
-      }
-      secondaryAction={
-        selectedAction
-          ? {
-              label: '返回',
-              onClick: () => {
-                setSelectedAction(undefined);
-                setSubmitError('');
-                setNameError('');
-              },
-            }
-          : undefined
-      }
+      role={action === 'release' || action === 'stop' || action === 'restart' ? 'alertdialog' : 'dialog'}
+      primaryAction={{
+        label: action === 'rename' ? '保存名称' : action === 'release' ? '提交释放申请' : `确认${ACTION_LABELS[action]}`,
+        variant: action === 'stop' || action === 'restart' || action === 'release' ? 'danger' : 'primary',
+        disabled: !availability.enabled,
+        onClick: () => void submit(),
+      }}
+      secondaryAction={{ label: '取消', onClick: onClose }}
     >
-      {selectedAction ? (
-        <Form
-          className="resource-action-dialog__form"
-          onSubmit={() => void submit()}
-        >
-          {selectedAction === 'rename' ? (
-            <FormField
-              label="资源名称"
-              required
-              help="最多 48 个字符。"
-              error={nameError || undefined}
-            >
-              <Input
-                value={nextName}
-                maxLength={48}
-                showCount
-                disabled={busy}
-                onChange={(event) => {
-                  setNextName(event.target.value);
-                  if (nameError) setNameError('');
-                }}
-              />
-            </FormField>
-          ) : (
-            <div className="resource-action-dialog__confirmation">
-              <strong>
-                确认对“{currentResource.name}”执行
-                {ACTION_LABELS[selectedAction]}操作？
-              </strong>
-              <p>提交后资源状态将更新，处理结果可在操作记录中查看。</p>
-            </div>
-          )}
-          {submitError && (
-            <p className="resource-action-dialog__error" role="alert">
-              {submitError}
+      <Form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+        {action === 'rename' ? (
+          <FormField label="资源名称" required error={error || undefined} help="最多 48 个字符。">
+            <Input
+              value={nextName}
+              maxLength={48}
+              showCount
+              disabled={busy}
+              onChange={(event) => {
+                setNextName(event.target.value);
+                setError('');
+              }}
+            />
+          </FormField>
+        ) : (
+          <div className="resource-action-dialog__confirmation">
+            <strong>
+              {action === 'release'
+                ? `确认提交“${resource.name}”的释放申请？`
+                : `确认对“${resource.name}”执行${ACTION_LABELS[action]}操作？`}
+            </strong>
+            <p>
+              {action === 'release'
+                ? '提交后进入待处理状态，资源不会立即删除。'
+                : '操作结果将同步到资源状态和操作记录。'}
             </p>
-          )}
-        </Form>
-      ) : (
-        <div className="resource-action-dialog__choices">
-          <p>选择要对“{currentResource.name}”执行的操作。</p>
-          {ACTIONS.map((action) => {
-            const availability = getResourceActionAvailability(
-              currentResource,
-              action,
-            );
-            return (
-              <div key={action} className="resource-action-dialog__choice">
-                <Button
-                  variant={action === 'release' ? 'danger' : 'secondary'}
-                  disabled={!availability.enabled}
-                  onClick={() => chooseAction(action)}
-                >
-                  {ACTION_LABELS[action]}
-                </Button>
-                {!availability.enabled && availability.reason && (
-                  <span>{availability.reason}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+          </div>
+        )}
+        {!availability.enabled && <p className="resource-action-dialog__error">{availability.reason}</p>}
+        {error && action !== 'rename' && <p className="resource-action-dialog__error" role="alert">{error}</p>}
+      </Form>
     </Modal>
   );
 }

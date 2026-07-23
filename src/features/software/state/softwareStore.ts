@@ -5,6 +5,7 @@ import {
   writeVersionedState,
 } from '../../platform/persistence';
 import type { Resource } from '../../resources';
+import { getResourceByAnyId } from '../../resources/state/resourceStore';
 import type {
   SoftwareInstallation,
   SoftwareProduct,
@@ -135,7 +136,10 @@ export function getSoftwareById(softwareId: string) {
 }
 
 export function getSoftwareInstallations() {
-  return [...readInstallations()].sort((left, right) =>
+  return readInstallations().map((item) => {
+    const resource = getResourceByAnyId(item.resourceId);
+    return resource ? { ...item, resourceName: resource.name, project: resource.project, tags: resource.tags } : item;
+  }).sort((left, right) =>
     right.submittedAt.localeCompare(left.submittedAt),
   );
 }

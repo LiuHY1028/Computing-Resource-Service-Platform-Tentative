@@ -1,431 +1,286 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Button,
   Container,
   EmptyTable,
   Modal,
+  Progress,
+  StatusBadge,
   Table,
   type TableColumn,
 } from '../../../components/ui';
 import {
   getStorageMountsForResource,
+  storageAvailableGb,
+  storageUsagePercent,
   type StorageMount,
   type StorageSpace,
 } from '../../storage';
+import { getSoftwareForResource, type SoftwareInstallation } from '../../software';
+import { getNetworkRulesForResource, type NetworkAccessRule } from '../../network';
 import {
-  getSoftwareForResource,
-  type SoftwareInstallation,
-} from '../../software';
+  APPLICATION_TYPE_LABELS,
+  ORDER_STATUS_VIEWS,
+  getOrdersForResource,
+} from '../../orders';
+import { getOperationsForTarget, type PlatformOperationRecord } from '../../operations';
 import {
-  getNetworkRulesForResource,
-  type NetworkAccessRule,
-} from '../../network';
-import { getOrdersForResource } from '../../orders';
-import {
-  getOperationsForTarget,
-  type PlatformOperationRecord,
-} from '../../operations';
-import {
-  COMPUTE_TYPE_LABELS,
   EXPIRY_STATE_LABELS,
   formatAccelerator,
   formatDateTime,
   OPERATION_STATUS_LABELS,
 } from '../formatters';
-import type { Resource } from '../types';
+import type { CloudDataDisk, Resource } from '../types';
 import { ResourceStatusBadge } from './ResourceStatusBadge';
+import { ResourceActionMenu, type ResourceMenuAction } from './ResourceTable';
 
-function DefinitionSection({
-  title,
-  eyebrow,
-  fields,
-}: Readonly<{
+function capacityStatus(percent: number) {
+  return percent >= 90
+    ? { label: '容量不足', tone: 'critical' as const, badge: 'error' as const }
+    : percent >= 75
+      ? { label: '使用率偏高', tone: 'warning' as const, badge: 'warning' as const }
+      : { label: '正常', tone: 'normal' as const, badge: 'success' as const };
+}
+
+function DefinitionSection({ title, eyebrow, fields }: Readonly<{
   title: string;
   eyebrow: string;
-  fields: readonly (readonly [string, string])[];
+  fields: readonly (readonly [string, ReactNode])[];
 }>) {
   return (
     <Container as="section" className="resource-section">
-      <div className="resource-section__heading">
-        <div>
-          <span>{eyebrow}</span>
-          <h3>{title}</h3>
-        </div>
-      </div>
+      <div className="resource-section__heading"><div><span>{eyebrow}</span><h3>{title}</h3></div></div>
       <dl className="resource-definition-grid">
-        {fields.map(([label, value]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
+        {fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       </dl>
     </Container>
   );
 }
 
-export function ResourceOverview({
-  resource,
-}: Readonly<{ resource: Resource }>) {
-  const commonFields: readonly (readonly [string, string])[] = [
-    ['资源 ID', resource.id],
-    ['资源名称', resource.name],
-    [
-      '资源类型',
-      resource.resourceType === 'cloud-server' ? '云服务器' : '物理机',
-    ],
-    ['所属站点', resource.site],
-    ['计算类型', COMPUTE_TYPE_LABELS[resource.computeType]],
-    ['CPU', resource.cpu],
-    ['内存', `${resource.memoryGb} GB`],
-    ['GPU', formatAccelerator(resource)],
-    ['内网 IP', resource.ip.privateIp],
-    ['公网 IP', resource.ip.publicIp ?? '未分配'],
-    ['创建时间', formatDateTime(resource.createdAt)],
-    ['到期时间', formatDateTime(resource.expiresAt)],
-    ['到期状态', EXPIRY_STATE_LABELS[resource.expiryState]],
-    ['项目归属', resource.project],
-    ['用途说明', resource.purpose],
-    ['责任主体', resource.owner],
-  ];
-  const specificFields: readonly (readonly [string, string])[] =
-    resource.resourceType === 'cloud-server'
-      ? [
-          ['镜像', resource.image],
-          ['系统盘', `${resource.systemDiskGb} GB`],
-          ['数据盘', `${resource.dataDisks.length} 个`],
-          ['实例信息', resource.instanceInformation],
-        ]
-      : [
-          ['整机型号', resource.machineModel],
-          ['主机名', resource.hostname],
-          ['操作系统', resource.operatingSystem],
-          ['认证方式', resource.connection.authenticationMethod ?? '未提供'],
-          ['整机存储', resource.storageSummary],
-        ];
+export function ResourceOverview({ resource }: Readonly<{ resource: Resource }>) {
   const relatedOrders = getOrdersForResource(resource.id);
-
-  return (
-    <div className="resource-detail-stack">
-      <DefinitionSection
-        eyebrow="资源身份与配置"
-        title="基础信息"
-        fields={commonFields}
-      />
-      <DefinitionSection
-        eyebrow={
-          resource.resourceType === 'cloud-server' ? '实例配置' : '整机配置'
-        }
-        title={
-          resource.resourceType === 'cloud-server'
-            ? '云服务器信息'
-            : '物理机信息'
-        }
-        fields={specificFields}
-      />
-      <Container as="section" className="resource-section">
-        <div className="resource-section__heading">
-          <div><span>配置申请</span><h3>相关申请</h3></div>
-        </div>
-        {relatedOrders.length ? (
-          <div className="management-related-links">
-            {relatedOrders.map((order) => (
-              <Link to={`/orders/${order.id}`} key={order.id}>
-                {order.id} · {order.status === 'delivered' ? '已交付' : '处理中'}
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <EmptyTable title="暂无相关申请" />
-        )}
-      </Container>
-    </div>
-  );
-}
-
-export function ResourceStorage({
-  resource,
-}: Readonly<{ resource: Resource }>) {
-  const relations = getStorageMountsForResource(resource.id);
-  const columns: readonly TableColumn<{
-    space: StorageSpace;
-    mount: StorageMount;
-  }>[] = [
-    {
-      key: 'name',
-      title: '名称',
-      render: ({ space }) => (
-        <Link to={`/storage/${space.id}`}>{space.name}</Link>
-      ),
-    },
-    {
-      key: 'type',
-      title: '类型',
-      render: ({ space }) =>
-        space.type === 'local' ? '本地数据存储' : '高性能共享存储',
-    },
-    {
-      key: 'mountPath',
-      title: '挂载路径',
-      render: ({ mount }) => <code>{mount.mountPath}</code>,
-    },
-    {
-      key: 'capacity',
-      title: '容量',
-      render: ({ space }) => `${space.capacityGb} GB`,
-    },
-    {
-      key: 'readOnly',
-      title: '访问模式',
-      render: ({ mount }) => (mount.readOnly ? '只读' : '可读写'),
-    },
+  const identity: readonly (readonly [string, ReactNode])[] = [
+    [resource.resourceType === 'cloud-server' ? '实例 ID' : '资源 ID', resource.id],
+    ['资源名称', resource.name],
+    ['运行状态', <ResourceStatusBadge status={resource.status} />],
+    [resource.resourceType === 'cloud-server' ? '实例健康' : '硬件健康', resource.health.summary],
+    ['所属站点', resource.site],
+    ['项目归属', resource.project],
+    ['标签', resource.tags.join(' · ')],
+    ['创建时间', formatDateTime(resource.createdAt)],
+    [resource.resourceType === 'cloud-server' ? '到期时间' : '使用期限', formatDateTime(resource.expiresAt)],
+    ['到期状态', EXPIRY_STATE_LABELS[resource.expiryState]],
   ];
-
+  const specific: readonly (readonly [string, ReactNode])[] = resource.resourceType === 'cloud-server'
+    ? [
+        ['实例规格', `${resource.instanceSpec} · ${resource.vCpu} vCPU · ${resource.memoryGb} GB`],
+        ['GPU', formatAccelerator(resource)],
+        ['镜像', resource.image],
+        ['操作系统', resource.operatingSystem],
+        ['系统盘', `${resource.systemDiskGb} GB`],
+        ['数据盘', `${resource.dataDisks.filter((disk) => disk.role === 'data').length} 个`],
+        ['网络', `${resource.vpc} · ${resource.ip.privateIp}`],
+        ['公网 IP', resource.ip.publicIp ?? '未分配'],
+        ['计费模式', resource.billingMode === 'subscription' ? '包年包月' : '按量计费'],
+        ['自动续费', resource.billingMode === 'subscription' ? (resource.autoRenewal.enabled ? `已开启 · ${resource.autoRenewal.periodMonths} 个月` : '未开启') : '不适用'],
+      ]
+    : [
+        ['资产编号', resource.assetNumber],
+        ['整机型号', resource.machineModel],
+        ['CPU', `${resource.cpuModel} × ${resource.cpuSockets}`],
+        ['内存', `${resource.memoryGb} GB`],
+        ['GPU', formatAccelerator(resource)],
+        ['本地存储', resource.storageSummary],
+        ['物理位置', `${resource.room} · ${resource.rack} · ${resource.rackUnit}`],
+        ['操作系统', resource.operatingSystem],
+        ['主机名', resource.hostname],
+        ['管理网络', resource.managementNetwork],
+        ['业务网络', `${resource.businessNetwork} · ${resource.ip.privateIp}`],
+        ['责任人', resource.owner],
+      ];
   return (
     <div className="resource-detail-stack">
-      {resource.resourceType === 'cloud-server' ? (
-        <DefinitionSection
-          eyebrow="系统与运行环境"
-          title="系统盘"
-          fields={[
-            ['系统盘容量', `${resource.systemDiskGb} GB`],
-            ['管理范围', '当前仅提供容量信息查看'],
-          ]}
-        />
-      ) : (
-        <DefinitionSection
-          eyebrow="整机存储"
-          title="存储摘要"
-          fields={[
-            ['整机型号', resource.machineModel],
-            ['存储配置', resource.storageSummary],
-            ['管理范围', '当前仅提供整机存储信息查看'],
-          ]}
-        />
-      )}
+      <DefinitionSection eyebrow={resource.resourceType === 'cloud-server' ? '云实例身份' : '物理资产身份'} title="基础信息" fields={identity} />
+      <DefinitionSection eyebrow={resource.resourceType === 'cloud-server' ? '虚拟化与云资源' : '整机硬件与位置'} title={resource.resourceType === 'cloud-server' ? '云服务器配置' : '物理机配置'} fields={specific} />
       <Container as="section" className="resource-section">
-        <div className="resource-section__heading">
-          <div>
-            <span>持久化数据</span>
-            <h3>数据存储</h3>
-          </div>
-        </div>
-        <Table
-          aria-label="数据存储列表"
-          columns={columns}
-          rows={relations}
-          getRowKey={({ mount }) => mount.id}
-          empty={
-            <EmptyTable
-              title="未关联数据存储"
-              description="当前资源没有可展示的数据存储。"
-            />
-          }
-        />
+        <div className="resource-section__heading"><div><span>生命周期申请</span><h3>相关申请</h3></div></div>
+        {relatedOrders.length ? <div className="management-related-links">{relatedOrders.map((order) => <Link to={`/orders/${order.id}`} key={order.id}>{order.id} · {APPLICATION_TYPE_LABELS[order.applicationType]} · {ORDER_STATUS_VIEWS[order.status].label}</Link>)}</div> : <EmptyTable title="暂无相关申请" />}
       </Container>
     </div>
   );
 }
 
-export function ResourceNetwork({
-  resource,
-  connectionContent,
-}: Readonly<{ resource: Resource; connectionContent: React.ReactNode }>) {
+function DiskCapacity({ disk }: Readonly<{ disk: CloudDataDisk }>) {
+  const available = disk.capacityGb - disk.usedGb;
+  const percent = Math.round((disk.usedGb / disk.capacityGb) * 100);
+  const state = capacityStatus(percent);
+  return (
+    <div className="resource-capacity-cell">
+      <Progress value={disk.usedGb} max={disk.capacityGb} label={state.label} tone={state.tone} />
+      <span>总量 {disk.capacityGb} GB · 已用 {disk.usedGb} GB · 剩余 {available} GB</span>
+    </div>
+  );
+}
+
+export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) {
+  const relations = getStorageMountsForResource(resource.id);
+  if (resource.resourceType === 'physical-machine') {
+    const storage = resource.localStorage;
+    const percent = Math.round((storage.usedCapacityGb / storage.totalCapacityGb) * 100);
+    const state = capacityStatus(percent);
+    return (
+      <div className="resource-detail-stack">
+        <Container as="section" className="resource-section resource-capacity-overview">
+          <div className="resource-section__heading"><div><span>整机本地存储</span><h3>容量与磁盘健康</h3></div><StatusBadge tone={state.badge}>{state.label}</StatusBadge></div>
+          <div className="resource-capacity-metrics">
+            <div><span>总容量</span><strong>{storage.totalCapacityGb} GB</strong></div>
+            <div><span>已使用</span><strong>{storage.usedCapacityGb} GB</strong></div>
+            <div><span>可用容量</span><strong>{storage.totalCapacityGb - storage.usedCapacityGb} GB</strong></div>
+            <div><span>使用率</span><strong>{percent}%</strong></div>
+          </div>
+          <Progress value={storage.usedCapacityGb} max={storage.totalCapacityGb} label={state.label} tone={state.tone} />
+        </Container>
+        <DefinitionSection eyebrow="物理磁盘与逻辑卷" title="本地存储配置" fields={[
+          ['物理磁盘', `${storage.diskCount} 块 × ${storage.perDiskCapacityGb} GB`],
+          ['RAID 级别', storage.raidLevel],
+          ['磁盘健康', storage.health === 'normal' ? '正常' : '需要关注'],
+          ['文件系统', storage.fileSystem],
+          ['逻辑卷', storage.logicalVolume],
+          ['挂载点', storage.mountPoint],
+        ]} />
+      </div>
+    );
+  }
+  const diskColumns: readonly TableColumn<CloudDataDisk>[] = [
+    { key: 'name', title: '磁盘', multiline: true, render: (disk) => <div className="resource-table__primary"><strong>{disk.name}</strong><span>{disk.id}</span><span>{disk.role === 'system' ? '系统盘' : '数据盘'}</span></div> },
+    { key: 'type', title: '类型与挂载', multiline: true, render: (disk) => <div className="resource-table__primary"><strong>{disk.diskType}</strong><span>{disk.deviceName} · {disk.mountPath}</span><span>{disk.fileSystem} · {disk.readOnly ? '只读' : '读写'}</span></div> },
+    { key: 'capacity', title: '容量使用', multiline: true, render: (disk) => <DiskCapacity disk={disk} /> },
+    { key: 'lifecycle', title: '状态与期限', multiline: true, render: (disk) => <div className="resource-table__primary"><strong>{disk.status === 'warning' ? '需要关注' : '使用中'}</strong><span>{disk.releaseWithInstance ? '随实例释放' : '独立保留'}</span><span>{formatDateTime(disk.expiresAt)}</span></div> },
+    { key: 'performance', title: '性能指标', multiline: true, render: (disk) => <div className="resource-table__primary"><span>读/写 {disk.performance.readThroughputMbs}/{disk.performance.writeThroughputMbs} MB/s</span><span>IOPS {disk.performance.readIops}/{disk.performance.writeIops}</span><span>平均时延 {disk.performance.averageLatencyMs} ms</span></div> },
+  ];
+  const sharedColumns: readonly TableColumn<{ space: StorageSpace; mount: StorageMount }>[] = [
+    { key: 'name', title: '共享存储', multiline: true, render: ({ space }) => <div className="resource-table__primary"><Link to={`/storage/${space.id}`}>{space.name}</Link><span>{space.id}</span></div> },
+    { key: 'capacity', title: '容量', multiline: true, render: ({ space }) => {
+      const state = capacityStatus(storageUsagePercent(space));
+      return <div className="resource-capacity-cell"><Progress value={space.usedGb} max={space.capacityGb} label={state.label} tone={state.tone} /><span>总量 {space.capacityGb} GB · 已用 {space.usedGb} GB · 剩余 {storageAvailableGb(space)} GB</span></div>;
+    } },
+    { key: 'access', title: '访问', multiline: true, render: ({ space, mount }) => <div className="resource-table__primary"><strong>{space.protocol}</strong><span>{mount.mountPath}</span><span>{mount.readOnly ? '只读' : '读写'}</span></div> },
+    { key: 'expiry', title: '到期时间', render: ({ space }) => formatDateTime(space.expiresAt) },
+  ];
+  return (
+    <div className="resource-detail-stack">
+      <Container as="section" className="resource-section">
+        <div className="resource-section__heading"><div><span>系统盘与数据盘</span><h3>云服务器磁盘</h3></div></div>
+        <Table aria-label="云服务器磁盘" columns={diskColumns} rows={resource.dataDisks} getRowKey={(disk) => disk.id} />
+      </Container>
+      <Container as="section" className="resource-section">
+        <div className="resource-section__heading"><div><span>独立管理</span><h3>关联存储空间</h3></div><Link to="/storage">进入存储管理</Link></div>
+        <Table aria-label="关联存储空间" columns={sharedColumns} rows={relations} getRowKey={({ mount }) => mount.id} empty={<EmptyTable title="未关联独立存储空间" />} />
+      </Container>
+    </div>
+  );
+}
+
+export function ResourceHealth({ resource }: Readonly<{ resource: Resource }>) {
+  const columns: readonly TableColumn<Resource['health']['items'][number]>[] = [
+    { key: 'name', title: '检查项', render: (item) => item.name },
+    { key: 'status', title: '状态', render: (item) => <StatusBadge tone={item.status === 'normal' ? 'success' : item.status === 'warning' ? 'warning' : 'info'}>{item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '检查中'}</StatusBadge> },
+    { key: 'message', title: '说明', render: (item) => item.message },
+  ];
+  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>{resource.resourceType === 'cloud-server' ? '实例检查' : 'CPU、内存、GPU、磁盘、电源与温度'}</span><h3>{resource.resourceType === 'cloud-server' ? '实例健康' : '硬件与健康'}</h3></div></div><Table aria-label="健康检查项" columns={columns} rows={resource.health.items} getRowKey={(item) => item.name} /></Container>;
+}
+
+export function ResourceImageSystem({ resource }: Readonly<{ resource: Resource }>) {
+  if (resource.resourceType !== 'cloud-server') return null;
+  return <DefinitionSection eyebrow="镜像与启动系统" title="镜像和操作系统" fields={[
+    ['镜像名称', resource.image],
+    ['镜像 ID', <Link to={`/images?resource=${resource.id}`}>{resource.imageId}</Link>],
+    ['操作系统', resource.operatingSystem],
+    ['SSH', resource.sshEnabled ? '已启用' : '未启用'],
+    ['系统盘', `${resource.systemDiskGb} GB`],
+  ]} />;
+}
+
+export function ResourceDelivery({ resource }: Readonly<{ resource: Resource }>) {
+  if (resource.resourceType !== 'physical-machine') return null;
+  return <DefinitionSection eyebrow="交付与带外管理" title="交付和管理网络" fields={[
+    ['交付状态', resource.deliveryStatus === 'delivered' ? '已交付' : resource.deliveryStatus === 'preparing' ? '准备中' : '释放处理中'],
+    ['资产编号', resource.assetNumber],
+    ['物理位置', `${resource.room} · ${resource.rack} · ${resource.rackUnit}`],
+    ['管理网络', resource.managementNetwork],
+    ['业务网络', resource.businessNetwork],
+    ['BMC/IPMI 授权', resource.bmcAccess === 'authorized' ? '已授权' : resource.bmcAccess === 'restricted' ? '受限' : '未提供'],
+    ['认证方式', resource.connection.authenticationMethod ?? '资源就绪后提供'],
+  ]} />;
+}
+
+export function ResourceNetwork({ resource, connectionContent }: Readonly<{ resource: Resource; connectionContent: ReactNode }>) {
   const [selectedRule, setSelectedRule] = useState<NetworkAccessRule>();
   const rules = getNetworkRulesForResource(resource.id);
   const columns: readonly TableColumn<NetworkAccessRule>[] = [
-    {
-      key: 'name',
-      title: '规则名称',
-      render: (rule) => rule.description || '端口访问规则',
-    },
+    { key: 'name', title: '规则名称', render: (rule) => rule.description || '端口访问规则' },
     { key: 'protocol', title: '协议', render: (rule) => rule.protocol },
-    {
-      key: 'mapping',
-      title: '端口映射',
-      render: (rule) => `${rule.servicePort} → ${rule.mappedPort}`,
-    },
+    { key: 'mapping', title: '端口映射', render: (rule) => `${rule.servicePort} → ${rule.mappedPort}` },
     { key: 'source', title: '允许来源', render: (rule) => rule.source },
-    {
-      key: 'status',
-      title: '状态',
-      render: (rule) =>
-        rule.status === 'effective'
-          ? '已生效'
-          : rule.status === 'failed'
-            ? '失败'
-            : '处理中',
-    },
+    { key: 'status', title: '状态', render: (rule) => rule.status === 'effective' ? '已生效' : rule.status === 'failed' ? '失败' : '处理中' },
   ];
-
   return (
     <div className="resource-detail-stack">
       {connectionContent}
       <Container as="section" className="resource-section">
-        <div className="resource-section__heading">
-          <div>
-            <span>端口与来源</span>
-            <h3>访问规则</h3>
-          </div>
-        </div>
-        <Table
-          aria-label="网络访问规则"
-          columns={columns}
-          rows={rules}
-          getRowKey={(rule) => rule.id}
-          renderRowActions={(rule) => (
-            <Button variant="ghost" onClick={() => setSelectedRule(rule)}>
-              查看
-            </Button>
-          )}
-          empty={
-            <EmptyTable
-              title="暂无访问规则"
-              description="当前资源没有可展示的端口访问规则。"
-            />
-          }
-        />
+        <div className="resource-section__heading"><div><span>端口与来源</span><h3>访问规则</h3></div><Link to={`/network?resource=${resource.id}`}>进入网络管理</Link></div>
+        <Table aria-label="网络访问规则" columns={columns} rows={rules} getRowKey={(rule) => rule.id} renderRowActions={(rule) => <Button variant="ghost" onClick={() => setSelectedRule(rule)}>查看</Button>} empty={<EmptyTable title="暂无访问规则" />} />
       </Container>
-      <Modal
-        open={Boolean(selectedRule)}
-        title="访问规则详情"
-        onClose={() => setSelectedRule(undefined)}
-        primaryAction={{
-          label: '关闭',
-          onClick: () => setSelectedRule(undefined),
-        }}
-      >
-        {selectedRule && (
-          <dl className="resource-modal-definition">
-            <div><dt>规则名称</dt><dd>{selectedRule.description || '端口访问规则'}</dd></div>
-            <div><dt>协议</dt><dd>{selectedRule.protocol}</dd></div>
-            <div><dt>服务端口</dt><dd>{selectedRule.servicePort}</dd></div>
-            <div><dt>映射端口</dt><dd>{selectedRule.mappedPort}</dd></div>
-            <div><dt>允许来源</dt><dd>{selectedRule.source}</dd></div>
-            <div><dt>状态</dt><dd>{selectedRule.status === 'effective' ? '已生效' : selectedRule.status === 'failed' ? '失败' : '处理中'}</dd></div>
-          </dl>
-        )}
+      <Modal open={Boolean(selectedRule)} title="访问规则详情" onClose={() => setSelectedRule(undefined)} primaryAction={{ label: '关闭', onClick: () => setSelectedRule(undefined) }}>
+        {selectedRule && <dl className="resource-modal-definition"><div><dt>规则名称</dt><dd>{selectedRule.description}</dd></div><div><dt>协议</dt><dd>{selectedRule.protocol}</dd></div><div><dt>服务端口</dt><dd>{selectedRule.servicePort}</dd></div><div><dt>映射端口</dt><dd>{selectedRule.mappedPort}</dd></div><div><dt>允许来源</dt><dd>{selectedRule.source}</dd></div></dl>}
       </Modal>
     </div>
   );
 }
 
-export function ResourceSoftware({
-  resourceId,
-  onOpenSoftwareCenter,
-}: Readonly<{
-  resourceId: string;
-  onOpenSoftwareCenter: () => void;
-}>) {
+export function ResourceSoftware({ resourceId, onOpenSoftwareCenter }: Readonly<{ resourceId: string; onOpenSoftwareCenter: () => void }>) {
   const software = getSoftwareForResource(resourceId);
   const columns: readonly TableColumn<SoftwareInstallation>[] = [
     { key: 'name', title: '软件', render: (item) => item.softwareName },
     { key: 'version', title: '版本', render: (item) => item.version },
-    {
-      key: 'status',
-      title: '状态',
-      render: (item) =>
-        item.status === 'installed'
-          ? '已安装'
-          : item.status === 'failed'
-            ? '失败'
-            : '处理中',
-    },
-    {
-      key: 'installedAt',
-      title: '安装时间',
-      render: (item) => formatDateTime(item.submittedAt),
-    },
+    { key: 'status', title: '状态', render: (item) => item.status === 'installed' ? '已安装' : item.status === 'failed' ? '失败' : '处理中' },
+    { key: 'installedAt', title: '安装时间', render: (item) => formatDateTime(item.submittedAt) },
   ];
-  return (
-    <Container as="section" className="resource-section">
-      <div className="resource-section__heading">
-        <div>
-          <span>软件与运行环境</span>
-          <h3>已安装软件</h3>
-        </div>
-        <Button onClick={onOpenSoftwareCenter}>前往软件中心</Button>
-      </div>
-      <Table
-        aria-label="已安装软件列表"
-        columns={columns}
-        rows={software}
-        getRowKey={(item) => item.id}
-      />
-    </Container>
-  );
+  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>软件与运行环境</span><h3>已安装软件</h3></div><Button onClick={onOpenSoftwareCenter}>前往软件中心</Button></div><Table aria-label="已安装软件列表" columns={columns} rows={software} getRowKey={(item) => item.id} /></Container>;
 }
 
-export function ResourceOperations({
-  resourceId,
-}: Readonly<{ resourceId: string }>) {
+export function ResourceOperations({ resourceId }: Readonly<{ resourceId: string }>) {
   const records = getOperationsForTarget(resourceId);
   const columns: readonly TableColumn<PlatformOperationRecord>[] = [
     { key: 'action', title: '操作类型', render: (record) => record.action },
     { key: 'actor', title: '操作主体', render: (record) => record.actor },
-    {
-      key: 'createdAt',
-      title: '操作时间',
-      render: (record) => formatDateTime(record.createdAt),
-    },
-    {
-      key: 'status',
-      title: '执行状态',
-      render: (record) => OPERATION_STATUS_LABELS[record.status],
-    },
+    { key: 'createdAt', title: '操作时间', render: (record) => formatDateTime(record.createdAt) },
+    { key: 'status', title: '执行状态', render: (record) => OPERATION_STATUS_LABELS[record.status] },
     { key: 'message', title: '结果说明', render: (record) => record.message },
   ];
-  return (
-    <Container as="section" className="resource-section">
-      <div className="resource-section__heading">
-        <div>
-          <span>资源变更追踪</span>
-          <h3>操作记录</h3>
-        </div>
-      </div>
-      <Table
-        aria-label="资源操作记录"
-        columns={columns}
-        rows={records}
-        getRowKey={(record) => record.id}
-      />
-    </Container>
-  );
+  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>资源变更追踪</span><h3>操作记录</h3></div><Link to={`/operation-records?q=${resourceId}`}>查看全部记录</Link></div><Table aria-label="资源操作记录" columns={columns} rows={records} getRowKey={(record) => record.id} /></Container>;
 }
 
-export function ResourceDetailHeader({
-  resource,
-  onBack,
-  onConnection,
-  onManage,
-}: Readonly<{
+export function ResourceDetailHeader({ resource, onBack, onConnection, onAction }: Readonly<{
   resource: Resource;
   onBack: () => void;
   onConnection: () => void;
-  onManage: () => void;
+  onAction: (action: ResourceMenuAction) => void;
 }>) {
+  const isRunning = resource.status === 'running';
   return (
     <Container as="section" className="resource-detail-header">
-      <div className="resource-detail-header__navigation">
-        <Button variant="ghost" onClick={onBack}>
-          返回资源列表
-        </Button>
-      </div>
+      <div className="resource-detail-header__navigation"><Button variant="ghost" onClick={onBack}>返回资源列表</Button></div>
       <div className="resource-detail-header__main">
-        <div>
-          <span>
-            {resource.resourceType === 'cloud-server' ? '云服务器' : '物理机'}
-          </span>
-          <h2>{resource.name}</h2>
-          <p>{resource.id} · {resource.site}</p>
-        </div>
+        <div><span>{resource.resourceType === 'cloud-server' ? '☁ 云服务器' : '▤ 物理机资产'}</span><h2>{resource.name}</h2><p>{resource.resourceType === 'physical-machine' ? resource.assetNumber : resource.id} · {resource.site} · {resource.project}</p></div>
         <div className="resource-detail-header__actions">
           <ResourceStatusBadge status={resource.status} />
-          <Button variant="secondary" onClick={onConnection}>
-            连接信息
-          </Button>
-          <Button onClick={onManage}>管理操作</Button>
+          <StatusBadge tone={resource.health.status === 'normal' ? 'success' : resource.health.status === 'warning' ? 'warning' : 'info'}>{resource.health.status === 'normal' ? '健康正常' : resource.health.status === 'warning' ? '健康告警' : '健康检查中'}</StatusBadge>
+          <Button variant="secondary" onClick={onConnection}>{resource.resourceType === 'cloud-server' ? '连接' : '连接信息'}</Button>
+          <Button variant="secondary" onClick={() => onAction(resource.resourceType === 'cloud-server' ? 'renew' : 'extend')}>{resource.resourceType === 'cloud-server' ? '续费' : '申请延期'}</Button>
+          <Button onClick={() => onAction(isRunning ? 'stop' : 'start')}>{isRunning ? (resource.resourceType === 'cloud-server' ? '停止' : '关机') : '启动'}</Button>
+          <ResourceActionMenu resource={resource} onAction={(_, action) => onAction(action)} />
         </div>
       </div>
     </Container>

@@ -15,9 +15,13 @@ import {
 import {
   getOrder,
   queryOrders,
+  APPLICATION_TYPE_LABELS,
+  ORDER_STATUS_VIEWS,
+  type ApplicationType,
   type OrderStatus,
   type PurchaseOrder,
 } from '../features/orders';
+import { getResourceByAnyId } from '../features/resources';
 import {
   listOperationRecords,
   type OperationModule,
@@ -32,17 +36,20 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false });
 }
 
-const ORDER_STATUS: Readonly<Record<OrderStatus, { label: string; tone: 'neutral' | 'info' | 'success' | 'warning' | 'error' }>> = {
-  pending: { label: '待处理', tone: 'neutral' },
-  preparing: { label: '资源准备中', tone: 'info' },
-  delivered: { label: '已交付', tone: 'success' },
-  cancelled: { label: '已取消', tone: 'warning' },
-  failed: { label: '处理失败', tone: 'error' },
-};
-
 function resourcePath(order: PurchaseOrder) {
+  if (order.applicationType === 'storage-expansion' && order.storageId) {
+    return `/storage/${order.storageId}`;
+  }
   if (!order.resourceId) return undefined;
   return `/resources/${order.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${order.resourceId}`;
+}
+
+function resourceTypeLabel(order: PurchaseOrder) {
+  return order.resourceType === 'cloud-server'
+    ? '云服务器'
+    : order.resourceType === 'physical-machine'
+      ? '物理机'
+      : '存储空间';
 }
 
 export function OrderListPage() {
@@ -54,7 +61,11 @@ export function OrderListPage() {
       resourceType: (searchParams.get('resourceType') ?? 'all') as
         | 'all'
         | 'cloud-server'
-        | 'physical-machine',
+        | 'physical-machine'
+        | 'storage',
+      applicationType: (searchParams.get('applicationType') ?? 'all') as
+        | 'all'
+        | ApplicationType,
       status: (searchParams.get('status') ?? 'all') as 'all' | OrderStatus,
       site: searchParams.get('site') ?? 'all',
       submittedAfter: searchParams.get('after') ?? '',
@@ -78,14 +89,24 @@ export function OrderListPage() {
   const rows = orders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const columns: readonly TableColumn<PurchaseOrder>[] = [
     { key: 'id', title: '申请编号', render: (order) => <Link to={`/orders/${order.id}`}>{order.id}</Link> },
-    { key: 'type', title: '资源类型', render: (order) => order.resourceType === 'cloud-server' ? '云服务器' : '物理机' },
+    { key: 'application', title: '申请类型', render: (order) => APPLICATION_TYPE_LABELS[order.applicationType] },
+    { key: 'type', title: '资源类型', render: resourceTypeLabel },
     { key: 'spec', title: '规格摘要', render: (order) => order.specificationSummary || order.productName, multiline: true },
     { key: 'quantity', title: '数量', render: (order) => order.quantity },
     { key: 'site', title: '站点', render: (order) => order.site },
     { key: 'applicant', title: '责任人', render: (order) => order.applicant },
     { key: 'time', title: '提交时间', render: (order) => formatDate(order.submittedAt) },
-    { key: 'status', title: '当前状态', render: (order) => <StatusBadge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</StatusBadge> },
-    { key: 'resource', title: '关联资源', render: (order) => resourcePath(order) ? <Link to={resourcePath(order)!}>{order.resourceName ?? order.resourceId}</Link> : '等待资源准备' },
+    { key: 'status', title: '当前状态', render: (order) => <StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>{ORDER_STATUS_VIEWS[order.status].label}</StatusBadge> },
+    { key: 'resource', title: '关联资源', render: (order) => {
+      const current = order.resourceId ? getResourceByAnyId(order.resourceId) : undefined;
+      return resourcePath(order) ? <Link to={resourcePath(order)!}>{order.storageId ? order.resourceName : current?.name ?? order.resourceName ?? order.resourceId}</Link> : '等待资源准备';
+    } },
+    { key: 'scope', title: '项目与标签', multiline: true, render: (order) => {
+      const current = order.resourceId ? getResourceByAnyId(order.resourceId) : undefined;
+      return current
+        ? <div className="management-primary-cell"><strong>{current.project}</strong><span>{current.tags.join(' · ') || '暂无标签'}</span></div>
+        : '—';
+    } },
   ];
 
   return (
@@ -93,8 +114,9 @@ export function OrderListPage() {
       <Container className="management-toolbar">
         <div className="management-filter-grid management-filter-grid--orders">
           <SearchInput aria-label="搜索申请" value={query.search} placeholder="搜索申请编号或关联资源" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
-          <Select aria-label="资源类型" value={query.resourceType} onValueChange={(value) => setParam('resourceType', value)} options={[{ value: 'all', label: '全部资源类型' }, { value: 'cloud-server', label: '云服务器' }, { value: 'physical-machine', label: '物理机' }]} />
-          <Select aria-label="申请状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, ...Object.entries(ORDER_STATUS).map(([value, view]) => ({ value, label: view.label }))]} />
+          <Select aria-label="申请类型" value={query.applicationType} onValueChange={(value) => setParam('applicationType', value)} options={[{ value: 'all', label: '全部申请类型' }, ...Object.entries(APPLICATION_TYPE_LABELS).map(([value, label]) => ({ value, label }))]} />
+          <Select aria-label="资源类型" value={query.resourceType} onValueChange={(value) => setParam('resourceType', value)} options={[{ value: 'all', label: '全部资源类型' }, { value: 'cloud-server', label: '云服务器' }, { value: 'physical-machine', label: '物理机' }, { value: 'storage', label: '存储空间' }]} />
+          <Select aria-label="申请状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, ...Object.entries(ORDER_STATUS_VIEWS).map(([value, view]) => ({ value, label: view.label }))]} />
           <Select aria-label="站点" value={query.site} onValueChange={(value) => setParam('site', value)} options={[{ value: 'all', label: '全部站点' }, { value: '东部算力中心', label: '东部算力中心' }, { value: '西部算力中心', label: '西部算力中心' }]} />
           <Select aria-label="关联资源" value={query.related} onValueChange={(value) => setParam('related', value)} options={[{ value: 'all', label: '全部关联状态' }, { value: 'yes', label: '已关联资源' }, { value: 'no', label: '等待关联资源' }]} />
           <Input aria-label="提交日期起始" type="date" value={query.submittedAfter} onChange={(event) => setParam('after', event.target.value)} />
@@ -116,6 +138,9 @@ export function OrderDetailPage() {
 
   if (!order) return <div className="management-page"><PageState title="未找到申请记录" description="该申请不存在或记录已移除。" actionLabel="返回申请列表" onAction={() => navigate('/orders')} /></div>;
   const relatedPath = resourcePath(order);
+  const currentResource = order.resourceId
+    ? getResourceByAnyId(order.resourceId)
+    : undefined;
   const operations = listOperationRecords().filter((record) => record.targetId === order.id || record.targetId === order.resourceId);
   const operationColumns: readonly TableColumn<PlatformOperationRecord>[] = [
     { key: 'action', title: '操作', render: (record) => record.action },
@@ -129,8 +154,8 @@ export function OrderDetailPage() {
       <Container className="management-detail-header">
         <TextButton onClick={() => navigate('/orders')}>返回申请列表</TextButton>
         <div className="management-detail-header__main">
-          <div><span>申请编号</span><h2>{order.id}</h2><p>{order.resourceType === 'cloud-server' ? '云服务器' : '物理机'} · {order.site}</p></div>
-          <StatusBadge tone={ORDER_STATUS[order.status].tone}>{ORDER_STATUS[order.status].label}</StatusBadge>
+          <div><span>申请编号</span><h2>{order.id}</h2><p>{resourceTypeLabel(order)} · {order.site}</p></div>
+          <StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>{ORDER_STATUS_VIEWS[order.status].label}</StatusBadge>
         </div>
       </Container>
       <div className="management-detail-grid">
@@ -140,18 +165,30 @@ export function OrderDetailPage() {
             <div><dt>申请编号</dt><dd>{order.id}</dd></div>
             <div><dt>申请人</dt><dd>{order.applicant}</dd></div>
             <div><dt>提交时间</dt><dd>{formatDate(order.submittedAt)}</dd></div>
-            <div><dt>当前状态</dt><dd>{ORDER_STATUS[order.status].label}</dd></div>
-            <div><dt>资源类型</dt><dd>{order.resourceType === 'cloud-server' ? '云服务器' : '物理机'}</dd></div>
+            <div><dt>当前状态</dt><dd>{ORDER_STATUS_VIEWS[order.status].label}</dd></div>
+            <div><dt>申请类型</dt><dd>{APPLICATION_TYPE_LABELS[order.applicationType]}</dd></div>
+            <div><dt>资源类型</dt><dd>{resourceTypeLabel(order)}</dd></div>
             <div><dt>数量</dt><dd>{order.quantity}</dd></div>
           </dl>
         </Container>
         <Container as="section" className="management-detail-section">
           <h3>关联资源</h3>
-          {relatedPath ? <div className="management-related-card"><strong>{order.resourceName ?? order.resourceId}</strong><span>{order.resourceId}</span><Link to={relatedPath}>查看资源详情</Link></div> : <PageState title="等待资源准备" description="当前申请尚未关联可访问的计算资源。" />}
+          {relatedPath ? (
+            <div className="management-related-card">
+              <strong>{order.storageId ? order.resourceName : currentResource?.name ?? order.resourceName ?? order.resourceId}</strong>
+              <span>{order.storageId ?? order.resourceId}</span>
+              {currentResource && <span>{currentResource.project} · {currentResource.tags.join(' · ') || '暂无标签'}</span>}
+              <Link to={relatedPath}>{order.storageId ? '查看存储详情' : '查看资源详情'}</Link>
+            </div>
+          ) : <PageState title="等待资源准备" description="当前申请尚未关联可访问的计算资源。" />}
         </Container>
         <Container as="section" className="management-detail-section">
           <h3>资源配置</h3>
-          <dl className="management-definition-grid">{order.summary.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
+          <dl className="management-definition-grid">
+            {order.summary.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
+            {order.expectedExpiresAt && <div><dt>预计到期时间</dt><dd>{formatDate(order.expectedExpiresAt)}</dd></div>}
+            {order.configurationChanges && <div><dt>配置变化</dt><dd>{order.configurationChanges}</dd></div>}
+          </dl>
         </Container>
         <Container as="section" className="management-detail-section">
           <h3>处理进度</h3>
@@ -209,7 +246,10 @@ export function OperationRecordsPage() {
   const columns: readonly TableColumn<PlatformOperationRecord>[] = [
     { key: 'action', title: '操作类型', render: (record) => record.action },
     { key: 'module', title: '模块', render: (record) => MODULE_LABELS[record.module] },
-    { key: 'target', title: '操作对象', render: (record) => record.targetPath ? <Link to={record.targetPath}>{record.targetName}</Link> : <div className="management-primary-cell"><span>{record.targetName}</span><span>{record.targetId}</span></div> },
+    { key: 'target', title: '操作对象', render: (record) => {
+      const current = getResourceByAnyId(record.targetId);
+      return record.targetPath ? <Link to={record.targetPath}>{current?.name ?? record.targetName}</Link> : <div className="management-primary-cell"><span>{record.targetName}</span><span>{record.targetId}</span></div>;
+    } },
     { key: 'actor', title: '操作人', render: (record) => record.actor },
     { key: 'time', title: '时间', render: (record) => formatDate(record.createdAt) },
     { key: 'status', title: '执行状态', render: (record) => <StatusBadge tone={record.status === 'completed' ? 'success' : record.status === 'failed' ? 'error' : 'info'}>{OPERATION_LABELS[record.status]}</StatusBadge> },
