@@ -2,6 +2,6 @@ export {
   getOperationsForTarget,
   listOperationRecords,
   recordOperation,
-  resetOperationsRepository,
-} from './services/operationsRepository';
+  resetOperationsStore,
+} from './state/operationsStore';
 export type * from './types';

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Button,
@@ -112,9 +112,7 @@ const INITIAL_CREATE: CreateDraft = {
 
 export function StorageListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [spaces, setSpaces] = useState<readonly StorageSpace[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [revision, setRevision] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [draft, setDraft] = useState<CreateDraft>(INITIAL_CREATE);
   const [formError, setFormError] = useState('');
@@ -135,37 +133,13 @@ export function StorageListPage() {
     }),
     [searchParams],
   );
-
-  async function load() {
-    setLoading(true);
-    try {
-      setSpaces(await queryStorageSpaces(query));
-      setError('');
-    } catch {
-      setError('存储数据读取失败，请稍后重试。');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    let active = true;
-    queryStorageSpaces(query)
-      .then((nextSpaces) => {
-        if (!active) return;
-        setSpaces(nextSpaces);
-        setError('');
-      })
-      .catch(() => {
-        if (active) setError('存储数据读取失败，请稍后重试。');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [query]);
+  const spaces = useMemo(
+    () => {
+      void revision;
+      return queryStorageSpaces(query);
+    },
+    [query, revision],
+  );
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -194,7 +168,7 @@ export function StorageListPage() {
       setCreateOpen(false);
       setDraft(INITIAL_CREATE);
       setFeedback(`${created.name} 的创建请求已提交。`);
-      await load();
+      setRevision((value) => value + 1);
     } catch (nextError) {
       setFormError(nextError instanceof Error ? nextError.message : '提交失败。');
     } finally {
@@ -271,7 +245,7 @@ export function StorageListPage() {
       <Container className="management-results">
         <div className="management-results__header">
           <div><span>存储空间</span><h2>存储列表</h2></div>
-          <p>{loading ? '正在读取存储' : `共 ${spaces.length} 个结果`}</p>
+          <p>共 {spaces.length} 个结果</p>
         </div>
         <Table
           className="management-table"
@@ -279,9 +253,6 @@ export function StorageListPage() {
           columns={STORAGE_COLUMNS}
           rows={rows}
           getRowKey={(space) => space.id}
-          loading={loading}
-          error={error || undefined}
-          onRetry={() => void load()}
           empty={
             <PageState
               title={hasFilters ? '没有匹配的存储空间' : '暂无存储空间'}
@@ -294,7 +265,7 @@ export function StorageListPage() {
             <Link to={`/storage/${space.id}`}>查看详情</Link>
           )}
         />
-        {!loading && !error && spaces.length > 0 && (
+        {spaces.length > 0 && (
           <Pagination
             page={safePage}
             totalPages={totalPages}
@@ -335,7 +306,7 @@ export function StorageListPage() {
               ]}
             />
           </FormField>
-          <FormField label="容量（GB）" required help="提交后由基础设施服务处理，本页面不创建实际容量。">
+          <FormField label="容量（GB）" required help="提交后存储空间将进入准备流程。">
             <Input type="number" min={1} value={draft.capacity} onChange={(event) => setDraft({ ...draft, capacity: event.target.value })} />
           </FormField>
           <div className="management-form-actions">
@@ -353,32 +324,23 @@ type DetailAction = 'rename' | 'expand' | 'mount' | 'delete' | undefined;
 export function StorageDetailPage() {
   const { storageId = '' } = useParams();
   const navigate = useNavigate();
-  const [space, setSpace] = useState<StorageSpace>();
-  const [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
   const [action, setAction] = useState<DetailAction>();
   const [value, setValue] = useState('');
   const [mountPath, setMountPath] = useState('/data/shared');
   const [readOnly, setReadOnly] = useState('false');
-  const [resources, setResources] = useState<readonly Resource[]>([]);
   const [selectedResourceId, setSelectedResourceId] = useState('');
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
   const operations = getOperationsForTarget(storageId);
-
-  async function load() {
-    setLoading(true);
-    const next = await getStorageSpace(storageId);
-    setSpace(next);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    let active = true;
-    getStorageSpace(storageId).then((next) => {
-      if (!active) return;
-      setSpace(next);
-      setLoading(false);
-    });
+  const space = useMemo(
+    () => {
+      void revision;
+      return getStorageSpace(storageId);
+    },
+    [revision, storageId],
+  );
+  const resources = useMemo<readonly Resource[]>(() => {
     const base = {
       search: '',
       site: 'all',
@@ -390,18 +352,14 @@ export function StorageDetailPage() {
       image: 'all',
       operatingSystem: 'all',
     };
-    Promise.all([
-      queryResources({ ...base, resourceType: 'cloud-server' }, { delayMs: 0 }),
-      queryResources({ ...base, resourceType: 'physical-machine' }, { delayMs: 0 }),
-    ]).then(([cloud, physical]) => {
-      if (active) setResources([...cloud.items, ...physical.items]);
+    const cloud = queryResources({ ...base, resourceType: 'cloud-server' });
+    const physical = queryResources({
+      ...base,
+      resourceType: 'physical-machine',
     });
-    return () => {
-      active = false;
-    };
-  }, [storageId]);
+    return [...cloud.items, ...physical.items];
+  }, []);
 
-  if (loading) return <div className="management-page"><PageState tone="loading" title="正在读取存储详情" /></div>;
   if (!space) {
     return (
       <div className="management-page">
@@ -442,7 +400,7 @@ export function StorageDetailPage() {
         return;
       }
       setAction(undefined);
-      await load();
+      setRevision((revisionValue) => revisionValue + 1);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : '操作提交失败。');
     }
@@ -524,7 +482,7 @@ export function StorageDetailPage() {
                 onClick={async () => {
                   await requestStorageUnmount(space.id, mount.id);
                   setFeedback('卸载请求已提交。');
-                  await load();
+                  setRevision((revisionValue) => revisionValue + 1);
                 }}
               >
                 卸载资源

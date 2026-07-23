@@ -3,7 +3,7 @@ export {
   deleteNetworkRule,
   getNetworkRulesForResource,
   queryNetworkRules,
-  resetNetworkRepository,
+  resetNetworkStore,
   updateNetworkRule,
-} from './services/networkRepository';
+} from './state/networkStore';
 export type * from './types';

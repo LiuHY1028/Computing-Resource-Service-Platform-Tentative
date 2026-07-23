@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button, Container } from '../../../components/ui';
+import { copyText } from '../../platform/clipboard';
 import type {
   ConnectionInformationData,
   PhysicalMachineResource,
@@ -31,12 +32,12 @@ export function ConnectionInformation({
 
   async function copyCommand() {
     if (!command) return;
-    try {
-      await navigator.clipboard.writeText(command);
-      setFeedback('SSH 命令已复制。');
-    } catch {
-      setFeedback('复制失败，请手动复制 SSH 命令。');
-    }
+    const copied = await copyText(command);
+    setFeedback(
+      copied
+        ? 'SSH 命令已复制。'
+        : '复制失败，请选择 SSH 命令并手动复制。',
+    );
   }
 
   if (!connection.available) {

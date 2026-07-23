@@ -4,7 +4,7 @@ export {
   findImage,
   getCompatibleImages,
   queryImages,
-  resetImageRepository,
+  resetImageStore,
   updateCustomImage,
-} from './services/imageRepository';
+} from './state/imageStore';
 export type * from './types';

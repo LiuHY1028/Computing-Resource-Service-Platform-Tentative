@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Button,
@@ -69,8 +69,7 @@ const INITIAL_DRAFT: ImageDraft = {
 
 export function ImagesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [images, setImages] = useState<readonly PlatformImage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
   const [selected, setSelected] = useState<PlatformImage>();
   const [formMode, setFormMode] = useState<'create' | 'import' | 'edit'>();
   const [deleteTarget, setDeleteTarget] = useState<PlatformImage>();
@@ -91,24 +90,10 @@ export function ImagesPage() {
     }),
     [searchParams, type],
   );
-
-  async function load() {
-    setLoading(true);
-    setImages(await queryImages(query));
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    let active = true;
-    queryImages(query).then((next) => {
-      if (!active) return;
-      setImages(next);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [query]);
+  const images = useMemo(() => {
+    void revision;
+    return queryImages(query);
+  }, [query, revision]);
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -207,7 +192,7 @@ export function ImagesPage() {
       setFormMode(undefined);
       setDeleteTarget(undefined);
       setParam('type', 'custom');
-      await load();
+      setRevision((value) => value + 1);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : '提交失败。');
     }
@@ -229,14 +214,13 @@ export function ImagesPage() {
       </Container>
       {feedback && <Container className="management-feedback" role="status">{feedback}</Container>}
       <Container className="management-results">
-        <div className="management-results__header"><div><span>{typeLabel(type)}</span><h2>镜像列表</h2></div><p>{loading ? '正在读取镜像' : `共 ${images.length} 个结果`}</p></div>
+        <div className="management-results__header"><div><span>{typeLabel(type)}</span><h2>镜像列表</h2></div><p>共 {images.length} 个结果</p></div>
         <Table
           className="management-table"
           aria-label={`${typeLabel(type)}列表`}
           columns={columns}
           rows={rows}
           getRowKey={(image) => image.id}
-          loading={loading}
           empty={<PageState title={query.search ? '没有匹配的镜像' : `暂无${typeLabel(type)}`} description={query.search ? '请调整搜索或筛选条件。' : '当前分类暂无可显示的镜像记录。'} />}
           renderRowActions={(image) => (
             <div className="management-row-actions">
@@ -245,7 +229,7 @@ export function ImagesPage() {
             </div>
           )}
         />
-        {!loading && images.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={images.length} onPageChange={(next) => setParam('page', String(next))} />}
+        {images.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={images.length} onPageChange={(next) => setParam('page', String(next))} />}
       </Container>
     </div>
   );
@@ -298,7 +282,7 @@ export function ImagesPage() {
               <FormField label="版本"><Input value={draft.version} onChange={(event) => setDraft({ ...draft, version: event.target.value })} /></FormField>
               <FormField label="架构"><Select value={draft.architecture} onValueChange={(value) => setDraft({ ...draft, architecture: value as 'x86_64' | 'arm64' })} options={[{ value: 'x86_64', label: 'x86_64' }, { value: 'arm64', label: 'arm64' }]} /></FormField>
               <FormField label="适用计算类型"><Select value={draft.computeType} onValueChange={(value) => setDraft({ ...draft, computeType: value as ImageDraft['computeType'] })} options={[{ value: 'both', label: 'CPU 与 GPU' }, { value: 'cpu', label: '仅 CPU' }, { value: 'gpu', label: '仅 GPU' }]} /></FormField>
-              {formMode === 'import' && <FormField label="镜像文件" required help="仅读取文件名称和大小，不上传到真实镜像仓库。"><input type="file" onChange={(event) => setDraft({ ...draft, file: event.target.files?.[0] })} /></FormField>}
+              {formMode === 'import' && <FormField label="镜像文件" required help="请选择需要导入的镜像文件。"><input type="file" onChange={(event) => setDraft({ ...draft, file: event.target.files?.[0] })} /></FormField>}
             </>
           )}
           <FormField label="说明"><Textarea value={draft.description} maxLength={240} showCount onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></FormField>
@@ -306,7 +290,7 @@ export function ImagesPage() {
         </Form>
       </Modal>
 
-      <Modal open={Boolean(deleteTarget) && !formMode} title="删除自定义镜像" role="alertdialog" onClose={() => setDeleteTarget(undefined)} primaryAction={{ label: '确认删除', variant: 'danger', onClick: async () => { if (!deleteTarget) return; try { await deleteCustomImage(deleteTarget.id); setFeedback('自定义镜像记录已删除。'); setDeleteTarget(undefined); await load(); } catch (nextError) { setError(nextError instanceof Error ? nextError.message : '删除失败。'); } } }} secondaryAction={{ label: '取消', onClick: () => setDeleteTarget(undefined) }}>
+      <Modal open={Boolean(deleteTarget) && !formMode} title="删除自定义镜像" role="alertdialog" onClose={() => setDeleteTarget(undefined)} primaryAction={{ label: '确认删除', variant: 'danger', onClick: async () => { if (!deleteTarget) return; try { await deleteCustomImage(deleteTarget.id); setFeedback('自定义镜像记录已删除。'); setDeleteTarget(undefined); setRevision((value) => value + 1); } catch (nextError) { setError(nextError instanceof Error ? nextError.message : '删除失败。'); } } }} secondaryAction={{ label: '取消', onClick: () => setDeleteTarget(undefined) }}>
         <p>{error || `确认删除“${deleteTarget?.name ?? ''}”的自定义镜像记录？`}</p>
       </Modal>
     </div>

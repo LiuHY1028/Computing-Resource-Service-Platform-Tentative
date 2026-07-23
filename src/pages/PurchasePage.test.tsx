@@ -1,19 +1,8 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../app/App';
-
-vi.mock('../features/purchase/services/purchaseRepository', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../features/purchase/services/purchaseRepository')>();
-  return {
-    ...actual,
-    loadPurchaseProduct: (
-      productId: string,
-      options: Parameters<typeof actual.loadPurchaseProduct>[1] = {},
-    ) => actual.loadPurchaseProduct(productId, { ...options, delayMs: 0 }),
-  };
-});
 
 function renderPurchase(path: string) {
   const user = userEvent.setup();

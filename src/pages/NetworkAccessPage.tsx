@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Button,
@@ -66,9 +66,7 @@ const INITIAL_DRAFT: RuleDraft = {
 
 export function NetworkAccessPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [rules, setRules] = useState<readonly NetworkAccessRule[]>([]);
-  const [resources, setResources] = useState<readonly Resource[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState<NetworkAccessRule | 'create'>();
   const [deleteTarget, setDeleteTarget] = useState<NetworkAccessRule>();
   const [batchOpen, setBatchOpen] = useState(false);
@@ -92,15 +90,14 @@ export function NetworkAccessPage() {
     }),
     [searchParams],
   );
-
-  async function load() {
-    setLoading(true);
-    setRules(await queryNetworkRules(query));
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    let active = true;
+  const rules = useMemo(
+    () => {
+      void revision;
+      return queryNetworkRules(query);
+    },
+    [query, revision],
+  );
+  const resources = useMemo<readonly Resource[]>(() => {
     const base = {
       search: '',
       site: 'all',
@@ -112,20 +109,13 @@ export function NetworkAccessPage() {
       image: 'all',
       operatingSystem: 'all',
     };
-    Promise.all([
-      queryNetworkRules(query),
-      queryResources({ ...base, resourceType: 'cloud-server' }, { delayMs: 0 }),
-      queryResources({ ...base, resourceType: 'physical-machine' }, { delayMs: 0 }),
-    ]).then(([nextRules, cloud, physical]) => {
-      if (!active) return;
-      setRules(nextRules);
-      setResources([...cloud.items, ...physical.items]);
-      setLoading(false);
+    const cloud = queryResources({ ...base, resourceType: 'cloud-server' });
+    const physical = queryResources({
+      ...base,
+      resourceType: 'physical-machine',
     });
-    return () => {
-      active = false;
-    };
-  }, [query]);
+    return [...cloud.items, ...physical.items];
+  }, []);
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -180,7 +170,7 @@ export function NetworkAccessPage() {
       else if (editing) await updateNetworkRule(editing.id, input);
       setFeedback('网络变更请求已提交。');
       setEditing(undefined);
-      await load();
+      setRevision((value) => value + 1);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : '提交失败。');
     }
@@ -238,7 +228,7 @@ export function NetworkAccessPage() {
       </Container>
       {feedback && <Container className="management-feedback" role="status">{feedback}</Container>}
       <Container className="management-results">
-        <div className="management-results__header"><div><span>端口与访问控制</span><h2>网络访问规则</h2></div><p>{loading ? '正在读取规则' : `共 ${rules.length} 个结果`}</p></div>
+        <div className="management-results__header"><div><span>端口与访问控制</span><h2>网络访问规则</h2></div><p>共 {rules.length} 个结果</p></div>
         <Table
           className="management-table"
           aria-label="网络访问规则列表"
@@ -248,11 +238,10 @@ export function NetworkAccessPage() {
           selectable
           selectedKeys={selectedKeys}
           onSelectionChange={setSelectedKeys}
-          loading={loading}
           empty={<PageState title={query.search ? '没有匹配的网络规则' : '暂无网络访问规则'} description={query.search ? '请调整搜索或筛选条件。' : '可选择资源并提交新的访问规则。'} />}
           renderRowActions={(rule) => <div className="management-row-actions"><Button variant="secondary" disabled={rule.status === 'processing'} onClick={() => openEdit(rule)}>编辑</Button><Button variant="danger" disabled={rule.status === 'processing'} onClick={() => setDeleteTarget(rule)}>删除</Button></div>}
         />
-        {!loading && rules.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={rules.length} onPageChange={(next) => setParam('page', String(next))} />}
+        {rules.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={rules.length} onPageChange={(next) => setParam('page', String(next))} />}
       </Container>
       <Container as="section" className="management-detail-section">
         <div className="management-results__header"><div><span>最近变更</span><h2>操作记录</h2></div><Link to="/operation-records?module=network">查看全部</Link></div>
@@ -272,7 +261,7 @@ export function NetworkAccessPage() {
         </Form>
       </Modal>
 
-      <Modal open={Boolean(deleteTarget)} title="删除网络访问规则" role="alertdialog" onClose={() => setDeleteTarget(undefined)} primaryAction={{ label: '提交删除请求', variant: 'danger', onClick: async () => { if (!deleteTarget) return; try { await deleteNetworkRule(deleteTarget.id); setFeedback('删除请求已提交。'); setDeleteTarget(undefined); await load(); } catch (nextError) { setError(nextError instanceof Error ? nextError.message : '提交失败。'); } } }} secondaryAction={{ label: '取消', onClick: () => setDeleteTarget(undefined) }}>
+      <Modal open={Boolean(deleteTarget)} title="删除网络访问规则" role="alertdialog" onClose={() => setDeleteTarget(undefined)} primaryAction={{ label: '提交删除请求', variant: 'danger', onClick: async () => { if (!deleteTarget) return; try { await deleteNetworkRule(deleteTarget.id); setFeedback('删除请求已提交。'); setDeleteTarget(undefined); setRevision((value) => value + 1); } catch (nextError) { setError(nextError instanceof Error ? nextError.message : '提交失败。'); } } }} secondaryAction={{ label: '取消', onClick: () => setDeleteTarget(undefined) }}>
         <p>{error || '删除请求提交后，规则将保留为处理中，直至基础设施确认。'}</p>
       </Modal>
 

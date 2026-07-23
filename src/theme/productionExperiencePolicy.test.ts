@@ -34,7 +34,7 @@ describe('production-like user experience policy', () => {
   it('contains no development-state wording in user-facing sources', () => {
     expect(
       offenders(
-        /演示|示例|Mock|测试数据|测试页面|原型|仅供演示|仅用于验证|占位页面|Task\s*\d+|DEMO-|demo-/iu,
+        /演示|示例|Mock|测试数据|测试页面|原型|仅供演示|仅用于验证|占位页面|离线版|静态数据|单HTML|无后端|Task\s*\d+|DEMO-|demo-/iu,
       ),
     ).toEqual([]);
   });

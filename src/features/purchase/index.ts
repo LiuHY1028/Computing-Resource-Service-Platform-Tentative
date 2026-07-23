@@ -19,6 +19,6 @@ export {
   loadPurchaseProduct,
   savePurchaseDraft,
   submitConfiguration,
-} from './services/purchaseRepository';
+} from './state/purchaseStore';
 export { validateCloudConfiguration, validatePhysicalConfiguration } from './validation/purchaseValidation';
 export type * from './types';

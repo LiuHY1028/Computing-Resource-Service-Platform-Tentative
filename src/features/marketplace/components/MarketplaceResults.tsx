@@ -14,9 +14,7 @@ import type {
 import { ResourceProductCard } from './ResourceProductCard';
 
 export type MarketplaceResultsState =
-  | Readonly<{ status: 'loading' }>
-  | Readonly<{ status: 'error'; message: string }>
-  | Readonly<{ status: 'success'; result: MarketplaceQueryResult }>;
+  Readonly<{ status: 'success'; result: MarketplaceQueryResult }>;
 
 type MarketplaceResultsProps = Readonly<{
   state: MarketplaceResultsState;
@@ -26,7 +24,6 @@ type MarketplaceResultsProps = Readonly<{
   pageSize: number;
   onPageChange: (page: number) => void;
   onConfigure: (product: MarketplaceProduct) => void;
-  onRetry: () => void;
   onClearSearch: () => void;
   onResetFilters: () => void;
   onSwitchResourceType: () => void;
@@ -42,7 +39,7 @@ function MarketplaceStatePanel({
   description,
   actions,
 }: Readonly<{
-  variant: 'loading' | 'error' | 'empty' | 'no-result';
+  variant: 'empty' | 'no-result';
   title: string;
   description: string;
   actions?: ReactNode;
@@ -50,9 +47,9 @@ function MarketplaceStatePanel({
   return (
     <Container
       className="marketplace-state"
-      variant={variant === 'error' ? 'urgent' : 'borderless'}
-      role={variant === 'error' ? 'alert' : 'status'}
-      aria-live={variant === 'error' ? 'assertive' : 'polite'}
+      variant="borderless"
+      role="status"
+      aria-live="polite"
       data-state={variant}
     >
       <span className="marketplace-state__indicator" aria-hidden="true" />
@@ -71,12 +68,11 @@ export function MarketplaceResults({
   pageSize,
   onPageChange,
   onConfigure,
-  onRetry,
   onClearSearch,
   onResetFilters,
   onSwitchResourceType,
 }: MarketplaceResultsProps) {
-  const total = state.status === 'success' ? state.result.total : undefined;
+  const total = state.result.total;
   const heading =
     resourceType === 'cloud-server'
       ? { resource: '云服务器', collection: '精选规格' }
@@ -98,33 +94,12 @@ export function MarketplaceResults({
           <p>清晰比较核心硬件规格，并进入对应资源配置。</p>
         </div>
         <div className="marketplace-results__count" aria-live="polite">
-          <strong>{total ?? '—'}</strong>
-          <span>{total === undefined ? '正在更新' : '项结果'}</span>
+          <strong>{total}</strong>
+          <span>项结果</span>
         </div>
       </div>
 
-      {state.status === 'loading' && (
-        <MarketplaceStatePanel
-          variant="loading"
-          title="正在加载资源规格"
-          description="筛选区保持可用，资源目录加载完成后将显示结果。"
-        />
-      )}
-
-      {state.status === 'error' && (
-        <MarketplaceStatePanel
-          variant="error"
-          title="资源加载失败"
-          description={state.message}
-          actions={
-            <Button variant="primary" onClick={onRetry}>
-              重新加载
-            </Button>
-          }
-        />
-      )}
-
-      {state.status === 'success' && state.result.catalogTotal === 0 && (
+      {state.result.catalogTotal === 0 && (
         <MarketplaceStatePanel
           variant="empty"
           title={`当前暂无${resourceTypeLabel(resourceType)}资源`}
@@ -137,8 +112,7 @@ export function MarketplaceResults({
         />
       )}
 
-      {state.status === 'success' &&
-        state.result.catalogTotal > 0 &&
+      {state.result.catalogTotal > 0 &&
         state.result.total === 0 && (
           <MarketplaceStatePanel
             variant="no-result"
@@ -159,7 +133,7 @@ export function MarketplaceResults({
           />
         )}
 
-      {state.status === 'success' && state.result.total > 0 && (
+      {state.result.total > 0 && (
         <>
           <Grid className="marketplace-results__grid" aria-label="资源商品列表">
             {state.result.items

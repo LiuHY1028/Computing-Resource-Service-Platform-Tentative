@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   useLocation,
   useNavigate,
@@ -69,68 +69,32 @@ export function ResourceListPage({
     }),
     [options, resourceType, searchParams],
   );
-  const [result, setResult] = useState<{
-    items: readonly Resource[];
-    total: number;
-    catalogTotal: number;
-  }>();
-  const [error, setError] = useState('');
-  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [revision, setRevision] = useState(0);
   const [selectedResource, setSelectedResource] = useState<Resource>();
   const [actionFeedback, setActionFeedback] = useState('');
-  const requestRef = useRef(0);
   const page = parsePositiveInteger(searchParams.get('page'));
-  const requestKey = JSON.stringify({ query, retryAttempt });
-  const [settledKey, setSettledKey] = useState('');
-  const loading = settledKey !== requestKey;
-  const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / PAGE_SIZE));
+  const result = useMemo(
+    () => {
+      void revision;
+      return queryResources(query);
+    },
+    [query, revision],
+  );
+  const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const pageItems = (result?.items ?? []).slice(
+  const pageItems = result.items.slice(
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
 
   useEffect(() => {
-    const requestId = requestRef.current + 1;
-    requestRef.current = requestId;
-    const controller = new AbortController();
-    queryResources(query, {
-      delayMs: 0,
-      signal: controller.signal,
-    })
-      .then((nextResult) => {
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
-        setError('');
-        setResult(nextResult);
-        setSettledKey(requestKey);
-      })
-      .catch((nextError: unknown) => {
-        if (
-          controller.signal.aborted ||
-          requestId !== requestRef.current ||
-          (nextError instanceof DOMException && nextError.name === 'AbortError')
-        ) {
-          return;
-        }
-        setError(
-          nextError instanceof Error
-            ? nextError.message
-            : '资源数据读取失败，请稍后重试。',
-        );
-        setResult(undefined);
-        setSettledKey(requestKey);
-      });
-    return () => controller.abort();
-  }, [query, requestKey, retryAttempt]);
-
-  useEffect(() => {
-    if (!loading && page !== safePage) {
+    if (page !== safePage) {
       const next = new URLSearchParams(searchParams);
       if (safePage === 1) next.delete('page');
       else next.set('page', String(safePage));
       setSearchParams(next, { replace: true });
     }
-  }, [loading, page, safePage, searchParams, setSearchParams]);
+  }, [page, safePage, searchParams, setSearchParams]);
 
   function setParam(key: string, value: string, resetPage = true) {
     const next = new URLSearchParams(searchParams);
@@ -202,17 +166,14 @@ export function ResourceListPage({
               {resourceType === 'cloud-server' ? '云服务器' : '物理机'}资源
             </h2>
           </div>
-          <p aria-live="polite">
-            {loading ? '正在读取资源' : `共 ${result?.total ?? 0} 个结果`}
-          </p>
+          <p aria-live="polite">共 {result.total} 个结果</p>
         </div>
         <ResourceTable
           resourceType={resourceType}
           rows={pageItems}
-          loading={loading}
-          error={error || undefined}
-          catalogEmpty={(result?.catalogTotal ?? 0) === 0}
-          onRetry={() => setRetryAttempt((value) => value + 1)}
+          loading={false}
+          catalogEmpty={result.catalogTotal === 0}
+          onRetry={() => undefined}
           onResetFilters={resetFilters}
           onGoMarketplace={() =>
             navigate(
@@ -225,12 +186,12 @@ export function ResourceListPage({
           onConnection={(resource) => detailPath(resource, 'network')}
           onMore={setSelectedResource}
         />
-        {!loading && !error && (result?.total ?? 0) > 0 && (
+        {result.total > 0 && (
           <Pagination
             className="resource-results__pagination"
             page={safePage}
             totalPages={totalPages}
-            totalItems={result?.total}
+            totalItems={result.total}
             onPageChange={(nextPage) =>
               setParam('page', String(nextPage), false)
             }
@@ -245,7 +206,7 @@ export function ResourceListPage({
           onCompleted={(actionResult) => {
             setActionFeedback(actionResult.record.message);
             setSelectedResource(undefined);
-            setRetryAttempt((value) => value + 1);
+            setRevision((value) => value + 1);
           }}
         />
       )}

@@ -238,6 +238,7 @@ describe('marketplace production-source policies', () => {
       'typescript',
       'typescript-eslint',
       'vite',
+      'vite-plugin-singlefile',
       'vitest',
     ]);
   });

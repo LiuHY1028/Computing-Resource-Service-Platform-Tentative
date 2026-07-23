@@ -122,72 +122,21 @@ export function MarketplacePage() {
     const sanitizedFilters = sanitizeFilters(filters, resourceType);
     return { resourceType, ...sanitizedFilters };
   }, [filters, resourceType]);
-  const [settledResults, setSettledResults] = useState<{
-    requestKey: string;
-    state: MarketplaceResultsState;
-  }>();
   const [page, setPage] = useState(() => initialContext?.page ?? 1);
-  const [retryAttempt, setRetryAttempt] = useState(0);
   const [feedback, setFeedback] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const requestSequenceRef = useRef(0);
   const filterOptions = getMarketplaceFilterOptions(resourceType);
-
-  const requestKey = JSON.stringify({
-    query: effectiveQuery,
-    retryAttempt,
-  });
-  const resultsState: MarketplaceResultsState =
-    settledResults?.requestKey !== requestKey
-      ? { status: 'loading' }
-      : settledResults.state;
-
-  useEffect(() => {
-    const requestSequence = requestSequenceRef.current + 1;
-    requestSequenceRef.current = requestSequence;
-    const controller = new AbortController();
-    queryMarketplaceProducts(effectiveQuery, {
-      delayMs: 0,
-      signal: controller.signal,
-    })
-      .then((result) => {
-        if (
-          controller.signal.aborted ||
-          requestSequence !== requestSequenceRef.current
-        ) {
-          return;
-        }
-        setSettledResults({
-          requestKey,
-          state: { status: 'success', result },
-        });
-      })
-      .catch((error: unknown) => {
-        if (
-          controller.signal.aborted ||
-          requestSequence !== requestSequenceRef.current ||
-          (error instanceof DOMException && error.name === 'AbortError')
-        ) {
-          return;
-        }
-        setSettledResults({
-          requestKey,
-          state: {
-            status: 'error',
-            message:
-              error instanceof Error
-                ? error.message
-                : '暂时无法读取资源目录，请重新加载。',
-          },
-        });
-      });
-
-    return () => controller.abort();
-  }, [effectiveQuery, requestKey, retryAttempt]);
+  const resultsState = useMemo<MarketplaceResultsState>(
+    () => ({
+      status: 'success',
+      result: queryMarketplaceProducts(effectiveQuery),
+    }),
+    [effectiveQuery],
+  );
 
   useEffect(() => {
     const context = initialContextRef.current;
-    if (!context || resultsState.status !== 'success') return;
+    if (!context) return;
     initialContextRef.current = undefined;
     const frame = window.requestAnimationFrame(() => {
       const region = getMarketplaceScrollRegion();
@@ -196,7 +145,7 @@ export function MarketplacePage() {
       navigate(location.pathname + location.search, { replace: true, state: null });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [location.pathname, location.search, navigate, resultsState.status]);
+  }, [location.pathname, location.search, navigate]);
 
   function updateTypeParameter(nextType: MarketplaceResourceType) {
     if (nextType === resourceType) return false;
@@ -256,11 +205,6 @@ export function MarketplacePage() {
     });
   }
 
-  function handleRetry() {
-    setRetryAttempt((attempt) => attempt + 1);
-    setFeedback('正在重新加载资源目录。');
-  }
-
   function switchResourceType() {
     const nextType: MarketplaceResourceType =
       resourceType === 'cloud-server' ? 'physical-machine' : 'cloud-server';
@@ -305,7 +249,6 @@ export function MarketplacePage() {
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
         onConfigure={handleConfigure}
-        onRetry={handleRetry}
         onClearSearch={() =>
           handleQueryChange({ ...effectiveQuery, search: '' })
         }

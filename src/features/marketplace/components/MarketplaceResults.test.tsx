@@ -23,7 +23,6 @@ describe('MarketplaceResults', () => {
       pageSize: 1,
       onPageChange,
       onConfigure: vi.fn(),
-      onRetry: vi.fn(),
       onClearSearch: vi.fn(),
       onResetFilters: vi.fn(),
       onSwitchResourceType: vi.fn(),

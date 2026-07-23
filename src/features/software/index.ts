@@ -5,7 +5,7 @@ export {
   getSoftwareInstallCount,
   getSoftwareInstallations,
   querySoftware,
-  resetSoftwareRepository,
+  resetSoftwareStore,
   submitSoftwareInstallation,
-} from './services/softwareRepository';
+} from './state/softwareStore';
 export type * from './types';

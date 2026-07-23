@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useLocation,
   useNavigate,
@@ -17,7 +17,6 @@ import {
   ResourceOverview,
   ResourceSoftware,
   ResourceStorage,
-  type Resource,
   type ResourceType,
 } from '../features/resources';
 import '../features/resources/resource-management.css';
@@ -44,20 +43,16 @@ export function ResourceDetailPage({
   )
     ? requestedTab!
     : 'overview';
-  const [resource, setResource] = useState<Resource>();
-  const [missing, setMissing] = useState(false);
-  const [error, setError] = useState('');
-  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [revision, setRevision] = useState(0);
   const [actionOpen, setActionOpen] = useState(false);
   const [actionFeedback, setActionFeedback] = useState('');
-  const [settledKey, setSettledKey] = useState('');
-  const requestRef = useRef(0);
-  const requestKey = JSON.stringify({
-    resourceType,
-    resourceId,
-    retryAttempt,
-  });
-  const loading = settledKey !== requestKey;
+  const resource = useMemo(
+    () => {
+      void revision;
+      return getResourceById(resourceType, resourceId);
+    },
+    [resourceId, resourceType, revision],
+  );
   const listPath =
     resourceType === 'cloud-server'
       ? '/resources/cloud-servers'
@@ -70,41 +65,6 @@ export function ResourceDetailPage({
       ? fromList
       : listPath;
 
-  useEffect(() => {
-    const requestId = requestRef.current + 1;
-    requestRef.current = requestId;
-    const controller = new AbortController();
-    getResourceById(resourceType, resourceId, {
-      delayMs: 0,
-      signal: controller.signal,
-    })
-      .then((nextResource) => {
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
-        setResource(nextResource);
-        setMissing(!nextResource);
-        setError('');
-        setSettledKey(requestKey);
-      })
-      .catch((nextError: unknown) => {
-        if (
-          controller.signal.aborted ||
-          requestId !== requestRef.current ||
-          (nextError instanceof DOMException && nextError.name === 'AbortError')
-        ) {
-          return;
-        }
-        setResource(undefined);
-        setMissing(false);
-        setError(
-          nextError instanceof Error
-            ? nextError.message
-            : '资源详情读取失败，请稍后重试。',
-        );
-        setSettledKey(requestKey);
-      });
-    return () => controller.abort();
-  }, [requestKey, resourceId, resourceType, retryAttempt]);
-
   function changeTab(value: string) {
     const next = new URLSearchParams(searchParams);
     if (value === 'overview') next.delete('tab');
@@ -112,37 +72,7 @@ export function ResourceDetailPage({
     setSearchParams(next);
   }
 
-  if (loading) {
-    return (
-      <div className="resource-page resource-detail-page">
-        <Container className="resource-page-state" role="status">
-          <strong>正在读取资源详情</strong>
-          <span>请稍候…</span>
-        </Container>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="resource-page resource-detail-page">
-        <Container className="resource-page-state" role="alert">
-          <strong>资源详情读取失败</strong>
-          <span>{error}</span>
-          <div>
-            <Button onClick={() => setRetryAttempt((value) => value + 1)}>
-              重新加载
-            </Button>
-            <Button variant="ghost" onClick={() => navigate(backPath)}>
-              返回资源列表
-            </Button>
-          </div>
-        </Container>
-      </div>
-    );
-  }
-
-  if (missing || !resource) {
+  if (!resource) {
     return (
       <div className="resource-page resource-detail-page">
         <Container className="resource-page-state" role="status">
@@ -233,7 +163,7 @@ export function ResourceDetailPage({
           open
           onClose={() => setActionOpen(false)}
           onCompleted={(result) => {
-            setResource(result.resource);
+            setRevision((value) => value + 1);
             setActionFeedback(result.record.message);
             setActionOpen(false);
           }}

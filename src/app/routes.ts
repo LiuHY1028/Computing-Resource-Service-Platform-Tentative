@@ -205,17 +205,21 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
 
 export const DEFAULT_APP_ROUTE = APP_PAGE_ROUTES[0];
 
-export const FOUNDATION_COMPONENTS_ROUTE: DevelopmentShellRoute = Object.freeze({
-  path: '/__dev/components/foundation',
-  pageTitle: '基础交互组件',
-  navigationItemId: '',
-});
-
-export const ADVANCED_COMPONENTS_ROUTE: DevelopmentShellRoute = Object.freeze({
-  path: '/__dev/components/advanced',
-  pageTitle: '高级公共组件',
-  navigationItemId: '',
-});
+const DEVELOPMENT_SHELL_ROUTES: readonly DevelopmentShellRoute[] =
+  import.meta.env.DEV
+    ? [
+        {
+          path: '/__dev/components/foundation',
+          pageTitle: '基础交互组件',
+          navigationItemId: '',
+        },
+        {
+          path: '/__dev/components/advanced',
+          pageTitle: '高级公共组件',
+          navigationItemId: '',
+        },
+      ]
+    : [];
 
 export function getAppPageRoute(pageId: PageId) {
   const route = APP_PAGE_ROUTES.find((candidate) => candidate.pageId === pageId);
@@ -236,16 +240,8 @@ export function findAppPageRoute(pathname: string) {
 export function findShellPageRoute(pathname: string) {
   return (
     findAppPageRoute(pathname) ??
-    (matchPath(
-      { path: FOUNDATION_COMPONENTS_ROUTE.path, end: true },
-      pathname,
+    DEVELOPMENT_SHELL_ROUTES.find((route) =>
+      matchPath({ path: route.path, end: true }, pathname),
     )
-      ? FOUNDATION_COMPONENTS_ROUTE
-      : matchPath(
-            { path: ADVANCED_COMPONENTS_ROUTE.path, end: true },
-            pathname,
-          )
-        ? ADVANCED_COMPONENTS_ROUTE
-        : undefined)
   );
 }

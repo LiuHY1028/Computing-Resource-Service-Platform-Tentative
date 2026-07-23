@@ -19,20 +19,23 @@ import {
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
-  ADVANCED_COMPONENTS_ROUTE,
   DEFAULT_APP_ROUTE,
-  FOUNDATION_COMPONENTS_ROUTE,
   type AppPageRoute,
 } from './routes';
 
 export const ROUTE_PATHS = Object.freeze({
   root: '/',
   default: DEFAULT_APP_ROUTE.path,
-  uiSpec: '/__dev/ui-spec',
-  foundationComponents: FOUNDATION_COMPONENTS_ROUTE.path,
-  advancedComponents: ADVANCED_COMPONENTS_ROUTE.path,
   fallback: '*',
 });
+
+const developmentRoutes = import.meta.env.DEV
+  ? {
+      uiSpec: '/__dev/ui-spec',
+      foundationComponents: '/__dev/components/foundation',
+      advancedComponents: '/__dev/components/advanced',
+    }
+  : undefined;
 
 function appPageElement(route: AppPageRoute) {
   switch (route.pageId) {
@@ -88,21 +91,21 @@ export function AppRouter() {
             key={route.pageId}
           />
         ))}
-        {import.meta.env.DEV && (
+        {developmentRoutes && (
           <>
             <Route
-              path={ROUTE_PATHS.foundationComponents}
+              path={developmentRoutes.foundationComponents}
               element={<FoundationComponentsPage />}
             />
             <Route
-              path={ROUTE_PATHS.advancedComponents}
+              path={developmentRoutes.advancedComponents}
               element={<AdvancedComponentsPage />}
             />
           </>
         )}
       </Route>
-      {import.meta.env.DEV && (
-        <Route path={ROUTE_PATHS.uiSpec} element={<UiSpecPage />} />
+      {developmentRoutes && (
+        <Route path={developmentRoutes.uiSpec} element={<UiSpecPage />} />
       )}
       <Route
         path={ROUTE_PATHS.fallback}

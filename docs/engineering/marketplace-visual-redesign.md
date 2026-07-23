@@ -129,7 +129,7 @@ PageTitleBar 和 AppShell 保持不变。标题下新增约 142 px（1920）/126
 - Loading、Error/Retry、Empty、No Result 和 Disabled 使用原状态逻辑；
 - 当前每页大小为 6，云服务器默认恰好 6 项、物理机 4 项，因此默认页面正确不显示分页；`MarketplaceResults` 组件测试继续用既有商品 fixture 和 `pageSize=1` 覆盖分页分支；
 - 两类可配置商品仍进入原购买占位路由并可返回对应商城类型；不可配置按钮不触发路由；
-- Mock 商品数量、字段、Repository、路由、AppShell、正式菜单、公共 UI 组件和依赖清单未修改。
+- 商品数量、字段、数据边界、路由、AppShell、正式菜单、公共 UI 组件和运行时依赖未修改。
 
 ## UI 规范对应
 

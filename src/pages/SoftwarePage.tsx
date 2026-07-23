@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Button,
@@ -34,9 +34,6 @@ function resourcePath(resourceId: string) {
 
 export function SoftwarePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [software, setSoftware] = useState<readonly SoftwareProduct[]>([]);
-  const [resources, setResources] = useState<readonly Resource[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<SoftwareProduct>();
   const [installing, setInstalling] = useState(false);
   const [version, setVersion] = useState('');
@@ -56,9 +53,8 @@ export function SoftwarePage() {
     }),
     [searchParams],
   );
-
-  useEffect(() => {
-    let active = true;
+  const software = useMemo(() => querySoftware(query), [query]);
+  const resources = useMemo<readonly Resource[]>(() => {
     const base = {
       search: '',
       site: 'all',
@@ -70,27 +66,13 @@ export function SoftwarePage() {
       image: 'all',
       operatingSystem: 'all',
     };
-    Promise.all([
-      querySoftware(query),
-      queryResources({ ...base, resourceType: 'cloud-server' }, { delayMs: 0 }),
-      queryResources({ ...base, resourceType: 'physical-machine' }, { delayMs: 0 }),
-    ])
-      .then(([catalog, cloud, physical]) => {
-        if (!active) return;
-        setSoftware(catalog);
-        setResources([...cloud.items, ...physical.items]);
-        setError('');
-      })
-      .catch(() => {
-        if (active) setError('软件目录读取失败，请稍后重试。');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [query]);
+    const cloud = queryResources({ ...base, resourceType: 'cloud-server' });
+    const physical = queryResources({
+      ...base,
+      resourceType: 'physical-machine',
+    });
+    return [...cloud.items, ...physical.items];
+  }, []);
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -147,14 +129,9 @@ export function SoftwarePage() {
         </div>
       </Container>
       {feedback && <Container className="management-feedback" role="status">{feedback}</Container>}
-      {error && !installing ? (
-        <PageState tone="error" title="软件目录读取失败" description={error} actionLabel="重新加载" onAction={() => window.location.reload()} />
-      ) : (
-        <Container className="management-results">
-          <div className="management-results__header"><div><span>软件目录</span><h2>可安装软件与环境</h2></div><p>{loading ? '正在读取软件目录' : `共 ${software.length} 个结果`}</p></div>
-          {loading ? (
-            <PageState tone="loading" title="正在读取软件目录" />
-          ) : visible.length ? (
+      <Container className="management-results">
+          <div className="management-results__header"><div><span>软件目录</span><h2>可安装软件与环境</h2></div><p>共 {software.length} 个结果</p></div>
+          {visible.length ? (
             <div className="management-card-grid">
               {visible.map((item) => (
                 <article className="management-card" key={item.id}>
@@ -180,9 +157,8 @@ export function SoftwarePage() {
           ) : (
             <PageState title="没有匹配的软件" description="请调整搜索或筛选条件。" actionLabel="重置条件" onAction={() => setSearchParams({})} />
           )}
-          {!loading && software.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={software.length} onPageChange={(next) => setParam('page', String(next))} />}
-        </Container>
-      )}
+          {software.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={software.length} onPageChange={(next) => setParam('page', String(next))} />}
+      </Container>
 
       <Modal open={Boolean(selected) && !installing} title="软件详情" onClose={() => setSelected(undefined)} primaryAction={{ label: '选择资源安装', onClick: () => selected && openInstall(selected) }} secondaryAction={{ label: '关闭', onClick: () => setSelected(undefined) }}>
         {selected && (
@@ -208,7 +184,7 @@ export function SoftwarePage() {
       <Modal open={installing} title="提交软件安装任务" onClose={() => setInstalling(false)} primaryAction={{ label: '提交安装任务', onClick: () => void submitInstall() }} secondaryAction={{ label: '取消', onClick: () => setInstalling(false) }}>
         {selected && (
           <Form>
-            <p>为 <strong>{selected.name}</strong> 选择版本和目标资源。提交后由软件服务处理，本页面不会执行远程安装。</p>
+            <p>为 <strong>{selected.name}</strong> 选择版本和目标资源。提交后可在操作记录中查看处理状态。</p>
             <FormField label="软件版本" required><Select value={version} onValueChange={setVersion} options={selected.versions.map((item) => ({ value: item, label: item }))} /></FormField>
             <FormField label="目标资源" required error={error || undefined}>
               <Select

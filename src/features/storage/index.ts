@@ -10,6 +10,6 @@ export {
   requestStorageExpansion,
   requestStorageMount,
   requestStorageUnmount,
-  resetStorageRepository,
-} from './services/storageRepository';
+  resetStorageStore,
+} from './state/storageStore';
 export type * from './types';

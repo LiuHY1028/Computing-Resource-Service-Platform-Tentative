@@ -3,21 +3,21 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getResourceById,
-  resetResourceRepository,
+  resetResourceStore,
   submitResourceAction,
-} from '../services/resourceRepository';
+} from '../state/resourceStore';
 import type { ResourceActionResult } from '../types';
 import { ResourceActionDialog } from './ResourceActionDialog';
 
 beforeEach(() => {
-  resetResourceRepository();
+  resetResourceStore();
 });
 
 async function loadResource(
   type: 'cloud-server' | 'physical-machine',
   id: string,
 ) {
-  const resource = await getResourceById(type, id, { delayMs: 0 });
+  const resource = getResourceById(type, id);
   if (!resource) throw new Error('Resource not found in test catalog.');
   return resource;
 }
@@ -143,7 +143,6 @@ describe('ResourceActionDialog', () => {
         resourceId: resource.id,
         action: 'start',
       },
-      { delayMs: 0 },
     );
     resolveRequest?.(result);
   });

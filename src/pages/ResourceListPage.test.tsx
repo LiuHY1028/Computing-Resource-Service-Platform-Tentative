@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { resetResourceRepository } from '../features/resources/services/resourceRepository';
+import { resetResourceStore } from '../features/resources/state/resourceStore';
 import { App } from '../app/App';
 
 function LocationObserver() {
@@ -29,7 +29,7 @@ function renderResource(path = '/resources/cloud-servers') {
   };
 }
 
-beforeEach(resetResourceRepository);
+beforeEach(resetResourceStore);
 
 describe('ResourceListPage', () => {
   it('renders and paginates the cloud server list', async () => {

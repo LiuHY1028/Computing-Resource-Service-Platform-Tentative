@@ -93,9 +93,17 @@ npm run typecheck
 npm run lint
 npm run test:run
 npm run build
+npm run build:offline
+npm run verify:offline
 ```
 
 Do not report a code task complete while required checks fail. If a script does not yet exist, add it in the engineering-initialization phase or state the gap explicitly.
+
+## Offline delivery
+
+- 每次影响正式页面的修改完成后，必须重新执行 `npm run build:offline`。
+- 离线 HTML 构建或 `npm run verify:offline` 失败时，任务不得标记为完成。
+- `release/算力资源服务平台.html` 必须可通过 `file://` 直接打开，且不得依赖服务器、同目录运行资产或外部网络。
 
 ## Codex token efficiency — permanent
 

@@ -69,10 +69,3 @@ export interface MarketplaceFilterOptions {
   readonly acceleratorModels: readonly string[];
   readonly acceleratorCounts: readonly number[];
 }
-
-export interface MarketplaceRepositoryOptions {
-  readonly delayMs?: number;
-  readonly simulateError?: boolean;
-  readonly simulateEmpty?: boolean;
-  readonly signal?: AbortSignal;
-}

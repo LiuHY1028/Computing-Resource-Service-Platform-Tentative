@@ -9,12 +9,11 @@ import {
 import {
   getResourceActionAvailability,
   submitResourceAction,
-} from '../services/resourceRepository';
+} from '../state/resourceStore';
 import type {
   Resource,
   ResourceAction,
   ResourceActionResult,
-  ResourceRepositoryOptions,
 } from '../types';
 
 const ACTIONS: readonly ResourceAction[] = [
@@ -35,7 +34,6 @@ const ACTION_LABELS: Readonly<Record<ResourceAction, string>> = {
 
 type SubmitAction = (
   request: Parameters<typeof submitResourceAction>[0],
-  options?: ResourceRepositoryOptions,
 ) => Promise<ResourceActionResult>;
 
 type ResourceActionDialogProps = Readonly<{

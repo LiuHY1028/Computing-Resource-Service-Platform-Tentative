@@ -2,15 +2,14 @@ export { MARKETPLACE_CLOUD_SYSTEM_DISK_GB } from './data/marketplaceProducts';
 export {
   getMarketplaceFilterOptions,
   getMarketplaceProductById,
-  MarketplaceRepositoryError,
   queryMarketplaceProducts,
-} from './services/marketplaceRepository';
+} from './data/marketplaceCatalog';
 export {
   getMarketplaceScrollRegion,
   loadMarketplaceNavigationContext,
   saveMarketplaceNavigationContext,
   type MarketplaceNavigationContext,
-} from './services/marketplaceNavigationContext';
+} from './state/marketplaceNavigationState';
 export { MarketplaceFilters } from './components/MarketplaceFilters';
 export {
   MarketplaceResults,
@@ -28,6 +27,5 @@ export type {
   MarketplaceProduct,
   MarketplaceQuery,
   MarketplaceQueryResult,
-  MarketplaceRepositoryOptions,
   MarketplaceResourceType,
 } from './types';

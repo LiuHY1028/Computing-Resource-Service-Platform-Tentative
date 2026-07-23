@@ -164,13 +164,6 @@ export interface ResourceFilterOptions {
   readonly operatingSystems: readonly string[];
 }
 
-export interface ResourceRepositoryOptions {
-  readonly delayMs?: number;
-  readonly simulateError?: boolean;
-  readonly simulateEmpty?: boolean;
-  readonly signal?: AbortSignal;
-}
-
 export interface ResourceActionRequest {
   readonly resourceType: ResourceType;
   readonly resourceId: string;

@@ -1,60 +1,12 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   MemoryRouter,
   useLocation,
   useNavigate,
 } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../app/App';
-import type {
-  MarketplaceQuery,
-  MarketplaceQueryResult,
-  MarketplaceRepositoryOptions,
-} from '../features/marketplace';
-
-type MarketplaceQueryFallback = (
-  ignoreAbort?: boolean,
-) => Promise<MarketplaceQueryResult>;
-type MarketplaceQueryOverride = (
-  query: MarketplaceQuery,
-  options: MarketplaceRepositoryOptions,
-  fallback: MarketplaceQueryFallback,
-) => Promise<MarketplaceQueryResult>;
-
-const marketplaceRepositoryControl = vi.hoisted(() => ({
-  queryOverride: undefined as MarketplaceQueryOverride | undefined,
-}));
-
-vi.mock('../features/marketplace', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../features/marketplace')>();
-
-  return {
-    ...actual,
-    queryMarketplaceProducts: (
-      query: MarketplaceQuery,
-      options: MarketplaceRepositoryOptions = {},
-    ) => {
-      const fallback: MarketplaceQueryFallback = (ignoreAbort = false) =>
-        actual.queryMarketplaceProducts(query, {
-          ...options,
-          delayMs: 0,
-          signal: ignoreAbort ? undefined : options.signal,
-        });
-      return marketplaceRepositoryControl.queryOverride
-        ? marketplaceRepositoryControl.queryOverride(query, options, fallback)
-        : fallback();
-    },
-  };
-});
 
 function LocationProbe() {
   const location = useLocation();
@@ -120,7 +72,6 @@ function closeOpenSelect() {
 describe('MarketplacePage', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
-    marketplaceRepositoryControl.queryOverride = undefined;
   });
 
   it('renders the formal marketplace, not the module placeholder, with its menu selected', async () => {
@@ -218,39 +169,15 @@ describe('MarketplacePage', () => {
     expect(screen.queryByText('正在加载资源规格')).not.toBeInTheDocument();
   });
 
-  it('keeps the latest catalog when an obsolete request resolves last', async () => {
-    const pending: Array<{
-      resourceType: MarketplaceQuery['resourceType'];
-      resolve: () => Promise<void>;
-    }> = [];
-    marketplaceRepositoryControl.queryOverride = (query, _options, fallback) =>
-      new Promise<MarketplaceQueryResult>((resolve, reject) => {
-        pending.push({
-          resourceType: query.resourceType,
-          resolve: async () => {
-            try {
-              resolve(await fallback(true));
-            } catch (error) {
-              reject(error);
-            }
-          },
-        });
-      });
-
+  it('switches the bundled catalog without a request-loading state', async () => {
     const { user } = renderMarketplace('/marketplace?type=cloud');
-    await waitFor(() => expect(pending).toHaveLength(1));
+    await waitForCloudCatalog();
+
     await user.click(screen.getByRole('tab', { name: '物理机' }));
-    await waitFor(() => expect(pending).toHaveLength(2));
-    expect(pending[1]?.resourceType).toBe('physical-machine');
 
-    await act(async () => pending[1]?.resolve());
     await waitForPhysicalCatalog();
-    await act(async () => pending[0]?.resolve());
-
-    expect(
-      screen.getByRole('heading', { level: 2, name: '物理机整机资源' }),
-    ).toBeInTheDocument();
     expect(screen.queryByText('正在加载资源规格')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '重新加载' })).not.toBeInTheDocument();
   });
 
   it('keeps URL, tab, and catalog aligned through browser back and forward', async () => {

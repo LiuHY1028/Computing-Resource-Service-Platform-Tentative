@@ -27,18 +27,18 @@ import {
   type PurchaseSubmissionResult,
   type PhysicalPurchaseConfiguration,
   type PurchaseFieldErrors,
-  type PurchaseProduct,
 } from '../features/purchase';
 import type { MarketplaceResourceType } from '../features/marketplace';
 import '../features/purchase/purchase.css';
 
-type LoadState =
-  | Readonly<{ status: 'error'; message: string }>
-  | Readonly<{ status: 'success'; product?: PurchaseProduct }>;
-
 type PurchasePageProps = Readonly<{
   resourceType: MarketplaceResourceType;
 }>;
+
+type PurchasePageContentProps = PurchasePageProps &
+  Readonly<{
+    productId: string;
+  }>;
 
 function marketplaceType(resourceType: MarketplaceResourceType) {
   return resourceType === 'cloud-server' ? 'cloud' : 'physical';
@@ -60,65 +60,84 @@ function focusFirstInvalid(fieldId?: string) {
 }
 
 export function PurchasePage({ resourceType }: PurchasePageProps) {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const productId = searchParams.get('product')?.trim() ?? '';
-  const [retryAttempt, setRetryAttempt] = useState(0);
-  const requestKey = `${resourceType}:${productId}:${retryAttempt}`;
-  const [settledLoad, setSettledLoad] = useState<Readonly<{ requestKey: string; state: LoadState }>>();
-  const [cloudConfiguration, setCloudConfiguration] = useState<CloudPurchaseConfiguration>();
-  const [physicalConfiguration, setPhysicalConfiguration] = useState<PhysicalPurchaseConfiguration>();
+
+  return (
+    <PurchasePageContent
+      key={`${resourceType}:${productId}`}
+      productId={productId}
+      resourceType={resourceType}
+    />
+  );
+}
+
+function PurchasePageContent({
+  productId,
+  resourceType,
+}: PurchasePageContentProps) {
+  const navigate = useNavigate();
+  const product = loadPurchaseProduct(productId);
+  const draft =
+    product?.resourceType === resourceType && product.configurable
+      ? loadPurchaseDraft<
+          CloudPurchaseConfiguration | PhysicalPurchaseConfiguration
+        >(product.id, resourceType)
+      : undefined;
+  const [cloudConfiguration, setCloudConfiguration] =
+    useState<CloudPurchaseConfiguration | undefined>(() => {
+      if (
+        product?.resourceType !== 'cloud-server' ||
+        resourceType !== 'cloud-server' ||
+        !product.configurable
+      ) {
+        return undefined;
+      }
+      const initial = createInitialCloudConfiguration(product);
+      return draft && isCloudDraft(draft)
+        ? {
+            ...initial,
+            ...draft,
+            imageId: draft.imageId || null,
+            systemDiskGb: product.defaultSystemDiskGb,
+            network: { ...initial.network, ...draft.network },
+          }
+        : initial;
+    });
+  const [physicalConfiguration, setPhysicalConfiguration] =
+    useState<PhysicalPurchaseConfiguration | undefined>(() => {
+      if (
+        product?.resourceType !== 'physical-machine' ||
+        resourceType !== 'physical-machine' ||
+        !product.configurable
+      ) {
+        return undefined;
+      }
+      const initial = createInitialPhysicalConfiguration();
+      return draft && isPhysicalDraft(draft)
+        ? { ...initial, ...draft, network: { ...initial.network, ...draft.network } }
+        : initial;
+    });
   const [errors, setErrors] = useState<PurchaseFieldErrors>({});
-  const [dirty, setDirty] = useState(false);
+  const [dirty, setDirty] = useState(
+    () => isCloudDraft(draft) || isPhysicalDraft(draft),
+  );
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<PurchaseSubmissionResult>();
   const [leaveOpen, setLeaveOpen] = useState(false);
-  const [liveMessage, setLiveMessage] = useState('');
-
-  useEffect(() => {
-    const controller = new AbortController();
-    loadPurchaseProduct(productId, {
-      signal: controller.signal,
-    })
-      .then((product) => {
-        setSettledLoad({ requestKey, state: { status: 'success', product } });
-        setErrors({});
-        setResult(undefined);
-        if (product?.resourceType === 'cloud-server' && resourceType === 'cloud-server' && product.configurable) {
-          const initial = createInitialCloudConfiguration(product);
-          const draft = loadPurchaseDraft<CloudPurchaseConfiguration>(product.id, resourceType);
-          const restored = draft && isCloudDraft(draft)
-            ? { ...initial, ...draft, imageId: draft.imageId || null, systemDiskGb: product.defaultSystemDiskGb, network: { ...initial.network, ...draft.network } }
-            : initial;
-          setCloudConfiguration(restored);
-          setPhysicalConfiguration(undefined);
-          setDirty(Boolean(draft));
-          setLiveMessage(draft ? '已恢复当前商品在本次浏览会话中的草稿。' : '云服务器商品已加载。');
-        } else if (product?.resourceType === 'physical-machine' && resourceType === 'physical-machine' && product.configurable) {
-          const initial = createInitialPhysicalConfiguration();
-          const draft = loadPurchaseDraft<PhysicalPurchaseConfiguration>(product.id, resourceType);
-          const restored = draft && isPhysicalDraft(draft)
-            ? { ...initial, ...draft, network: { ...initial.network, ...draft.network } }
-            : initial;
-          setPhysicalConfiguration(restored);
-          setCloudConfiguration(undefined);
-          setDirty(Boolean(draft));
-          setLiveMessage(draft ? '已恢复当前商品在本次浏览会话中的草稿。' : '物理机商品已加载。');
-        }
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        setSettledLoad({
-          requestKey,
-          state: {
-            status: 'error',
-            message: error instanceof Error ? error.message : '商品读取失败，请重试。',
-          },
-        });
-      });
-    return () => controller.abort();
-  }, [productId, requestKey, resourceType, retryAttempt]);
+  const [liveMessage, setLiveMessage] = useState(() => {
+    if (isCloudDraft(draft) || isPhysicalDraft(draft)) {
+      return '已恢复当前商品在本次浏览会话中的草稿。';
+    }
+    if (product?.resourceType === 'cloud-server') {
+      return '云服务器商品已就绪。';
+    }
+    if (product?.resourceType === 'physical-machine') {
+      return '物理机商品已就绪。';
+    }
+    return '';
+  });
 
   useEffect(() => {
     if (!dirty) return undefined;
@@ -127,9 +146,6 @@ export function PurchasePage({ resourceType }: PurchasePageProps) {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [dirty]);
 
-  const loadState =
-    settledLoad?.requestKey !== requestKey ? undefined : settledLoad.state;
-  const product = loadState?.status === 'success' ? loadState.product : undefined;
   const cloudSummary = useMemo(
     () => product?.resourceType === 'cloud-server' && cloudConfiguration
       ? buildCloudSummary(product, cloudConfiguration)
@@ -236,12 +252,6 @@ export function PurchasePage({ resourceType }: PurchasePageProps) {
     );
   }
 
-  if (!loadState) {
-    return <PurchaseStatePanel tone="loading" title="正在读取所选商品" description="正在从资源商城加载所选规格…" onReturn={returnToMarketplace} />;
-  }
-  if (loadState.status === 'error') {
-    return <PurchaseStatePanel tone="error" title="商品读取失败" description={loadState.message} onRetry={() => setRetryAttempt((value) => value + 1)} onReturn={returnToMarketplace} />;
-  }
   if (!productId || !product) {
     return <PurchaseStatePanel tone="missing" title="未找到所选商品" description="URL 中的商品标识不存在或已不在当前资源目录中，请返回商城重新选择。" onReturn={returnToMarketplace} />;
   }

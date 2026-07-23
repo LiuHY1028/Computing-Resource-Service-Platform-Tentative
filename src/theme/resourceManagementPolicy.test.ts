@@ -42,7 +42,7 @@ describe('resource management production-source policies', () => {
     );
     expect(deepUiImports).toEqual([]);
     expect(sourceOffenders(/from\s+['"].*resourceCatalog['"]/)).toEqual([
-      '../features/resources/services/resourceRepository.ts',
+      '../features/resources/state/resourceStore.ts',
     ]);
   });
 

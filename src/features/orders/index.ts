@@ -3,6 +3,6 @@ export {
   getOrder,
   getOrdersForResource,
   queryOrders,
-  resetOrderRepository,
-} from './services/orderRepository';
+  resetOrderStore,
+} from './state/orderStore';
 export type * from './types';

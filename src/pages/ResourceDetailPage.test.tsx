@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../app/App';
-import { resetResourceRepository } from '../features/resources/services/resourceRepository';
+import { resetResourceStore } from '../features/resources/state/resourceStore';
 
 function LocationObserver() {
   const location = useLocation();
@@ -30,7 +30,7 @@ function renderDetail(path: string) {
 }
 
 beforeEach(() => {
-  resetResourceRepository();
+  resetResourceStore();
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Container,
@@ -47,8 +47,6 @@ function resourcePath(order: PurchaseOrder) {
 
 export function OrderListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [orders, setOrders] = useState<readonly PurchaseOrder[]>([]);
-  const [loading, setLoading] = useState(true);
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const query = useMemo(
     () => ({
@@ -65,17 +63,7 @@ export function OrderListPage() {
     [searchParams],
   );
 
-  useEffect(() => {
-    let active = true;
-    queryOrders(query).then((next) => {
-      if (!active) return;
-      setOrders(next);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [query]);
+  const orders = useMemo(() => queryOrders(query), [query]);
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -113,9 +101,9 @@ export function OrderListPage() {
         </div>
       </Container>
       <Container className="management-results">
-        <div className="management-results__header"><div><span>资源配置申请</span><h2>申请记录</h2></div><p>{loading ? '正在读取申请' : `共 ${orders.length} 个结果`}</p></div>
-        <Table className="management-table" aria-label="订单列表" columns={columns} rows={rows} getRowKey={(order) => order.id} loading={loading} empty={<PageState title={query.search ? '没有匹配的申请记录' : '暂无申请记录'} description={query.search ? '请调整搜索或筛选条件。' : '从资源商城提交配置后可在此查看处理进度。'} />} renderRowActions={(order) => <Link to={`/orders/${order.id}`}>查看详情</Link>} />
-        {!loading && orders.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={orders.length} onPageChange={(next) => setParam('page', String(next))} />}
+        <div className="management-results__header"><div><span>资源配置申请</span><h2>申请记录</h2></div><p>共 {orders.length} 个结果</p></div>
+        <Table className="management-table" aria-label="订单列表" columns={columns} rows={rows} getRowKey={(order) => order.id} empty={<PageState title={query.search ? '没有匹配的申请记录' : '暂无申请记录'} description={query.search ? '请调整搜索或筛选条件。' : '从资源商城提交配置后可在此查看处理进度。'} />} renderRowActions={(order) => <Link to={`/orders/${order.id}`}>查看详情</Link>} />
+        {orders.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={orders.length} onPageChange={(next) => setParam('page', String(next))} />}
       </Container>
     </div>
   );
@@ -124,22 +112,8 @@ export function OrderListPage() {
 export function OrderDetailPage() {
   const { orderId = '' } = useParams();
   const navigate = useNavigate();
-  const [order, setOrder] = useState<PurchaseOrder>();
-  const [loading, setLoading] = useState(true);
+  const order = getOrder(orderId);
 
-  useEffect(() => {
-    let active = true;
-    getOrder(orderId).then((next) => {
-      if (!active) return;
-      setOrder(next);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-    };
-  }, [orderId]);
-
-  if (loading) return <div className="management-page"><PageState tone="loading" title="正在读取申请详情" /></div>;
   if (!order) return <div className="management-page"><PageState title="未找到申请记录" description="该申请不存在或记录已移除。" actionLabel="返回申请列表" onAction={() => navigate('/orders')} /></div>;
   const relatedPath = resourcePath(order);
   const operations = listOperationRecords().filter((record) => record.targetId === order.id || record.targetId === order.resourceId);

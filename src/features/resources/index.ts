@@ -5,9 +5,8 @@ export {
   getResourceFilterOptions,
   queryResources,
   ResourceActionError,
-  ResourceRepositoryError,
   submitResourceAction,
-} from './services/resourceRepository';
+} from './state/resourceStore';
 export { ResourceFilters } from './components/ResourceFilters';
 export { ResourceStatusBadge } from './components/ResourceStatusBadge';
 export { ResourceTable } from './components/ResourceTable';
@@ -47,7 +46,6 @@ export type {
   ResourceIpInformation,
   ResourceQuery,
   ResourceQueryResult,
-  ResourceRepositoryOptions,
   ResourceStatus,
   ResourceStatusFilter,
   ResourceType,
