@@ -221,7 +221,7 @@ export function ResourceDetailPage({
               label: '软件与环境',
               panel: (
                 <ResourceSoftware
-                  software={resource.software}
+                  resourceId={resource.id}
                   onOpenSoftwareCenter={() => navigate('/software')}
                 />
               ),

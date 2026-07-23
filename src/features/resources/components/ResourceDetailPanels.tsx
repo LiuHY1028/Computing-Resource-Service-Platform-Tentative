@@ -14,6 +14,10 @@ import {
   type StorageSpace,
 } from '../../storage';
 import {
+  getSoftwareForResource,
+  type SoftwareInstallation,
+} from '../../software';
+import {
   COMPUTE_TYPE_LABELS,
   EXPIRY_STATE_LABELS,
   formatAccelerator,
@@ -21,7 +25,6 @@ import {
   OPERATION_STATUS_LABELS,
 } from '../formatters';
 import type {
-  InstalledSoftware,
   OperationRecord,
   PortRule,
   Resource,
@@ -277,29 +280,30 @@ export function ResourceNetwork({
 }
 
 export function ResourceSoftware({
-  software,
+  resourceId,
   onOpenSoftwareCenter,
 }: Readonly<{
-  software: readonly InstalledSoftware[];
+  resourceId: string;
   onOpenSoftwareCenter: () => void;
 }>) {
-  const columns: readonly TableColumn<InstalledSoftware>[] = [
-    { key: 'name', title: '软件', render: (item) => item.name },
+  const software = getSoftwareForResource(resourceId);
+  const columns: readonly TableColumn<SoftwareInstallation>[] = [
+    { key: 'name', title: '软件', render: (item) => item.softwareName },
     { key: 'version', title: '版本', render: (item) => item.version },
     {
       key: 'status',
       title: '状态',
       render: (item) =>
-        item.status === 'available'
-          ? '可用'
-          : item.status === 'updating'
-            ? '更新中'
-            : '需要关注',
+        item.status === 'installed'
+          ? '已安装'
+          : item.status === 'failed'
+            ? '失败'
+            : '处理中',
     },
     {
       key: 'installedAt',
       title: '安装时间',
-      render: (item) => formatDateTime(item.installedAt),
+      render: (item) => formatDateTime(item.submittedAt),
     },
   ];
   return (

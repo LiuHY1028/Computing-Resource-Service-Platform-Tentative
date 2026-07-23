@@ -111,6 +111,10 @@
 .management-card p { color: var(--color-text-secondary); }
 .management-card__meta { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .management-card__actions { display: flex; flex-wrap: wrap; gap: var(--space-8); margin-top: auto; }
+.management-compact-definition { display: grid; gap: var(--space-8); margin: 0; }
+.management-compact-definition div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-8); }
+.management-compact-definition dt { color: var(--color-text-secondary); }
+.management-compact-definition dd { margin: 0; }
 .management-form-actions { padding-top: var(--space-16); border-top: var(--border-default); }
 @media (max-width: 1440px) {
   .management-page { padding: var(--space-16); }

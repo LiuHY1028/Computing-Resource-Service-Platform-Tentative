@@ -10,6 +10,7 @@ import { ResourceListPage } from '../pages/ResourceListPage';
 import { ResourceDetailPage } from '../pages/ResourceDetailPage';
 import { StorageDetailPage, StorageListPage } from '../pages/StoragePage';
 import { ImagesPage } from '../pages/ImagesPage';
+import { SoftwarePage } from '../pages/SoftwarePage';
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
@@ -73,6 +74,10 @@ function appPageElement(route: AppPageRoute) {
 
   if (route.pageId === 'IMG-01') {
     return <ImagesPage />;
+  }
+
+  if (route.pageId === 'SW-01') {
+    return <SoftwarePage />;
   }
 
   return <ModulePlaceholderPage route={route} />;
