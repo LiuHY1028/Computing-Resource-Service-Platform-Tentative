@@ -11,6 +11,7 @@ import { ResourceDetailPage } from '../pages/ResourceDetailPage';
 import { StorageDetailPage, StorageListPage } from '../pages/StoragePage';
 import { ImagesPage } from '../pages/ImagesPage';
 import { SoftwarePage } from '../pages/SoftwarePage';
+import { NetworkAccessPage } from '../pages/NetworkAccessPage';
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
@@ -78,6 +79,10 @@ function appPageElement(route: AppPageRoute) {
 
   if (route.pageId === 'SW-01') {
     return <SoftwarePage />;
+  }
+
+  if (route.pageId === 'NET-01') {
+    return <NetworkAccessPage />;
   }
 
   return <ModulePlaceholderPage route={route} />;

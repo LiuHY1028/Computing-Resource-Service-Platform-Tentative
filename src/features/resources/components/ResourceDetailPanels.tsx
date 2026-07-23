@@ -18,6 +18,10 @@ import {
   type SoftwareInstallation,
 } from '../../software';
 import {
+  getNetworkRulesForResource,
+  type NetworkAccessRule,
+} from '../../network';
+import {
   COMPUTE_TYPE_LABELS,
   EXPIRY_STATE_LABELS,
   formatAccelerator,
@@ -26,7 +30,6 @@ import {
 } from '../formatters';
 import type {
   OperationRecord,
-  PortRule,
   Resource,
 } from '../types';
 import { ResourceStatusBadge } from './ResourceStatusBadge';
@@ -210,9 +213,14 @@ export function ResourceNetwork({
   resource,
   connectionContent,
 }: Readonly<{ resource: Resource; connectionContent: React.ReactNode }>) {
-  const [selectedRule, setSelectedRule] = useState<PortRule>();
-  const columns: readonly TableColumn<PortRule>[] = [
-    { key: 'name', title: '规则名称', render: (rule) => rule.name },
+  const [selectedRule, setSelectedRule] = useState<NetworkAccessRule>();
+  const rules = getNetworkRulesForResource(resource.id);
+  const columns: readonly TableColumn<NetworkAccessRule>[] = [
+    {
+      key: 'name',
+      title: '规则名称',
+      render: (rule) => rule.description || '端口访问规则',
+    },
     { key: 'protocol', title: '协议', render: (rule) => rule.protocol },
     {
       key: 'mapping',
@@ -223,7 +231,12 @@ export function ResourceNetwork({
     {
       key: 'status',
       title: '状态',
-      render: (rule) => (rule.status === 'enabled' ? '已启用' : '已停用'),
+      render: (rule) =>
+        rule.status === 'effective'
+          ? '已生效'
+          : rule.status === 'failed'
+            ? '失败'
+            : '处理中',
     },
   ];
 
@@ -240,7 +253,7 @@ export function ResourceNetwork({
         <Table
           aria-label="网络访问规则"
           columns={columns}
-          rows={resource.networkRules}
+          rows={rules}
           getRowKey={(rule) => rule.id}
           renderRowActions={(rule) => (
             <Button variant="ghost" onClick={() => setSelectedRule(rule)}>
@@ -266,12 +279,12 @@ export function ResourceNetwork({
       >
         {selectedRule && (
           <dl className="resource-modal-definition">
-            <div><dt>规则名称</dt><dd>{selectedRule.name}</dd></div>
+            <div><dt>规则名称</dt><dd>{selectedRule.description || '端口访问规则'}</dd></div>
             <div><dt>协议</dt><dd>{selectedRule.protocol}</dd></div>
             <div><dt>服务端口</dt><dd>{selectedRule.servicePort}</dd></div>
             <div><dt>映射端口</dt><dd>{selectedRule.mappedPort}</dd></div>
             <div><dt>允许来源</dt><dd>{selectedRule.source}</dd></div>
-            <div><dt>状态</dt><dd>{selectedRule.status === 'enabled' ? '已启用' : '已停用'}</dd></div>
+            <div><dt>状态</dt><dd>{selectedRule.status === 'effective' ? '已生效' : selectedRule.status === 'failed' ? '失败' : '处理中'}</dd></div>
           </dl>
         )}
       </Modal>
