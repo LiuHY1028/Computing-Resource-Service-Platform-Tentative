@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_DATA_MODE, resolveDataMode } from './runtime';
 
 describe('runtime data mode', () => {
-  it('uses the mock mode by default', () => {
+  it('uses the fixture mode by default', () => {
     expect(resolveDataMode(undefined)).toBe(DEFAULT_DATA_MODE);
-    expect(DEFAULT_DATA_MODE).toBe('mock');
+    expect(DEFAULT_DATA_MODE).toBe('fixture');
   });
 
   it('falls back safely when the mode is invalid', () => {

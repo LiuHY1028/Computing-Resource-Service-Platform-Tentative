@@ -1,14 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { MARKETPLACE_DEMO_PRODUCTS } from '../data/marketplaceProducts';
+import { MARKETPLACE_CATALOG_PRODUCTS } from '../data/marketplaceProducts';
 import { MarketplaceResults } from './MarketplaceResults';
 
 describe('MarketplaceResults', () => {
   it('keeps the existing pagination branch functional with a paged fixture', async () => {
     const user = userEvent.setup();
     const onPageChange = vi.fn();
-    const products = MARKETPLACE_DEMO_PRODUCTS.slice(0, 2);
+    const products = MARKETPLACE_CATALOG_PRODUCTS.slice(0, 2);
     const commonProps = {
       state: {
         status: 'success' as const,

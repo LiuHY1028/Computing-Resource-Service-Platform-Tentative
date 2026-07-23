@@ -225,7 +225,7 @@ export function ResourceProductCard({
             className="resource-product-card__unavailable-reason"
             id={unavailableReasonId}
           >
-            {product.unavailableReason ?? '该演示规格当前不可继续配置。'}
+            {product.unavailableReason ?? '该规格当前不可继续配置。'}
           </p>
         )}
         <div className="resource-product-card__action">
@@ -234,7 +234,7 @@ export function ResourceProductCard({
           ) : (
             <Tooltip
               content={
-                product.unavailableReason ?? '该演示规格当前不可继续配置。'
+                product.unavailableReason ?? '该规格当前不可继续配置。'
               }
             >
               {configureButton}

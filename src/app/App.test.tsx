@@ -46,45 +46,50 @@ describe('application routes', () => {
     ).toBeInTheDocument();
   });
 
+  it('presents unavailable modules as a product service status', () => {
+    renderRoute('/storage');
+
+    expect(screen.getByText('服务状态')).toBeInTheDocument();
+    expect(screen.getByText(/该服务当前暂未开放/)).toBeInTheDocument();
+    expect(screen.queryByText(/模块占位页面|后续任务实现|页面 ID/)).not.toBeInTheDocument();
+  });
+
   it('registers every stable page route', () => {
     expect(APP_PAGE_ROUTES).toHaveLength(15);
   });
 
   it.each([
     [
-      '/marketplace/cloud-server/purchase',
-      '云服务器购买配置',
+      '/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east',
+      '配置云服务器',
     ],
     [
-      '/marketplace/physical-machine/purchase',
-      '物理机购买配置',
+      '/marketplace/physical-machine/purchase?product=catalog-physical-cpu-p1-east',
+      '配置物理机',
     ],
-  ])('keeps the Task 05B purchase placeholder at %s', (path, title) => {
+  ])('renders the formal purchase page at %s', async (path, title) => {
     renderRoute(path);
 
+    const pageTitle = screen.getByRole('heading', { level: 1, name: title });
+    expect(pageTitle).toBeInTheDocument();
+    expect(pageTitle.closest('.page-title-bar')).toBeInTheDocument();
+    expect(await screen.findByLabelText('配置说明')).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 1, name: title }),
+      screen.getAllByRole('button', { name: '返回资源商城' })[0],
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', {
-        level: 2,
-        name: '购买配置将在 Task 05B 实现',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: '返回资源商城' }),
-    ).toBeInTheDocument();
+    expect(screen.getByText('配置说明')).toBeInTheDocument();
+    expect(document.querySelector('.purchase-guide')).toBeNull();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
   });
 
-  it('renders the UI specification verification route', () => {
+  it('renders the UI specification route', () => {
     renderRoute('/__dev/ui-spec');
 
     expect(
-      screen.getByRole('heading', { name: 'UI 规范 Design Token 验证页' }),
+      screen.getByRole('heading', { name: 'UI 规范与 Design Token' }),
     ).toBeInTheDocument();
     expect(screen.getByText('字体加载状态')).toBeInTheDocument();
-    expect(screen.getByText('中文示例')).toBeInTheDocument();
+    expect(screen.getByText('中文排版')).toBeInTheDocument();
     expect(screen.getByText('Demibold')).toBeInTheDocument();
   });
 

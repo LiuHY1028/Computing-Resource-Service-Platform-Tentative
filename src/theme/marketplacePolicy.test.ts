@@ -8,7 +8,7 @@ const marketplaceModules = import.meta.glob(
   [
     '../features/marketplace/**/*.{ts,tsx,css}',
     '../pages/MarketplacePage.tsx',
-    '../pages/PurchasePlaceholderPage.tsx',
+    '../pages/PurchasePage.tsx',
   ],
   {
     eager: true,
@@ -34,7 +34,7 @@ const businessUiSources = Object.fromEntries(
     ([file]) =>
       file.includes('/components/') ||
       file.endsWith('/MarketplacePage.tsx') ||
-      file.endsWith('/PurchasePlaceholderPage.tsx'),
+      file.endsWith('/PurchasePage.tsx'),
   ),
 );
 
@@ -145,7 +145,7 @@ describe('marketplace production-source policies', () => {
     ]);
 
     const navigationSource = Object.values(navigationModules).join('\n');
-    expect(navigationSource).not.toMatch(/demoState|__dev|[?&]type=/);
+    expect(navigationSource).not.toMatch(/viewState|__dev|[?&]type=/);
   });
 
   it('centralizes page decoration colors and keeps card height content-driven', () => {

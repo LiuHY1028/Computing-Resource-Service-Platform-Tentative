@@ -25,7 +25,6 @@ interface MarketplaceProductBase {
   readonly accelerator?: MarketplaceAccelerator;
   readonly configurable: boolean;
   readonly unavailableReason?: string;
-  readonly isDemo: true;
 }
 
 export interface MarketplaceCloudServerProduct

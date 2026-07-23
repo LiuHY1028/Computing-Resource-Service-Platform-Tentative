@@ -261,7 +261,7 @@ function FontRuntimeStatus() {
     let cancelled = false;
     const escapedPrimaryFamily = primaryFamily.replace(/["\\]/g, '\\$&');
     const fontQuery = `${computed.fontWeight} ${computed.fontSize} "${escapedPrimaryFamily}"`;
-    const verificationText = '字体加载验证 Aa 0123，。！？';
+    const verificationText = '字体排版 Aa 0123，。！？';
 
     void Promise.all([
       fontSet.load(fontQuery, verificationText),
@@ -316,8 +316,8 @@ export function UiSpecPage() {
   return (
     <main className="ui-spec-page">
       <header className="ui-spec-page__header">
-        <p>开发验证路由 · 不属于正式产品菜单</p>
-        <h1>UI 规范 Design Token 验证页</h1>
+        <p>内部路由 · 不属于正式产品菜单</p>
+        <h1>UI 规范与 Design Token</h1>
         <p>
           当前展示名称为 {productConfig.displayName}；原规范来源品牌不作为当前产品品牌。
         </p>
@@ -337,7 +337,7 @@ export function UiSpecPage() {
           <h2 id="brand-boundary-title">Logo 与品牌边界</h2>
         </div>
         <p>
-          本阶段不复制、不重绘来源 Logo。产品名称与 Logo 继续由集中配置提供；本页只验证视觉基础。
+          不复制、不重绘来源 Logo。产品名称与 Logo 继续由集中配置提供；本页集中展示视觉基础。
         </p>
       </section>
 
@@ -406,15 +406,15 @@ export function UiSpecPage() {
           data-testid="ui-spec-font-actual-sample"
         >
           <p>
-            <span>中文示例</span>
+            <span>中文排版</span>
             天地玄黄，宇宙洪荒；资源配置与服务管理。
           </p>
           <p>
-            <span>英文示例</span>
+            <span>英文排版</span>
             The quick brown fox jumps over the lazy dog.
           </p>
           <p>
-            <span>数字与符号示例</span>
+            <span>数字与符号</span>
             0123456789 ￥$€ % / + − × = @ # ，。！？「」
           </p>
         </div>
@@ -464,7 +464,7 @@ export function UiSpecPage() {
           <span>p.4-p.7</span>
           <h2 id="layout-title">Navbar、Sidebar 与 Main Layout</h2>
         </div>
-        <p>下图仅验证尺寸关系，不是正式应用框架组件。</p>
+        <p>下图用于查看尺寸关系，不是正式应用框架组件。</p>
         <div className="ui-spec-layout-demo" aria-label="应用布局尺寸示意">
           <div className="ui-spec-layout-demo__navbar">
             <span>可配置品牌区</span>
@@ -510,7 +510,7 @@ export function UiSpecPage() {
           <h2 id="component-foundations-title">组件基础数值与状态</h2>
         </div>
         <p>
-          本页验证基础数值；Button、Input、Select 等正式公共组件请在基础交互组件验证页操作。
+          本页展示基础数值；Button、Input、Select 等公共组件请在基础交互组件页操作。
         </p>
         <div className="ui-spec-metric-grid">
           {controlMetrics.map((item) => (
@@ -531,7 +531,7 @@ export function UiSpecPage() {
         <h3>Focus</h3>
         <div className="ui-spec-focus-row">
           <button type="button" className="ui-spec-focus-target">
-            使用 Tab 聚焦此原生验证按钮
+            使用 Tab 聚焦此原生按钮
           </button>
           <span>全局 Focus 为工程可访问性暂定；控件阴影取自 p.10。</span>
         </div>

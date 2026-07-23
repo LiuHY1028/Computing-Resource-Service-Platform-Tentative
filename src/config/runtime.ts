@@ -1,8 +1,8 @@
-export const DATA_MODES = ['mock', 'api'] as const;
+export const DATA_MODES = ['fixture', 'api'] as const;
 
 export type DataMode = (typeof DATA_MODES)[number];
 
-export const DEFAULT_DATA_MODE: DataMode = 'mock';
+export const DEFAULT_DATA_MODE: DataMode = 'fixture';
 
 type InvalidModeReporter = (message: string) => void;
 

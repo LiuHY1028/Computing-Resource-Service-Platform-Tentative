@@ -50,7 +50,7 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   {
     pageId: 'BUY-01',
     path: '/marketplace/cloud-server/purchase',
-    pageTitle: '云服务器购买配置',
+    pageTitle: '配置云服务器',
     navigationLabel: '云服务器购买配置',
     moduleLabel: '资源商城',
     purpose: '配置云服务器的站点、规格、镜像、系统盘与适用的数据存储。',
@@ -61,7 +61,7 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   {
     pageId: 'BUY-02',
     path: '/marketplace/physical-machine/purchase',
-    pageTitle: '物理机购买配置',
+    pageTitle: '配置物理机',
     navigationLabel: '物理机购买配置',
     moduleLabel: '资源商城',
     purpose: '配置物理机的站点与整机规格，并保留尚未确认的交付规则边界。',

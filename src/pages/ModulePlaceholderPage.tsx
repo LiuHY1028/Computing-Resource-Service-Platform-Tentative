@@ -17,26 +17,21 @@ export function ModulePlaceholderPage({ route }: ModulePlaceholderPageProps) {
   return (
     <section
       className="module-placeholder-page"
-      aria-labelledby={`placeholder-${route.pageId}`}
+      aria-labelledby={`service-${route.pageId}`}
     >
       <div className="module-placeholder-page__content">
-        <p className="module-placeholder-page__eyebrow">模块占位页面</p>
-        <h2 id={`placeholder-${route.pageId}`}>{route.pageTitle}</h2>
+        <p className="module-placeholder-page__eyebrow">服务状态</p>
+        <h2 id={`service-${route.pageId}`}>{route.pageTitle}</h2>
         <dl className="module-placeholder-page__metadata">
           <div>
             <dt>所属模块</dt>
             <dd>{route.moduleLabel}</dd>
           </div>
-          <div>
-            <dt>页面 ID</dt>
-            <dd>{route.pageId}</dd>
-          </div>
         </dl>
         <p>{route.purpose}</p>
         <p className="module-placeholder-page__notice">
-          正式业务内容将在后续任务实现。本阶段只验证应用框架、导航与路由关系。
+          该服务当前暂未开放，请通过相关入口继续使用已开放功能。
         </p>
-        <p className="module-placeholder-page__phase">后续阶段：{route.implementationPhase}</p>
         {relatedRoutes.length > 0 && (
           <nav className="module-placeholder-page__related" aria-label="相关模块导航">
             <span>相关入口</span>

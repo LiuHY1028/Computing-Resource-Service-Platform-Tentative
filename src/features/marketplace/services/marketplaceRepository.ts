@@ -1,4 +1,4 @@
-import { MARKETPLACE_DEMO_PRODUCTS } from '../data/marketplaceProducts';
+import { MARKETPLACE_CATALOG_PRODUCTS } from '../data/marketplaceProducts';
 import type {
   MarketplaceFilterOptions,
   MarketplaceProduct,
@@ -8,11 +8,11 @@ import type {
   MarketplaceResourceType,
 } from '../types';
 
-const DEFAULT_DEMO_DELAY_MS = 180;
+const DEFAULT_CATALOG_DELAY_MS = 180;
 
 export class MarketplaceRepositoryError extends Error {
   constructor() {
-    super('演示商品数据加载失败，请重试。');
+    super('商品数据加载失败，请重试。');
     this.name = 'MarketplaceRepositoryError';
   }
 }
@@ -23,7 +23,7 @@ function createAbortError(): DOMException {
 
 function resolveDelay(delayMs: number | undefined): number {
   if (delayMs === undefined) {
-    return DEFAULT_DEMO_DELAY_MS;
+    return DEFAULT_CATALOG_DELAY_MS;
   }
 
   return Number.isFinite(delayMs) ? Math.max(0, delayMs) : 0;
@@ -72,7 +72,7 @@ async function loadDemoCatalog(
     throw new MarketplaceRepositoryError();
   }
 
-  return options.simulateEmpty ? [] : MARKETPLACE_DEMO_PRODUCTS;
+  return options.simulateEmpty ? [] : MARKETPLACE_CATALOG_PRODUCTS;
 }
 
 function uniqueValues<T>(values: readonly T[]): T[] {
@@ -151,7 +151,7 @@ function matchesQuery(product: MarketplaceProduct, query: MarketplaceQuery): boo
 export function getMarketplaceFilterOptions(
   resourceType: MarketplaceResourceType,
 ): MarketplaceFilterOptions {
-  const products: readonly MarketplaceProduct[] = MARKETPLACE_DEMO_PRODUCTS.filter(
+  const products: readonly MarketplaceProduct[] = MARKETPLACE_CATALOG_PRODUCTS.filter(
     (product) => product.resourceType === resourceType,
   );
   const accelerators = products.flatMap((product) =>
@@ -192,5 +192,5 @@ export async function queryMarketplaceProducts(
 export function getMarketplaceProductById(
   id: string,
 ): MarketplaceProduct | undefined {
-  return MARKETPLACE_DEMO_PRODUCTS.find((product) => product.id === id);
+  return MARKETPLACE_CATALOG_PRODUCTS.find((product) => product.id === id);
 }

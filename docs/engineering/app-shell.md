@@ -94,7 +94,7 @@ PDF 未定义完整动效、层级、Tooltip 方位/触发时序和窄屏断点�
 
 ## 后续业务接入状态
 
-- `MKT-01` 已由 Task 05A 接入正式资源商城；`BUY-01/02` 已接成明确的购买配置入口占位页，完整购买表单由 Task 05B 实现。其余 12 个稳定业务页面仍使用统一占位页。
+- `MKT-01` 已由 Task 05A 接入正式资源商城；`BUY-01/02` 已由 Task 05B 接入购买配置、确认与演示结果闭环。AppShell 与正式菜单未因购买流程调整，其余 12 个稳定业务页面仍使用统一占位页。
 - Task 04A/04B 公共组件已从 `src/components/ui/index.ts` 统一导出，资源商城已复用 Container、Button、输入/选择、Tabs、Tooltip、Grid 和 Pagination；AppShell 结构与正式菜单没有因业务接入而改变。
 - 当前只有资源商城具有类型安全的本地演示数据和最小数据访问层；没有 Mock HTTP 接口、真实 API、计费、审批、权限、资源状态或订单状态机。
 - TopNavbar 按钮、收起 Tooltip、悬浮入口仍为 AppShell 私有实现。后续若统一到公共 IconButton、Tooltip、Overlay/Notice，必须保持本文件记录的布局、菜单和可访问性契约。

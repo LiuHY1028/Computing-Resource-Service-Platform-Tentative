@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container, TitleBarTabs } from '../components/ui';
 import {
   MarketplaceFilters,
   MarketplaceResults,
-  MARKETPLACE_DEMO_DATA_NOTICE,
   getMarketplaceFilterOptions,
+  getMarketplaceScrollRegion,
+  loadMarketplaceNavigationContext,
   queryMarketplaceProducts,
+  saveMarketplaceNavigationContext,
   type MarketplaceProduct,
   type MarketplaceQuery,
   type MarketplaceResourceType,
@@ -16,7 +18,8 @@ import '../features/marketplace/marketplace.css';
 
 const PAGE_SIZE = 6;
 
-type MarketplaceDemoState = 'normal' | 'loading' | 'error' | 'empty';
+type MarketplaceViewState = 'normal' | 'loading' | 'error' | 'empty';
+type MarketplaceFilterState = Omit<MarketplaceQuery, 'resourceType'>;
 
 function parseResourceType(value: string | null): MarketplaceResourceType {
   return value === 'physical' ? 'physical-machine' : 'cloud-server';
@@ -26,21 +29,31 @@ function resourceTypeQueryValue(resourceType: MarketplaceResourceType) {
   return resourceType === 'cloud-server' ? 'cloud' : 'physical';
 }
 
-function parseDemoState(value: string | null): MarketplaceDemoState {
+function parseViewState(value: string | null): MarketplaceViewState {
   return value === 'loading' || value === 'error' || value === 'empty'
     ? value
     : 'normal';
 }
 
-function defaultQuery(resourceType: MarketplaceResourceType): MarketplaceQuery {
+function defaultFilters(): MarketplaceFilterState {
   return {
-    resourceType,
     search: '',
     sites: [],
     computeType: 'all',
     acceleratorModels: [],
     acceleratorCounts: [],
     availability: 'all',
+  };
+}
+
+function filtersFromQuery(query: MarketplaceQuery): MarketplaceFilterState {
+  return {
+    search: query.search,
+    sites: query.sites,
+    computeType: query.computeType,
+    acceleratorModels: query.acceleratorModels,
+    acceleratorCounts: query.acceleratorCounts,
+    availability: query.availability,
   };
 }
 
@@ -58,37 +71,35 @@ function sameNumbers(left: readonly number[], right: readonly number[]) {
   );
 }
 
-function sanitizeQuery(
-  query: MarketplaceQuery,
+function sanitizeFilters(
+  filters: MarketplaceFilterState,
   resourceType: MarketplaceResourceType,
 ) {
   const options = getMarketplaceFilterOptions(resourceType);
-  const sites = query.sites.filter((site) => options.sites.includes(site));
+  const sites = filters.sites.filter((site) => options.sites.includes(site));
   const acceleratorModels =
-    query.computeType === 'gpu'
-      ? query.acceleratorModels.filter((model) =>
+    filters.computeType === 'gpu'
+      ? filters.acceleratorModels.filter((model) =>
           options.acceleratorModels.includes(model),
         )
       : [];
   const acceleratorCounts =
-    query.computeType === 'gpu'
-      ? query.acceleratorCounts.filter((count) =>
+    filters.computeType === 'gpu'
+      ? filters.acceleratorCounts.filter((count) =>
           options.acceleratorCounts.includes(count),
         )
       : [];
 
   if (
-    query.resourceType === resourceType &&
-    sameStrings(query.sites, sites) &&
-    sameStrings(query.acceleratorModels, acceleratorModels) &&
-    sameNumbers(query.acceleratorCounts, acceleratorCounts)
+    sameStrings(filters.sites, sites) &&
+    sameStrings(filters.acceleratorModels, acceleratorModels) &&
+    sameNumbers(filters.acceleratorCounts, acceleratorCounts)
   ) {
-    return query;
+    return filters;
   }
 
   return {
-    ...query,
-    resourceType,
+    ...filters,
     sites,
     acceleratorModels,
     acceleratorCounts,
@@ -97,59 +108,81 @@ function sanitizeQuery(
 
 export function MarketplacePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const resourceType = parseResourceType(searchParams.get('type'));
-  const demoState = parseDemoState(searchParams.get('demoState'));
-  const [query, setQuery] = useState<MarketplaceQuery>(() =>
-    defaultQuery(resourceType),
+  const viewState = parseViewState(searchParams.get('viewState'));
+  const shouldRestore = Boolean(
+    (location.state as { restoreMarketplaceContext?: boolean } | null)
+      ?.restoreMarketplaceContext,
   );
-  const effectiveQuery = useMemo(
-    () => sanitizeQuery(query, resourceType),
-    [query, resourceType],
+  const [initialContext] = useState(() =>
+    shouldRestore ? loadMarketplaceNavigationContext(resourceType) : undefined,
   );
+  const initialContextRef = useRef(initialContext);
+  const [filters, setFilters] = useState<MarketplaceFilterState>(() =>
+    sanitizeFilters(
+      initialContext ? filtersFromQuery(initialContext.query) : defaultFilters(),
+      resourceType,
+    ),
+  );
+  const effectiveQuery = useMemo<MarketplaceQuery>(() => {
+    const sanitizedFilters = sanitizeFilters(filters, resourceType);
+    return { resourceType, ...sanitizedFilters };
+  }, [filters, resourceType]);
   const [settledResults, setSettledResults] = useState<{
     requestKey: string;
     state: MarketplaceResultsState;
   }>();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => initialContext?.page ?? 1);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [feedback, setFeedback] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const filterOptions = useMemo(
-    () => getMarketplaceFilterOptions(resourceType),
-    [resourceType],
-  );
+  const requestSequenceRef = useRef(0);
+  const filterOptions = getMarketplaceFilterOptions(resourceType);
 
   const requestKey = JSON.stringify({
-    demoState,
+    viewState,
     query: effectiveQuery,
     retryAttempt,
   });
   const resultsState: MarketplaceResultsState =
-    demoState === 'loading' || settledResults?.requestKey !== requestKey
+    viewState === 'loading' || settledResults?.requestKey !== requestKey
       ? { status: 'loading' }
       : settledResults.state;
 
   useEffect(() => {
-    if (demoState === 'loading') {
+    const requestSequence = requestSequenceRef.current + 1;
+    requestSequenceRef.current = requestSequence;
+    if (viewState === 'loading') {
       return undefined;
     }
 
     const controller = new AbortController();
     queryMarketplaceProducts(effectiveQuery, {
-      delayMs: demoState === 'normal' ? 0 : undefined,
-      simulateEmpty: demoState === 'empty',
-      simulateError: demoState === 'error' && retryAttempt === 0,
+      delayMs: viewState === 'normal' ? 0 : undefined,
+      simulateEmpty: viewState === 'empty',
+      simulateError: viewState === 'error' && retryAttempt === 0,
       signal: controller.signal,
     })
       .then((result) => {
+        if (
+          controller.signal.aborted ||
+          requestSequence !== requestSequenceRef.current
+        ) {
+          return;
+        }
         setSettledResults({
           requestKey,
           state: { status: 'success', result },
         });
       })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === 'AbortError') {
+        if (
+          controller.signal.aborted ||
+          requestSequence !== requestSequenceRef.current ||
+          (error instanceof DOMException && error.name === 'AbortError')
+        ) {
           return;
         }
         setSettledResults({
@@ -159,24 +192,41 @@ export function MarketplacePage() {
             message:
               error instanceof Error
                 ? error.message
-                : '无法读取本地演示资源，请重新加载。',
+                : '暂时无法读取资源目录，请重新加载。',
           },
         });
       });
 
     return () => controller.abort();
-  }, [demoState, effectiveQuery, requestKey, retryAttempt]);
+  }, [effectiveQuery, requestKey, retryAttempt, viewState]);
+
+  useEffect(() => {
+    const context = initialContextRef.current;
+    if (!context || resultsState.status !== 'success') return;
+    initialContextRef.current = undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const region = getMarketplaceScrollRegion();
+      if (region) region.scrollTop = context.scrollTop;
+      setFeedback('已恢复离开前的筛选、分页和浏览位置。');
+      navigate(location.pathname + location.search, { replace: true, state: null });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.pathname, location.search, navigate, resultsState.status]);
 
   function updateTypeParameter(nextType: MarketplaceResourceType) {
+    if (nextType === resourceType) return false;
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('type', resourceTypeQueryValue(nextType));
+    if (nextParams.toString() === searchParams.toString()) return false;
     setSearchParams(nextParams);
+    return true;
   }
 
   function handleResourceTypeChange(value: string) {
     const nextType: MarketplaceResourceType =
       value === 'physical' ? 'physical-machine' : 'cloud-server';
-    setQuery((current) => sanitizeQuery(current, nextType));
+    if (nextType === resourceType) return;
+    setFilters((current) => sanitizeFilters(current, nextType));
     setPage(1);
     setFeedback(
       nextType === 'cloud-server'
@@ -187,7 +237,9 @@ export function MarketplacePage() {
   }
 
   function handleQueryChange(nextQuery: MarketplaceQuery) {
-    setQuery(sanitizeQuery(nextQuery, resourceType));
+    setFilters(
+      sanitizeFilters(filtersFromQuery(nextQuery), resourceType),
+    );
     setPage(1);
     setFeedback('');
   }
@@ -195,10 +247,12 @@ export function MarketplacePage() {
   function handleReset() {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('type', 'cloud');
-    setQuery(defaultQuery('cloud-server'));
+    setFilters(defaultFilters());
     setPage(1);
     setFeedback('已重置全部筛选，当前显示全部云服务器。');
-    setSearchParams(nextParams);
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams);
+    }
     window.requestAnimationFrame(() => searchInputRef.current?.focus());
   }
 
@@ -207,14 +261,19 @@ export function MarketplacePage() {
       product.resourceType === 'cloud-server'
         ? '/marketplace/cloud-server/purchase'
         : '/marketplace/physical-machine/purchase';
+    saveMarketplaceNavigationContext(
+      effectiveQuery,
+      page,
+      getMarketplaceScrollRegion()?.scrollTop ?? 0,
+    );
     navigate(`${purchasePath}?product=${encodeURIComponent(product.id)}`, {
-      state: { fromMarketplace: true },
+      state: { fromMarketplace: true, marketplaceType: resourceType },
     });
   }
 
   function handleRetry() {
     setRetryAttempt((attempt) => attempt + 1);
-    setFeedback('正在重新加载演示资源。');
+    setFeedback('正在重新加载资源目录。');
   }
 
   function switchResourceType() {
@@ -222,15 +281,17 @@ export function MarketplacePage() {
       resourceType === 'cloud-server' ? 'physical-machine' : 'cloud-server';
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('type', resourceTypeQueryValue(nextType));
-    nextParams.delete('demoState');
-    setQuery((current) => sanitizeQuery(current, nextType));
+    nextParams.delete('viewState');
+    setFilters((current) => sanitizeFilters(current, nextType));
     setPage(1);
     setFeedback(
       nextType === 'cloud-server'
         ? '已切换至云服务器并退出空目录验收场景。'
         : '已切换至物理机并退出空目录验收场景。',
     );
-    setSearchParams(nextParams);
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams);
+    }
   }
 
   const catalog = (
@@ -287,10 +348,6 @@ export function MarketplacePage() {
           <p>
             比较云服务器与物理机的站点、计算类型和基础规格，再进入对应的配置页面。购买完成后获得独占机器资源，购后管理在“我的资源”中进行。
           </p>
-        </div>
-        <div className="marketplace-introduction__data-note">
-          <strong>演示数据</strong>
-          <p>{MARKETPLACE_DEMO_DATA_NOTICE}</p>
         </div>
       </Container>
 

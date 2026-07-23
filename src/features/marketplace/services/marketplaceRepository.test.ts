@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MARKETPLACE_DEMO_CLOUD_SYSTEM_DISK_GB } from '../data/marketplaceProducts';
+import { MARKETPLACE_CLOUD_SYSTEM_DISK_GB } from '../data/marketplaceProducts';
 import type { MarketplaceQuery } from '../types';
 import {
   getMarketplaceFilterOptions,
@@ -26,8 +26,8 @@ function createQuery(
   };
 }
 
-describe('marketplace demo repository', () => {
-  it('keeps the demo catalog inside the confirmed product boundary', async () => {
+describe('marketplace catalog repository', () => {
+  it('keeps the catalog inside the confirmed product boundary', async () => {
     const [cloud, physical] = await Promise.all([
       queryMarketplaceProducts(createQuery('cloud-server'), immediate),
       queryMarketplaceProducts(createQuery('physical-machine'), immediate),
@@ -40,16 +40,14 @@ describe('marketplace demo repository', () => {
         (product) =>
           product.resourceType === 'cloud-server' &&
           product.defaultSystemDiskGb ===
-            MARKETPLACE_DEMO_CLOUD_SYSTEM_DISK_GB &&
-          product.isDemo,
+            MARKETPLACE_CLOUD_SYSTEM_DISK_GB,
       ),
     ).toBe(true);
     expect(
       physical.items.every(
         (product) =>
           product.resourceType === 'physical-machine' &&
-          !('defaultSystemDiskGb' in product) &&
-          product.isDemo,
+          !('defaultSystemDiskGb' in product),
       ),
     ).toBe(true);
     expect(
@@ -63,14 +61,14 @@ describe('marketplace demo repository', () => {
     const cloud = getMarketplaceFilterOptions('cloud-server');
     const physical = getMarketplaceFilterOptions('physical-machine');
 
-    expect(cloud.sites).toEqual(['示例站点 A', '示例站点 B']);
+    expect(cloud.sites).toEqual(['东部算力中心', '西部算力中心']);
     expect(cloud.computeTypes).toEqual(['cpu', 'gpu']);
-    expect(cloud.acceleratorModels).toEqual(['示例加速卡 A', '示例加速卡 B']);
+    expect(cloud.acceleratorModels).toEqual(['通用加速卡 80GB', '高性能加速卡 80GB']);
     expect(cloud.acceleratorCounts).toEqual([1, 2]);
     expect(physical.acceleratorCounts).toEqual([4, 8]);
     expect(physical.acceleratorModels).toEqual([
-      '示例加速卡 A',
-      '示例加速卡 B',
+      '通用加速卡 80GB',
+      '高性能加速卡 80GB',
     ]);
   });
 
@@ -85,20 +83,20 @@ describe('marketplace demo repository', () => {
         immediate,
       ),
       queryMarketplaceProducts(
-        createQuery('physical-machine', { search: '示例站点 B' }),
+        createQuery('physical-machine', { search: '西部算力中心' }),
         immediate,
       ),
     ]);
 
     expect(byName.items.map((product) => product.id)).toEqual([
-      'demo-cloud-cpu-c8-site-a',
+      'catalog-cloud-cpu-c8-east',
     ]);
     expect(bySpecification.items).toHaveLength(2);
     expect(
       bySpecification.items.every((product) => product.memoryGb === 128),
     ).toBe(true);
     expect(bySite.items).toHaveLength(2);
-    expect(bySite.items.every((product) => product.site === '示例站点 B')).toBe(
+    expect(bySite.items.every((product) => product.site === '西部算力中心')).toBe(
       true,
     );
   });
@@ -106,9 +104,9 @@ describe('marketplace demo repository', () => {
   it('combines multi-value dimensions with compute and availability filters', async () => {
     const result = await queryMarketplaceProducts(
       createQuery('cloud-server', {
-        sites: ['示例站点 A', '示例站点 B'],
+        sites: ['东部算力中心', '西部算力中心'],
         computeType: 'gpu',
-        acceleratorModels: ['示例加速卡 A'],
+        acceleratorModels: ['通用加速卡 80GB'],
         acceleratorCounts: [2],
         availability: 'configurable',
       }),
@@ -118,7 +116,7 @@ describe('marketplace demo repository', () => {
     expect(result.catalogTotal).toBe(6);
     expect(result.total).toBe(1);
     expect(result.items.map((product) => product.id)).toEqual([
-      'demo-cloud-gpu-g2-site-b',
+      'catalog-cloud-gpu-g2-west',
     ]);
   });
 
@@ -132,7 +130,7 @@ describe('marketplace demo repository', () => {
 
     expect(result.catalogTotal).toBe(4);
     expect(result.total).toBe(1);
-    expect(result.items[0]?.unavailableReason).toMatch(/^演示状态：/);
+    expect(result.items[0]?.unavailableReason).toBe('该规格当前暂不可继续配置。');
   });
 
   it('simulates an empty catalog and a retryable repository failure', async () => {
@@ -169,11 +167,11 @@ describe('marketplace demo repository', () => {
 
   it('loads one product through the repository boundary', () => {
     expect(
-      getMarketplaceProductById('demo-physical-gpu-p8-site-b'),
+      getMarketplaceProductById('catalog-physical-gpu-p8-west'),
     ).toMatchObject({
       resourceType: 'physical-machine',
       accelerator: { count: 8 },
     });
-    expect(getMarketplaceProductById('missing-demo-product')).toBeUndefined();
+    expect(getMarketplaceProductById('missing-catalog-product')).toBeUndefined();
   });
 });

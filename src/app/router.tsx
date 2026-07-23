@@ -5,7 +5,7 @@ import { UiSpecPage } from '../pages/UiSpecPage';
 import { FoundationComponentsPage } from '../pages/FoundationComponentsPage';
 import { AdvancedComponentsPage } from '../pages/AdvancedComponentsPage';
 import { MarketplacePage } from '../pages/MarketplacePage';
-import { PurchasePlaceholderPage } from '../pages/PurchasePlaceholderPage';
+import { PurchasePage } from '../pages/PurchasePage';
 import { AppShell } from './shell/AppShell';
 import {
   APP_PAGE_ROUTES,
@@ -30,7 +30,13 @@ function appPageElement(route: AppPageRoute) {
   }
 
   if (route.pageId === 'BUY-01' || route.pageId === 'BUY-02') {
-    return <PurchasePlaceholderPage route={route} />;
+    return (
+      <PurchasePage
+        resourceType={
+          route.pageId === 'BUY-01' ? 'cloud-server' : 'physical-machine'
+        }
+      />
+    );
   }
 
   return <ModulePlaceholderPage route={route} />;
@@ -51,16 +57,22 @@ export function AppRouter() {
             key={route.pageId}
           />
         ))}
-        <Route
-          path={ROUTE_PATHS.foundationComponents}
-          element={<FoundationComponentsPage />}
-        />
-        <Route
-          path={ROUTE_PATHS.advancedComponents}
-          element={<AdvancedComponentsPage />}
-        />
+        {import.meta.env.DEV && (
+          <>
+            <Route
+              path={ROUTE_PATHS.foundationComponents}
+              element={<FoundationComponentsPage />}
+            />
+            <Route
+              path={ROUTE_PATHS.advancedComponents}
+              element={<AdvancedComponentsPage />}
+            />
+          </>
+        )}
       </Route>
-      <Route path={ROUTE_PATHS.uiSpec} element={<UiSpecPage />} />
+      {import.meta.env.DEV && (
+        <Route path={ROUTE_PATHS.uiSpec} element={<UiSpecPage />} />
+      )}
       <Route
         path={ROUTE_PATHS.fallback}
         element={<NotFoundPage homePath={ROUTE_PATHS.default} />}

@@ -131,7 +131,7 @@ export function MarketplaceFilters({
       <div className="marketplace-filters__header">
         <div>
           <h2>筛选资源</h2>
-          <p>按名称、规格和站点缩小演示资源范围。</p>
+          <p>按名称、规格和站点缩小资源范围。</p>
         </div>
         {hasActiveFilters && (
           <Button variant="secondary" onClick={onReset}>

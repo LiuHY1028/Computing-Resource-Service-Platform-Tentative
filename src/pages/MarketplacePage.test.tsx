@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -9,9 +10,28 @@ import userEvent from '@testing-library/user-event';
 import {
   MemoryRouter,
   useLocation,
+  useNavigate,
 } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../app/App';
+import type {
+  MarketplaceQuery,
+  MarketplaceQueryResult,
+  MarketplaceRepositoryOptions,
+} from '../features/marketplace';
+
+type MarketplaceQueryFallback = (
+  ignoreAbort?: boolean,
+) => Promise<MarketplaceQueryResult>;
+type MarketplaceQueryOverride = (
+  query: MarketplaceQuery,
+  options: MarketplaceRepositoryOptions,
+  fallback: MarketplaceQueryFallback,
+) => Promise<MarketplaceQueryResult>;
+
+const marketplaceRepositoryControl = vi.hoisted(() => ({
+  queryOverride: undefined as MarketplaceQueryOverride | undefined,
+}));
 
 vi.mock('../features/marketplace', async (importOriginal) => {
   const actual =
@@ -20,24 +40,35 @@ vi.mock('../features/marketplace', async (importOriginal) => {
   return {
     ...actual,
     queryMarketplaceProducts: (
-      query: import('../features/marketplace').MarketplaceQuery,
-      options: import('../features/marketplace').MarketplaceRepositoryOptions = {},
-    ) =>
-      actual.queryMarketplaceProducts(query, {
-        ...options,
-        delayMs: 0,
-      }),
+      query: MarketplaceQuery,
+      options: MarketplaceRepositoryOptions = {},
+    ) => {
+      const fallback: MarketplaceQueryFallback = (ignoreAbort = false) =>
+        actual.queryMarketplaceProducts(query, {
+          ...options,
+          delayMs: 0,
+          signal: ignoreAbort ? undefined : options.signal,
+        });
+      return marketplaceRepositoryControl.queryOverride
+        ? marketplaceRepositoryControl.queryOverride(query, options, fallback)
+        : fallback();
+    },
   };
 });
 
 function LocationProbe() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
-    <output data-testid="location-probe">
-      {location.pathname}
-      {location.search}
-    </output>
+    <>
+      <output data-testid="location-probe">
+        {location.pathname}
+        {location.search}
+      </output>
+      <button type="button" onClick={() => navigate(-1)}>测试后退</button>
+      <button type="button" onClick={() => navigate(1)}>测试前进</button>
+    </>
   );
 }
 
@@ -87,6 +118,11 @@ function closeOpenSelect() {
 }
 
 describe('MarketplacePage', () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    marketplaceRepositoryControl.queryOverride = undefined;
+  });
+
   it('renders the formal marketplace, not the module placeholder, with its menu selected', async () => {
     renderMarketplace();
 
@@ -109,7 +145,7 @@ describe('MarketplacePage', () => {
       'aria-selected',
       'true',
     );
-    expect(screen.getByText('演示数据')).toBeInTheDocument();
+    expect(screen.queryByText('演示数据')).not.toBeInTheDocument();
     expect(
       screen.getByText(/购买完成后获得独占机器资源/),
     ).toBeInTheDocument();
@@ -140,6 +176,106 @@ describe('MarketplacePage', () => {
     await waitForCloudCatalog();
     expect(location()).toBe('/marketplace?type=cloud');
     expect(screen.getByText('已切换至云服务器。')).toBeInTheDocument();
+  });
+
+  it('keeps the URL as the single type source through 20 rapid switches', async () => {
+    const { user, location } = renderMarketplace('/marketplace?type=physical');
+    await waitForPhysicalCatalog();
+    const search = screen.getByRole('searchbox', {
+      name: '搜索资源名称或规格',
+    });
+
+    await user.type(search, '计算');
+    await selectOption(user, '站点', '东部算力中心');
+    closeOpenSelect();
+    await selectOption(user, '计算类型', 'GPU 计算');
+    await selectOption(user, 'GPU或加速卡型号', '通用加速卡 80GB');
+    closeOpenSelect();
+    await selectOption(user, 'GPU或加速卡数量', '4 张');
+    closeOpenSelect();
+    await selectOption(user, '配置状态', '可继续配置');
+    await waitForPhysicalCatalog(1);
+
+    for (let index = 0; index < 20; index += 1) {
+      await user.click(
+        screen.getByRole('tab', {
+          name: index % 2 === 0 ? '云服务器' : '物理机',
+        }),
+      );
+    }
+
+    await waitForPhysicalCatalog(1);
+    expect(location()).toBe('/marketplace?type=physical');
+    expect(screen.getByRole('tab', { name: '物理机' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(search).toHaveValue('计算');
+    expect(screen.getByText('站点：东部算力中心')).toBeInTheDocument();
+    expect(screen.getByText('型号：通用加速卡 80GB')).toBeInTheDocument();
+    expect(screen.queryByText('数量：4 张')).not.toBeInTheDocument();
+    expect(screen.getAllByText('可继续配置').length).toBeGreaterThan(0);
+    expect(screen.queryByText('正在加载资源规格')).not.toBeInTheDocument();
+  });
+
+  it('keeps the latest catalog when an obsolete request resolves last', async () => {
+    const pending: Array<{
+      resourceType: MarketplaceQuery['resourceType'];
+      resolve: () => Promise<void>;
+    }> = [];
+    marketplaceRepositoryControl.queryOverride = (query, _options, fallback) =>
+      new Promise<MarketplaceQueryResult>((resolve, reject) => {
+        pending.push({
+          resourceType: query.resourceType,
+          resolve: async () => {
+            try {
+              resolve(await fallback(true));
+            } catch (error) {
+              reject(error);
+            }
+          },
+        });
+      });
+
+    const { user } = renderMarketplace('/marketplace?type=cloud');
+    await waitFor(() => expect(pending).toHaveLength(1));
+    await user.click(screen.getByRole('tab', { name: '物理机' }));
+    await waitFor(() => expect(pending).toHaveLength(2));
+    expect(pending[1]?.resourceType).toBe('physical-machine');
+
+    await act(async () => pending[1]?.resolve());
+    await waitForPhysicalCatalog();
+    await act(async () => pending[0]?.resolve());
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: '物理机整机资源' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('正在加载资源规格')).not.toBeInTheDocument();
+  });
+
+  it('keeps URL, tab, and catalog aligned through browser back and forward', async () => {
+    const { user, location } = renderMarketplace('/marketplace?type=cloud');
+    await waitForCloudCatalog();
+    await user.click(screen.getByRole('tab', { name: '物理机' }));
+    await waitForPhysicalCatalog();
+    await user.click(screen.getByRole('tab', { name: '云服务器' }));
+    await waitForCloudCatalog();
+
+    await user.click(screen.getByRole('button', { name: '测试后退' }));
+    await waitForPhysicalCatalog();
+    expect(location()).toBe('/marketplace?type=physical');
+    expect(screen.getByRole('tab', { name: '物理机' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await user.click(screen.getByRole('button', { name: '测试前进' }));
+    await waitForCloudCatalog();
+    expect(location()).toBe('/marketplace?type=cloud');
+    expect(screen.getByRole('tab', { name: '云服务器' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
   it('uses manual keyboard activation for resource-type tabs', async () => {
@@ -193,10 +329,10 @@ describe('MarketplacePage', () => {
     const { user } = renderMarketplace();
     await waitForCloudCatalog();
 
-    await selectOption(user, '站点', '示例站点 A');
+    await selectOption(user, '站点', '东部算力中心');
     closeOpenSelect();
     await waitForCloudCatalog(3);
-    expect(screen.getByText('站点：示例站点 A')).toBeInTheDocument();
+    expect(screen.getByText('站点：东部算力中心')).toBeInTheDocument();
 
     await selectOption(user, '计算类型', 'CPU 计算');
     await waitForCloudCatalog(1);
@@ -221,8 +357,8 @@ describe('MarketplacePage', () => {
 
     await selectOption(user, '计算类型', 'GPU 计算');
     await user.click(screen.getByRole('combobox', { name: 'GPU或加速卡型号' }));
-    expect(screen.getByRole('option', { name: '示例加速卡 A' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '示例加速卡 B' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '通用加速卡 80GB' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '高性能加速卡 80GB' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: '无卡' })).not.toBeInTheDocument();
     closeOpenSelect();
 
@@ -244,10 +380,10 @@ describe('MarketplacePage', () => {
     const { user } = renderMarketplace();
     await waitForCloudCatalog();
 
-    await selectOption(user, '站点', '示例站点 B');
+    await selectOption(user, '站点', '西部算力中心');
     closeOpenSelect();
     await selectOption(user, '计算类型', 'GPU 计算');
-    await selectOption(user, 'GPU或加速卡型号', '示例加速卡 A');
+    await selectOption(user, 'GPU或加速卡型号', '通用加速卡 80GB');
     closeOpenSelect();
     await selectOption(user, 'GPU或加速卡数量', '2 张');
     closeOpenSelect();
@@ -265,7 +401,7 @@ describe('MarketplacePage', () => {
     await waitForCloudCatalog();
 
     await selectOption(user, '计算类型', 'GPU 计算');
-    await selectOption(user, 'GPU或加速卡型号', '示例加速卡 A');
+    await selectOption(user, 'GPU或加速卡型号', '通用加速卡 80GB');
     closeOpenSelect();
     await selectOption(user, 'GPU或加速卡数量', '1 张');
     closeOpenSelect();
@@ -275,13 +411,13 @@ describe('MarketplacePage', () => {
 
     await waitForPhysicalCatalog(2);
     expect(screen.queryByText('数量：1 张')).not.toBeInTheDocument();
-    expect(screen.getByText('型号：示例加速卡 A')).toBeInTheDocument();
+    expect(screen.getByText('型号：通用加速卡 80GB')).toBeInTheDocument();
 
     await selectOption(user, '计算类型', 'CPU 计算');
 
     await waitForPhysicalCatalog(1);
     expect(screen.queryByRole('combobox', { name: 'GPU或加速卡型号' })).not.toBeInTheDocument();
-    expect(screen.queryByText('型号：示例加速卡 A')).not.toBeInTheDocument();
+    expect(screen.queryByText('型号：通用加速卡 80GB')).not.toBeInTheDocument();
   });
 
   it('resets every condition to the default cloud catalog with feedback', async () => {
@@ -329,7 +465,7 @@ describe('MarketplacePage', () => {
 
   it('keeps the development loading state persistent across type changes', async () => {
     const { user, location } = renderMarketplace(
-      '/marketplace?demoState=loading',
+      '/marketplace?viewState=loading',
     );
 
     const loadingTitle = screen.getByText('正在加载资源规格');
@@ -343,11 +479,11 @@ describe('MarketplacePage', () => {
 
     expect(screen.getByText('正在加载资源规格')).toBeInTheDocument();
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
-    expect(location()).toBe('/marketplace?demoState=loading&type=physical');
+    expect(location()).toBe('/marketplace?viewState=loading&type=physical');
   });
 
   it('turns the error state into successful results after a real retry', async () => {
-    const { user } = renderMarketplace('/marketplace?demoState=error');
+    const { user } = renderMarketplace('/marketplace?viewState=error');
 
     const error = await screen.findByRole('alert');
     expect(error).toHaveAttribute('data-state', 'error');
@@ -357,15 +493,15 @@ describe('MarketplacePage', () => {
 
     await waitForCloudCatalog();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByText('正在重新加载演示资源。')).toBeInTheDocument();
+    expect(screen.getByText('正在重新加载资源目录。')).toBeInTheDocument();
   });
 
   it('uses empty-catalog copy that is distinct from filtered no results', async () => {
-    const { user } = renderMarketplace('/marketplace?demoState=empty');
+    const { user } = renderMarketplace('/marketplace?viewState=empty');
 
     expect(await screen.findByText('当前暂无云服务器资源')).toBeInTheDocument();
     expect(
-      screen.getByText('当前开发验收场景没有可展示的演示资源，可查看另一类资源。'),
+      screen.getByText('当前资源类型暂无可展示内容，可查看另一类资源。'),
     ).toBeInTheDocument();
     expect(screen.queryByText('未找到匹配资源')).not.toBeInTheDocument();
 
@@ -389,7 +525,7 @@ describe('MarketplacePage', () => {
     expect(gpuCard).toHaveAttribute('data-resource-type', 'cloud-server');
     expect(gpuCard).toHaveAttribute('data-compute-type', 'gpu');
     expect(cpuCard).toHaveTextContent('云服务器');
-    expect(cpuCard).toHaveTextContent('示例站点 A');
+    expect(cpuCard).toHaveTextContent('东部算力中心');
     expect(cpuCard).toHaveTextContent('CPU 计算');
     expect(cpuCard).toHaveTextContent('8 vCPU');
     expect(cpuCard).toHaveTextContent('内存32 GB');
@@ -398,7 +534,7 @@ describe('MarketplacePage', () => {
     expect(cpuCard).not.toHaveTextContent('无卡');
 
     expect(gpuCard).toHaveTextContent('GPU 计算');
-    expect(gpuCard).toHaveTextContent('加速卡型号示例加速卡 A');
+    expect(gpuCard).toHaveTextContent('加速卡型号通用加速卡 80GB');
     expect(gpuCard).toHaveTextContent('加速卡数量1 张');
 
     const catalog = screen.getByLabelText('资源商品列表');
@@ -436,11 +572,11 @@ describe('MarketplacePage', () => {
     expect(card).toHaveAttribute('data-resource-type', 'physical-machine');
     expect(card).toHaveAttribute('data-compute-type', 'gpu');
     expect(card).toHaveTextContent('物理机');
-    expect(card).toHaveTextContent('2 × 48 核通用处理器（演示）');
+    expect(card).toHaveTextContent('2 × 48 核通用处理器');
     expect(card).toHaveTextContent('内存1024 GB');
-    expect(card).toHaveTextContent('加速卡型号示例加速卡 B');
+    expect(card).toHaveTextContent('加速卡型号高性能加速卡 80GB');
     expect(card).toHaveTextContent('加速卡数量8 张');
-    expect(card).toHaveTextContent('整机摘要双路处理器、八张加速卡整机规格（演示）');
+    expect(card).toHaveTextContent('整机摘要双路处理器、八张加速卡整机规格');
     expect(card).not.toHaveTextContent('默认系统盘');
     expect(
       within(card).getByLabelText('核心硬件规格').children,
@@ -475,7 +611,7 @@ describe('MarketplacePage', () => {
 
     expect(disabledButton).toBeDisabled();
     expect(disabledButton).toHaveAttribute('aria-describedby');
-    expect(unavailableCard).toHaveTextContent('演示状态：该规格当前暂不可继续配置。');
+    expect(unavailableCard).toHaveTextContent('该规格当前暂不可继续配置。');
     await user.click(disabledButton);
     expect(location()).toBe('/marketplace');
 
@@ -487,22 +623,24 @@ describe('MarketplacePage', () => {
     );
 
     expect(location()).toBe(
-      '/marketplace/cloud-server/purchase?product=demo-cloud-cpu-c8-site-a',
+      '/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east',
     );
     expect(
-      screen.getByRole('heading', { level: 1, name: '云服务器购买配置' }),
+      screen.getByRole('heading', { level: 1, name: '配置云服务器' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('已从资源商城选择演示规格')).toBeInTheDocument();
-    expect(screen.getByText('通用计算 C8')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '配置云服务器' }),
+    ).toBeInTheDocument();
+    expect((await screen.findAllByText('通用计算 C8')).length).toBeGreaterThan(0);
   });
 
-  it('returns from both purchase placeholders to the matching marketplace type', async () => {
+  it('returns from both purchase pages to the matching marketplace type', async () => {
     const { user, location } = renderMarketplace(
-      '/marketplace/cloud-server/purchase?product=demo-cloud-gpu-g1-site-a',
+      '/marketplace/cloud-server/purchase?product=catalog-cloud-gpu-g1-east',
     );
 
-    expect(screen.getByText('加速计算 G1')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '返回资源商城' }));
+    expect((await screen.findAllByText('加速计算 G1')).length).toBeGreaterThan(0);
+    await user.click((await screen.findAllByRole('button', { name: '返回资源商城' }))[0]!);
     await waitForCloudCatalog();
     expect(location()).toBe('/marketplace?type=cloud');
 
@@ -516,19 +654,55 @@ describe('MarketplacePage', () => {
     );
 
     expect(location()).toBe(
-      '/marketplace/physical-machine/purchase?product=demo-physical-cpu-p1-site-a',
+      '/marketplace/physical-machine/purchase?product=catalog-physical-cpu-p1-east',
     );
     expect(
-      screen.getByRole('heading', { level: 1, name: '物理机购买配置' }),
+      screen.getByRole('heading', { level: 1, name: '配置物理机' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('整机通用计算 P1')).toBeInTheDocument();
+    expect((await screen.findAllByText('整机通用计算 P1')).length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole('button', { name: '返回资源商城' }));
+    await user.click(screen.getAllByRole('button', { name: '返回资源商城' })[0]!);
     await waitForPhysicalCatalog();
     expect(location()).toBe('/marketplace?type=physical');
     expect(screen.getByRole('tab', { name: '物理机' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
+  });
+
+  it('restores search, every active filter, page context, and scroll position after purchase navigation', async () => {
+    const { user, location } = renderMarketplace();
+    await waitForCloudCatalog();
+    const search = screen.getByRole('searchbox', { name: '搜索资源名称或规格' });
+
+    await selectOption(user, '站点', '西部算力中心');
+    closeOpenSelect();
+    await selectOption(user, '计算类型', 'GPU 计算');
+    await selectOption(user, 'GPU或加速卡型号', '通用加速卡 80GB');
+    closeOpenSelect();
+    await selectOption(user, 'GPU或加速卡数量', '2 张');
+    closeOpenSelect();
+    await selectOption(user, '配置状态', '可继续配置');
+    await user.type(search, 'G2');
+    await waitForCloudCatalog(1);
+
+    const scrollRegion = document.querySelector<HTMLElement>('.main-content__scroll-region');
+    expect(scrollRegion).not.toBeNull();
+    if (scrollRegion) scrollRegion.scrollTop = 420;
+    const product = screen.getByRole('article', { name: '加速计算 G2，可继续配置' });
+    await user.click(within(product).getByRole('button', { name: '立即配置' }));
+    await screen.findByRole('heading', { level: 1, name: '配置云服务器' });
+    await user.click((await screen.findAllByRole('button', { name: '返回资源商城' }))[0]!);
+
+    await waitForCloudCatalog(1);
+    expect(location()).toBe('/marketplace?type=cloud');
+    expect(search).toHaveValue('G2');
+    expect(screen.getByText('站点：西部算力中心')).toBeInTheDocument();
+    expect(screen.getAllByText('GPU 计算').length).toBeGreaterThan(0);
+    expect(screen.getByText('型号：通用加速卡 80GB')).toBeInTheDocument();
+    expect(screen.getByText('数量：2 张')).toBeInTheDocument();
+    expect(screen.getAllByText('可继续配置').length).toBeGreaterThan(0);
+    await waitFor(() => expect(scrollRegion).toHaveProperty('scrollTop', 420));
+    expect(await screen.findByText('已恢复离开前的筛选、分页和浏览位置。')).toBeInTheDocument();
   });
 });

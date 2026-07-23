@@ -1,13 +1,16 @@
-export {
-  MARKETPLACE_DEMO_CLOUD_SYSTEM_DISK_GB,
-  MARKETPLACE_DEMO_DATA_NOTICE,
-} from './data/marketplaceProducts';
+export { MARKETPLACE_CLOUD_SYSTEM_DISK_GB } from './data/marketplaceProducts';
 export {
   getMarketplaceFilterOptions,
   getMarketplaceProductById,
   MarketplaceRepositoryError,
   queryMarketplaceProducts,
 } from './services/marketplaceRepository';
+export {
+  getMarketplaceScrollRegion,
+  loadMarketplaceNavigationContext,
+  saveMarketplaceNavigationContext,
+  type MarketplaceNavigationContext,
+} from './services/marketplaceNavigationContext';
 export { MarketplaceFilters } from './components/MarketplaceFilters';
 export {
   MarketplaceResults,

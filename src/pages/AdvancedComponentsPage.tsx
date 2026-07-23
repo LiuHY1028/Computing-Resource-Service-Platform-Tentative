@@ -41,9 +41,9 @@ type ExampleRow = Readonly<{
 type ModalKind = 'normal' | PromptModalVariant | 'busy' | null;
 
 const rows: readonly ExampleRow[] = [
-  { id: 'A-001', name: '示例条目 A', category: '常规', summary: '用于验证单行内容展示。' },
-  { id: 'A-002', name: '示例条目 B', category: '说明', summary: '用于验证选择、长文字及第二行辅助内容。' },
-  { id: 'A-003', name: '示例条目 C', category: '禁用选择', summary: '该行保留展示，但选择控件不可用。', disabled: true },
+  { id: 'A-001', name: '资源条目 A', category: '常规', summary: '单行内容展示。' },
+  { id: 'A-002', name: '资源条目 B', category: '说明', summary: '选择、长文字及第二行辅助内容。' },
+  { id: 'A-003', name: '资源条目 C', category: '禁用选择', summary: '该行保留展示，但选择控件不可用。', disabled: true },
 ];
 
 const columns: readonly TableColumn<ExampleRow>[] = [
@@ -157,7 +157,7 @@ export function AdvancedComponentsPage() {
     <div className="advanced-page">
       <header className="advanced-page__intro">
         <div>
-          <p>原始 UI 规范 p.13、p.14、p.16–p.18 · 真实公共组件验证</p>
+          <p>原始 UI 规范 p.13、p.14、p.16–p.18 · 公共组件状态检查</p>
           <span aria-live="polite">交互反馈：{feedback}</span>
         </div>
         <div className="advanced-page__links">
@@ -186,13 +186,13 @@ export function AdvancedComponentsPage() {
           primaryAction={{ label: '确定', onClick: () => { setFeedback('普通弹窗已确认'); closeModal(); } }}
           secondaryAction={{ label: '取消', onClick: closeModal }}
         >
-          这是中性的可交互内容区域，用于验证 Header、Content 与 Footer 的结构关系。
+          这是中性的可交互内容区域，用于检查 Header、Content 与 Footer 的结构关系。
         </Modal>
         {promptKind && (
           <PromptModal
             open
             title={promptKind === 'close' ? '关闭型提示' : '操作提示'}
-            description="请确认是否继续当前示例操作。"
+            description="请确认是否继续当前操作。"
             variant={promptKind}
             cancelLabel={promptKind === 'close' || promptKind === 'success' ? undefined : '取消'}
             onConfirm={() => confirmPrompt(promptKind)}
@@ -206,17 +206,17 @@ export function AdvancedComponentsPage() {
           busy
           primaryAction={{ label: '确定' }}
         >
-          提交中会禁用操作并防止重复触发，结束后自动关闭此验证弹窗。
+          提交中会禁用操作并防止重复触发，结束后自动关闭此弹窗。
         </Modal>
       </ReviewSection>
 
       <ReviewSection id="advanced-tabs" page="p.14" title="Tabs">
-        <div className="advanced-demo-grid">
-          <div className="advanced-demo-card">
+        <div className="advanced-component-grid">
+          <div className="advanced-component-card">
             <span>TitleBarTabs · 手动激活</span>
             <TitleBarTabs aria-label="标题栏标签" items={tabItems} value={titleTab} onValueChange={setTitleTab} />
           </div>
-          <div className="advanced-demo-card">
+          <div className="advanced-component-card">
             <span>UnderlineTabs · Hover / Focus / Disabled</span>
             <UnderlineTabs aria-label="下划线标签" items={tabItems} value={underlineTab} onValueChange={setUnderlineTab} />
           </div>
@@ -249,7 +249,7 @@ export function AdvancedComponentsPage() {
           />
           <Table aria-label="多行内容表格" columns={multilineColumns} rows={rows} getRowKey={(row) => row.id} />
           <Table aria-label="紧凑表格" columns={columns} rows={rows} getRowKey={(row) => row.id} compact />
-          <Table aria-label="空表格" columns={columns} rows={[]} getRowKey={(row) => row.id} empty={<EmptyTable title="暂无示例内容" description="可使用下方操作继续。" action={<Button onClick={() => setFeedback('空表格操作已触发')}>新增示例</Button>} />} />
+          <Table aria-label="空表格" columns={columns} rows={[]} getRowKey={(row) => row.id} empty={<EmptyTable title="暂无内容" description="可使用下方操作继续。" action={<Button onClick={() => setFeedback('空表格操作已触发')}>新增内容</Button>} />} />
           <div className="advanced-table-state-grid">
             <Table aria-label="加载表格" columns={columns} rows={[]} getRowKey={(row) => row.id} loading />
             <Table aria-label="错误表格" columns={columns} rows={[]} getRowKey={(row) => row.id} error="加载失败，请重试。" onRetry={() => setFeedback('表格已重试')} />
@@ -269,11 +269,11 @@ export function AdvancedComponentsPage() {
       <ReviewSection id="advanced-form" page="p.18" title="Form">
         <Grid className="advanced-form-layout">
           <GridItem span={20}>
-            <Form aria-label="高级组件验证表单" onSubmit={handleFormSubmit}>
+            <Form aria-label="高级组件检查表单" onSubmit={handleFormSubmit}>
               <FormSection id="form-basic" title="基础信息" description="字段布局直接承载上一批公共控件。">
                 <Grid>
                   <GridItem span={12}>
-                    <FormField label="名称" required help="请输入中性的示例文本。">
+                    <FormField label="名称" required help="请输入名称。">
                       <Input value={textValue} onChange={(event) => setTextValue(event.target.value)} placeholder="请输入文本" />
                     </FormField>
                   </GridItem>
@@ -283,12 +283,12 @@ export function AdvancedComponentsPage() {
                     </FormField>
                   </GridItem>
                   <GridItem span={12}>
-                    <FormField label="错误示例" error="请检查当前输入。">
+                    <FormField label="错误状态" error="请检查当前输入。">
                       <Input defaultValue="需要检查" error />
                     </FormField>
                   </GridItem>
                   <GridItem span={12}>
-                    <FormField label="禁用示例" disabled>
+                    <FormField label="禁用状态" disabled>
                       <Input defaultValue="不可编辑" />
                     </FormField>
                   </GridItem>
@@ -308,14 +308,14 @@ export function AdvancedComponentsPage() {
                   <Textarea maxLength={80} showCount defaultValue="可输入多行说明。" />
                 </FormField>
               </FormSection>
-              <FormSection id="form-slot" title="布局插槽" description="仅验证上传区域的通用布局，不包含文件选择或上传逻辑。">
+              <FormSection id="form-slot" title="布局插槽" description="展示上传区域的通用布局，不包含文件选择或上传逻辑。">
                 <FormField label="内容区域" width="upload">
                   <div className="advanced-upload-slot" role="group" aria-label="通用内容插槽">通用内容插槽 · 无上传行为</div>
                 </FormField>
               </FormSection>
               <FormActions
                 submitting={submitting}
-                primaryAction={{ label: '提交示例' }}
+                primaryAction={{ label: '提交' }}
                 secondaryAction={{ label: '取消', onClick: () => setFeedback('表单已取消') }}
               />
             </Form>

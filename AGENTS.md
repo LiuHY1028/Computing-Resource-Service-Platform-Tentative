@@ -56,6 +56,16 @@ Business requirements override UI examples on behavior. UI specifications govern
 - Preserve documented PDF conflicts; component-specific rules take precedence until design confirms otherwise.
 - New components outside the PDF must be documented in `docs/analysis/08-page-component-mapping.md` with their requirement basis and state coverage.
 
+## Production-like user experience
+
+- 本规则永久生效，并优先于单次任务中的临时展示文案。
+- 所有用户可见页面、组件、状态和提示必须按正式产品标准呈现。
+- 禁止在用户界面、页面标题、URL 和普通操作路径中出现演示、Mock、示例、测试、原型、占位、任务编号或其他暴露开发状态的表达。
+- 每次前端任务完成后，Codex 必须扫描用户可见文案并修复上述泄漏。
+- 不得虚构实际未发生的支付、订单、资源、库存、审批、IP、密码、密钥、凭据或其他后端结果。
+- 对未接入真实后端的操作，使用正式且准确的提交、受理、处理中、准备中或等待交付状态。
+- 内部工程实现可以保留 fixture、seed 或 stub，但不得将其命名和状态暴露给用户。
+
 ## Visual review workflow
 
 - Codex不得为用户生成、保存、提交或在最终回复中展示页面评审截图。
@@ -86,6 +96,17 @@ npm run build
 ```
 
 Do not report a code task complete while required checks fail. If a script does not yet exist, add it in the engineering-initialization phase or state the gap explicitly.
+
+## Codex token efficiency — permanent
+
+- 此规则适用于所有后续 Codex 任务。
+- 在不降低正确性、功能完整性、测试覆盖、视觉质量和验收质量的前提下，主动减少 token 使用。
+- 只读取当前任务直接相关的文件，优先最小修改，不做无关重构。
+- 不重复复述既有需求和背景，不输出冗长计划、完整文件清单或完整测试日志。
+- 已在项目文档中明确的规则只引用路径，不重复粘贴。
+- 测试结果只汇报通过、失败及必要错误。
+- 最终报告只保留：根因与关键修改、检查结果、本地启动命令和验收地址、未解决事项。
+- 精简不得以省略必要实现、测试或浏览器检查为代价。
 
 ## Completion standard
 

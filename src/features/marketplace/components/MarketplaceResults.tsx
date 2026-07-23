@@ -95,7 +95,7 @@ export function MarketplaceResults({
             <span>{heading.resource}</span>
             {heading.collection}
           </h2>
-          <p>清晰比较核心硬件规格，并从本地演示资源进入配置。</p>
+          <p>清晰比较核心硬件规格，并进入对应资源配置。</p>
         </div>
         <div className="marketplace-results__count" aria-live="polite">
           <strong>{total ?? '—'}</strong>
@@ -107,7 +107,7 @@ export function MarketplaceResults({
         <MarketplaceStatePanel
           variant="loading"
           title="正在加载资源规格"
-          description="筛选区保持可用，结果将在本地演示数据准备完成后显示。"
+          description="筛选区保持可用，资源目录加载完成后将显示结果。"
         />
       )}
 
@@ -128,7 +128,7 @@ export function MarketplaceResults({
         <MarketplaceStatePanel
           variant="empty"
           title={`当前暂无${resourceTypeLabel(resourceType)}资源`}
-          description="当前开发验收场景没有可展示的演示资源，可查看另一类资源。"
+          description="当前资源类型暂无可展示内容，可查看另一类资源。"
           actions={
             <Button variant="secondary" onClick={onSwitchResourceType}>
               查看另一类资源

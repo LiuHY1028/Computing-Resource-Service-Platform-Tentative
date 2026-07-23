@@ -1,16 +1,14 @@
-# 算力资源服务平台交互原型
+# 算力资源服务平台
 
-本仓库用于构建企业算力资源服务平台的高保真交互原型。“算力资源服务平台”目前只是可替换的工作名称，不代表正式产品品牌。
+本仓库包含企业算力资源服务平台的前端应用。“算力资源服务平台”为可配置的工作名称，产品名称和 Logo 通过运行配置统一管理。
 
-## 当前阶段
+## 当前能力
 
-Task 03（应用框架）、Task 04A（基础公共组件）和 Task 04B（高级公共组件）已经完成。AppShell 提供 56 px 顶部导航、208/64 px 可展开侧栏、自适应主内容区、64 px 页面标题栏、正式信息架构菜单和 15 个稳定页面 ID；公共 UI 从 `src/components/ui/index.ts` 统一导出，并在两个不进入正式菜单的开发页中验证。
+AppShell 提供顶部导航、可展开侧栏、自适应主内容区、标准页面标题栏和正式信息架构菜单；公共 UI 从 `src/components/ui/index.ts` 统一导出。
 
-Task 05A 已把 `/marketplace` 替换为第一个正式业务页面：资源商城支持云服务器/物理机切换、搜索、站点与规格筛选、条件回显、组合过滤、结果数量、分页、可配置/不可配置商品，以及 Loading、Error/Retry、Empty 和 No Result 状态。商城通过类型安全的本地演示数据访问层工作，不包含真实库存、价格、计费、审批或订单规则。
+`/marketplace` 提供云服务器与物理机资源目录，支持类型切换、搜索、站点与规格筛选、条件回显、组合过滤、结果数量、分页、可配置状态，以及加载、错误重试、空目录和无结果状态。
 
-Task 05A 视觉重构在现有 UI 规范内引入低饱和蓝白商城气氛、居中分类导航、类型化商品分区和“浅色头部 + 2 × 2 核心指标 + 浅色操作带”卡片。1920 为四列、1366 为三列，云服务器与物理机、CPU 与 GPU 通过页面级蓝/青/紫装饰 Token 区分；商品数据、筛选业务、状态逻辑、购买入口和公共组件 API 均未改变。参考取舍与实测对比见 `docs/engineering/marketplace-visual-redesign.md`。
-
-`/marketplace/cloud-server/purchase` 和 `/marketplace/physical-machine/purchase` 已作为明确购买入口接通，目前仍是 Task 05A 的范围说明与返回商城占位页；完整购买配置由 Task 05B 接管。其余业务模块继续使用稳定占位路由。
+`/marketplace/cloud-server/purchase` 与 `/marketplace/physical-machine/purchase` 共用配置骨架、实时摘要、全表校验、确认 Modal、提交状态、草稿与离开提醒。云服务器支持固定 30 GB 系统盘、HostPath/NFS 数据存储、可选镜像和网络配置；物理机提供标准交付说明和网络访问意向。提交反馈使用正式的申请与处理中状态，不声明支付、订单或资源已由外部系统完成。
 
 ## 技术栈
 
@@ -41,9 +39,12 @@ npm run dev
 ```text
 http://127.0.0.1:5173/marketplace?type=cloud
 http://127.0.0.1:5173/marketplace?type=physical
-http://127.0.0.1:5173/marketplace?demoState=loading
-http://127.0.0.1:5173/marketplace?demoState=error
-http://127.0.0.1:5173/marketplace?demoState=empty
+http://127.0.0.1:5173/marketplace?viewState=loading
+http://127.0.0.1:5173/marketplace?viewState=error
+http://127.0.0.1:5173/marketplace?viewState=empty
+http://127.0.0.1:5173/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east
+http://127.0.0.1:5173/marketplace/cloud-server/purchase?product=catalog-cloud-gpu-g1-east
+http://127.0.0.1:5173/marketplace/physical-machine/purchase?product=catalog-physical-cpu-p1-east
 ```
 
 根目录 `AGENTS.md` 规定前端任务只进行临时浏览器检查，不生成、保存或提交页面评审截图；最终视觉验收由用户在本地浏览器完成。
@@ -73,11 +74,12 @@ public/                 静态资源目录（当前为空）
 src/
 ├── assets/fonts/       项目负责人提供的本地字体资产（仅一份 WOFF2）
 ├── app/                应用根节点、集中路由、页面定义、AppShell 和错误边界
-├── components/ui/      Task 04A/04B 公共组件及统一导出入口
+├── components/ui/      公共组件及统一导出入口
 ├── config/             产品身份与运行模式配置
 ├── features/
-│   └── marketplace/    商城业务组件、类型、本地演示数据和最小数据访问层
-├── pages/              商城、购买入口占位、模块占位、开发验证和 404 页
+│   ├── marketplace/    商城业务组件、类型、资源目录、访问层和返回上下文
+│   └── purchase/       两类购买配置、共享网络编辑器、校验、摘要和提交状态
+├── pages/              商城、购买配置、服务状态、内部组件检查和 404 页
 ├── shared/types/       后续共享类型入口
 ├── styles/             Token、浅色主题、Reset 与基础样式
 ├── test/               Vitest/jsdom 测试环境初始化
@@ -90,24 +92,25 @@ src/
 
 - `/`：重定向到默认正式模块 `/marketplace`
 - `/marketplace`：`MKT-01` 正式资源商城；`?type=cloud|physical` 保留资源类型
-- `/marketplace?demoState=loading|error|empty`：仅用于商城开发验收，不进入正式菜单
-- `/marketplace/cloud-server/purchase`：`BUY-01` 云服务器购买配置入口，完整表单由 Task 05B 实现
-- `/marketplace/physical-machine/purchase`：`BUY-02` 物理机购买配置入口，完整表单由 Task 05B 实现
-- `/resources/cloud-servers`：`RES-01` 云服务器列表占位页
-- `/storage`、`/images`、`/software`、`/network-access`：对应正式模块占位页
-- `/orders`、`/operation-records`：订单与操作记录占位页
-- `/__dev/components/foundation`：Task 04A 基础公共组件验证页，不加入正式菜单
-- `/__dev/components/advanced`：Task 04B 高级公共组件验证页，不加入正式菜单
-- `/__dev/ui-spec`：UI 规范 Design Token 开发验证页，不加入正式菜单
+- `/marketplace?viewState=loading|error|empty`：资源目录状态入口，不进入正式菜单
+- `/marketplace/cloud-server/purchase?product=<ID>`：`BUY-01` 云服务器配置
+- `/marketplace/physical-machine/purchase?product=<ID>`：`BUY-02` 物理机配置
+- 两个购买页支持 `viewState=loading|error` 状态入口，不进入正式菜单
+- `/resources/cloud-servers`：`RES-01` 云服务器列表；服务未开放时显示统一服务状态
+- `/storage`、`/images`、`/software`、`/network-access`：对应正式模块入口
+- `/orders`、`/operation-records`：订单与操作记录入口
+- `/__dev/components/foundation`：基础公共组件内部检查页，不加入正式菜单
+- `/__dev/components/advanced`：高级公共组件内部检查页，不加入正式菜单
+- `/__dev/ui-spec`：UI 规范与 Design Token 内部检查页，不加入正式菜单
 - `*`：404 页面
 
-15 个稳定页面 ID 的路径、标题、模块和用途统一定义在 `src/app/routes.ts`；正式菜单定义在 `src/app/shell/navigation.ts`；路由装配位于 `src/app/router.tsx`。详情路由使用动态对象 ID 参数。当前只有商城具有业务演示数据；购买入口按 `product` 查询参数回显同一商城规格，不创建订单或资源。
+15 个稳定页面 ID 的路径、标题、模块和用途统一定义在 `src/app/routes.ts`；正式菜单定义在 `src/app/shell/navigation.ts`；路由装配位于 `src/app/router.tsx`。详情路由使用动态对象 ID 参数。购买入口按 `product` 查询参数读取同一商城规格。`/__dev/*` 仅在开发模式注册，生产构建不可访问。
 
 ## 环境变量
 
 参考 `.env.example`：
 
-- `VITE_DATA_MODE`：`mock` 或 `api`，默认 `mock`。当前只校验并暴露模式，不创建 Mock 服务或 API 客户端；无效值会警告并安全回退到 `mock`。
+- `VITE_DATA_MODE`：`fixture` 或 `api`，默认 `fixture`；无效值会警告并安全回退。
 - `VITE_PRODUCT_DISPLAY_NAME`：可替换工作名称。
 - `VITE_PRODUCT_LOGO_SRC`：可选 Logo 地址；正式品牌未确认前保持为空。
 
@@ -120,7 +123,7 @@ src/
 - 默认浅色主题：`src/styles/theme.css`
 - 全局基础样式：`src/styles/base.css`
 - TypeScript CSS 变量引用：`src/theme/tokenVars.ts`
-- 验证路由：`/__dev/ui-spec`
+- 内部检查路由：`/__dev/ui-spec`
 - 工程说明：`docs/engineering/design-tokens.md`
 - 应用框架说明：`docs/engineering/app-shell.md`
 - 基础公共组件说明：`docs/engineering/components-foundation.md`
@@ -128,21 +131,21 @@ src/
 - 资源商城说明：`docs/engineering/marketplace.md`
 - 资源商城视觉竞品研究：`docs/research/marketplace-visual-benchmark.md`
 - 资源商城视觉重构：`docs/engineering/marketplace-visual-redesign.md`
+- 购买配置说明：`docs/engineering/purchase-configuration.md`
 - 字体资产与授权边界记录：`docs/engineering/font-assets.md`
 - 逐页映射、冲突、缺口与核验记录：`docs/engineering/ui-spec-*.md`
 
 字体由项目负责人提供并明确允许在当前项目内使用，仓库当前不包含书面授权文件；未经再次确认不应独立对外分发。工程没有复制来源 Logo，也没有引入 UI 组件库或 CSS 框架。正式产品名称和 Logo 仍由 `src/config/product.ts` 配置。
 
-字体使用 Vite 本地资产机制构建为带哈希的 WOFF2 文件；开发验证页会显示字体加载状态、回退链、5 级字号和连续字重。浏览器已确认三条当前路由字体加载正常且无字体 404，验证页混排与字重样例实际命中 `MiSans VF`。
+字体使用 Vite 本地资产机制构建为带哈希的 WOFF2 文件；内部检查页会显示字体加载状态、回退链、5 级字号和连续字重。
 
 ## 当前未实现
 
 - 字体在目标 Windows/macOS 环境的像素级渲染复核与书面授权归档
-- Task 05B 的完整云服务器/物理机购买配置、确认、提交与结果流程
-- 我的资源、存储、镜像、软件、网络、订单和操作记录正式业务页面
-- 商城之外的业务 Mock 数据；Mock HTTP 接口和真实 API 客户端
+- 我的资源、存储、镜像、软件、网络、订单和操作记录完整业务能力
+- 商城之外的数据访问服务和真实 API 客户端
 - 价格、支付、审批、权限、计费、资源状态或订单状态规则
 
-商城当前的站点、规格、加速卡、可配置性和 4/8 卡物理机均为明确标记的中性演示数据；`30 GB` 只作为云服务器默认系统盘的暂定存储容量。筛选深链只保留资源类型，其他筛选条件不跨刷新持久化。开发状态参数不属于正式业务能力。
+`30 GB` 作为云服务器当前固定系统盘容量。完整筛选不进入 URL；同一浏览会话从购买页返回时通过版本化导航上下文恢复，直接刷新商城则只由 URL 恢复资源类型。状态参数不属于正式业务能力。
 
 后续实现必须继续遵守根目录 `AGENTS.md` 和 `docs/analysis/` 中的需求约束。

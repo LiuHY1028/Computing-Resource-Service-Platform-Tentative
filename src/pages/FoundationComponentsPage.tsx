@@ -53,9 +53,9 @@ function DemoBlock({
   children,
 }: Readonly<{ label: string; children: ReactNode }>) {
   return (
-    <div className="foundation-demo-block">
-      <span className="foundation-demo-block__label">{label}</span>
-      <div className="foundation-demo-block__content">{children}</div>
+    <div className="foundation-component-block">
+      <span className="foundation-component-block__label">{label}</span>
+      <div className="foundation-component-block__content">{children}</div>
     </div>
   );
 }
@@ -79,7 +79,7 @@ export function FoundationComponentsPage() {
   return (
     <div className="foundation-page">
       <header className="foundation-page__intro">
-        <p>原始 UI 规范 p.8–p.12、p.15 · 真实公共组件验证</p>
+        <p>原始 UI 规范 p.8–p.12、p.15 · 公共组件状态检查</p>
         <span aria-live="polite">交互反馈：{buttonFeedback}</span>
       </header>
 
@@ -107,7 +107,7 @@ export function FoundationComponentsPage() {
           <span>p.9</span>
           <h2 id="foundation-buttons-title">Button</h2>
         </div>
-        <div className="foundation-demo-grid">
+        <div className="foundation-component-grid">
           <DemoBlock label="类型与图标">
             <Button variant="primary" onClick={() => setButtonFeedback('主要按钮已触发')}>主要按钮</Button>
             <Button>次要按钮</Button>
@@ -138,7 +138,7 @@ export function FoundationComponentsPage() {
           <DemoBlock label="基础与已有输入">
             <Input aria-label="基础输入" placeholder="请输入内容" />
             <Input aria-label="已有输入" defaultValue="已输入内容" />
-            <Input aria-label="长文本溢出" defaultValue="这是一段用于验证单行输入溢出显示的较长文本内容" />
+            <Input aria-label="长文本溢出" defaultValue="这是一段用于检查单行输入溢出显示的较长文本内容" />
           </DemoBlock>
           <DemoBlock label="清空、搜索与限长">
             <Input aria-label="可清空输入" clearable value={clearableValue} onChange={(event) => setClearableValue(event.target.value)} />
@@ -165,7 +165,7 @@ export function FoundationComponentsPage() {
           <span>p.11</span>
           <h2 id="foundation-selection-title">Radio 与 Checkbox</h2>
         </div>
-        <div className="foundation-demo-grid">
+        <div className="foundation-component-grid">
           <DemoBlock label="Radio 与卡片 Radio">
             <RadioGroup aria-label="基础单选组" value={radioValue} onValueChange={setRadioValue}>
               <Radio value="one">选项一</Radio>
@@ -175,7 +175,7 @@ export function FoundationComponentsPage() {
             <Radio checked disabled value="selected-disabled" onChange={() => undefined}>已选禁用</Radio>
             <RadioGroup aria-label="卡片单选组" direction="vertical" value={cardRadioValue} onValueChange={setCardRadioValue}>
               <CardRadio value="plain" title="卡片单选" />
-              <CardRadio value="detail" title="含标题和说明" description="用于验证标题、说明和显式选中标记。" />
+              <CardRadio value="detail" title="含标题和说明" description="展示标题、说明和显式选中标记。" />
             </RadioGroup>
           </DemoBlock>
           <DemoBlock label="Checkbox">
@@ -219,7 +219,7 @@ export function FoundationComponentsPage() {
           <Tooltip content="基础文字提示">
             <Button>基础提示</Button>
           </Tooltip>
-          <Tooltip content="这是一段较长的提示文字，用于验证最大宽度、自动换行与视口边界处理。">
+          <Tooltip content="这是一段较长的提示文字，用于检查最大宽度、自动换行与视口边界处理。">
             <Button>长文字提示</Button>
           </Tooltip>
           <Tooltip title="提示标题" content="标题下方展示正文内容。">
