@@ -30,7 +30,7 @@ const INITIAL_SPACES: readonly StorageSpace[] = [
       {
         id: 'mount-shared-east-001',
         resourceId: 'cs-east-001',
-        resourceName: '研发计算节点',
+        resourceName: '研发计算节点-01',
         resourceType: 'cloud-server',
         mountPath: '/data/shared',
         readOnly: false,
@@ -53,7 +53,7 @@ const INITIAL_SPACES: readonly StorageSpace[] = [
       {
         id: 'mount-local-east-001',
         resourceId: 'cs-east-001',
-        resourceName: '研发计算节点',
+        resourceName: '研发计算节点-01',
         resourceType: 'cloud-server',
         mountPath: '/data/local',
         readOnly: false,

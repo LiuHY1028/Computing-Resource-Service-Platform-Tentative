@@ -1,5 +1,4 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { ModulePlaceholderPage } from '../pages/ModulePlaceholderPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { UiSpecPage } from '../pages/UiSpecPage';
 import { FoundationComponentsPage } from '../pages/FoundationComponentsPage';
@@ -36,73 +35,42 @@ export const ROUTE_PATHS = Object.freeze({
 });
 
 function appPageElement(route: AppPageRoute) {
-  if (route.pageId === 'MKT-01') {
-    return <MarketplacePage />;
+  switch (route.pageId) {
+    case 'MKT-01':
+      return <MarketplacePage />;
+    case 'BUY-01':
+      return <PurchasePage resourceType="cloud-server" />;
+    case 'BUY-02':
+      return <PurchasePage resourceType="physical-machine" />;
+    case 'RES-01':
+      return <ResourceListPage resourceType="cloud-server" />;
+    case 'RES-02':
+      return <ResourceDetailPage resourceType="cloud-server" />;
+    case 'RES-03':
+      return <ResourceListPage resourceType="physical-machine" />;
+    case 'RES-04':
+      return <ResourceDetailPage resourceType="physical-machine" />;
+    case 'STO-01':
+      return <StorageListPage />;
+    case 'STO-02':
+      return <StorageDetailPage />;
+    case 'IMG-01':
+      return <ImagesPage />;
+    case 'SW-01':
+      return <SoftwarePage />;
+    case 'NET-01':
+      return <NetworkAccessPage />;
+    case 'ORD-01':
+      return <OrderListPage />;
+    case 'ORD-02':
+      return <OrderDetailPage />;
+    case 'OPS-01':
+      return <OperationRecordsPage />;
+    default: {
+      const unsupportedPage: never = route.pageId;
+      throw new Error(`Unsupported page: ${unsupportedPage}`);
+    }
   }
-
-  if (route.pageId === 'BUY-01' || route.pageId === 'BUY-02') {
-    return (
-      <PurchasePage
-        resourceType={
-          route.pageId === 'BUY-01' ? 'cloud-server' : 'physical-machine'
-        }
-      />
-    );
-  }
-
-  if (route.pageId === 'RES-01' || route.pageId === 'RES-03') {
-    return (
-      <ResourceListPage
-        resourceType={
-          route.pageId === 'RES-01' ? 'cloud-server' : 'physical-machine'
-        }
-      />
-    );
-  }
-
-  if (route.pageId === 'RES-02' || route.pageId === 'RES-04') {
-    return (
-      <ResourceDetailPage
-        resourceType={
-          route.pageId === 'RES-02' ? 'cloud-server' : 'physical-machine'
-        }
-      />
-    );
-  }
-
-  if (route.pageId === 'STO-01') {
-    return <StorageListPage />;
-  }
-
-  if (route.pageId === 'STO-02') {
-    return <StorageDetailPage />;
-  }
-
-  if (route.pageId === 'IMG-01') {
-    return <ImagesPage />;
-  }
-
-  if (route.pageId === 'SW-01') {
-    return <SoftwarePage />;
-  }
-
-  if (route.pageId === 'NET-01') {
-    return <NetworkAccessPage />;
-  }
-
-  if (route.pageId === 'ORD-01') {
-    return <OrderListPage />;
-  }
-
-  if (route.pageId === 'ORD-02') {
-    return <OrderDetailPage />;
-  }
-
-  if (route.pageId === 'OPS-01') {
-    return <OperationRecordsPage />;
-  }
-
-  return <ModulePlaceholderPage route={route} />;
 }
 
 export function AppRouter() {

@@ -44,7 +44,7 @@ const INITIAL_IMAGES: readonly PlatformImage[] = [
     description: '面向 GPU 计算资源的平台运行环境。',
     status: 'available',
     createdAt: '2026-05-18T06:00:00.000Z',
-    resourceIds: ['cs-west-002'],
+    resourceIds: ['cs-east-002'],
   },
   {
     id: 'preset-image-development',

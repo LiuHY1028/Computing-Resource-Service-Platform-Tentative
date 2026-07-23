@@ -232,17 +232,6 @@ describe('PurchasePage', () => {
     expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
   });
 
-  it('keeps loading persistent and turns the error into a retryable success', async () => {
-    const { unmount } = render(<MemoryRouter initialEntries={['/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east&viewState=loading']}><App /></MemoryRouter>);
-    expect(screen.getByRole('heading', { name: '正在读取所选商品' })).toBeInTheDocument();
-    unmount();
-
-    const user = renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east&viewState=error');
-    expect(await screen.findByRole('heading', { name: '商品读取失败' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '重试' }));
-    await waitForCloud();
-  });
-
   it('shows a leave confirmation for modified drafts and keeps the form when cancelled', async () => {
     const user = renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east');
     await waitForCloud();

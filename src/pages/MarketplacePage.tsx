@@ -18,7 +18,6 @@ import '../features/marketplace/marketplace.css';
 
 const PAGE_SIZE = 6;
 
-type MarketplaceViewState = 'normal' | 'loading' | 'error' | 'empty';
 type MarketplaceFilterState = Omit<MarketplaceQuery, 'resourceType'>;
 
 function parseResourceType(value: string | null): MarketplaceResourceType {
@@ -27,12 +26,6 @@ function parseResourceType(value: string | null): MarketplaceResourceType {
 
 function resourceTypeQueryValue(resourceType: MarketplaceResourceType) {
   return resourceType === 'cloud-server' ? 'cloud' : 'physical';
-}
-
-function parseViewState(value: string | null): MarketplaceViewState {
-  return value === 'loading' || value === 'error' || value === 'empty'
-    ? value
-    : 'normal';
 }
 
 function defaultFilters(): MarketplaceFilterState {
@@ -111,7 +104,6 @@ export function MarketplacePage() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const resourceType = parseResourceType(searchParams.get('type'));
-  const viewState = parseViewState(searchParams.get('viewState'));
   const shouldRestore = Boolean(
     (location.state as { restoreMarketplaceContext?: boolean } | null)
       ?.restoreMarketplaceContext,
@@ -142,27 +134,20 @@ export function MarketplacePage() {
   const filterOptions = getMarketplaceFilterOptions(resourceType);
 
   const requestKey = JSON.stringify({
-    viewState,
     query: effectiveQuery,
     retryAttempt,
   });
   const resultsState: MarketplaceResultsState =
-    viewState === 'loading' || settledResults?.requestKey !== requestKey
+    settledResults?.requestKey !== requestKey
       ? { status: 'loading' }
       : settledResults.state;
 
   useEffect(() => {
     const requestSequence = requestSequenceRef.current + 1;
     requestSequenceRef.current = requestSequence;
-    if (viewState === 'loading') {
-      return undefined;
-    }
-
     const controller = new AbortController();
     queryMarketplaceProducts(effectiveQuery, {
-      delayMs: viewState === 'normal' ? 0 : undefined,
-      simulateEmpty: viewState === 'empty',
-      simulateError: viewState === 'error' && retryAttempt === 0,
+      delayMs: 0,
       signal: controller.signal,
     })
       .then((result) => {
@@ -198,7 +183,7 @@ export function MarketplacePage() {
       });
 
     return () => controller.abort();
-  }, [effectiveQuery, requestKey, retryAttempt, viewState]);
+  }, [effectiveQuery, requestKey, retryAttempt]);
 
   useEffect(() => {
     const context = initialContextRef.current;
@@ -281,13 +266,12 @@ export function MarketplacePage() {
       resourceType === 'cloud-server' ? 'physical-machine' : 'cloud-server';
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('type', resourceTypeQueryValue(nextType));
-    nextParams.delete('viewState');
     setFilters((current) => sanitizeFilters(current, nextType));
     setPage(1);
     setFeedback(
       nextType === 'cloud-server'
-        ? '已切换至云服务器并退出空目录验收场景。'
-        : '已切换至物理机并退出空目录验收场景。',
+        ? '已切换至云服务器。'
+        : '已切换至物理机。',
     );
     if (nextParams.toString() !== searchParams.toString()) {
       setSearchParams(nextParams);

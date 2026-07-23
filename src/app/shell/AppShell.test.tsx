@@ -82,18 +82,18 @@ describe('AppShell', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('存储管理');
   });
 
-  it('provides feedback for both top navbar placeholders', async () => {
+  it('provides accurate feedback for both top navbar entries', async () => {
     const user = userEvent.setup();
     renderRoute('/marketplace');
 
     await user.click(screen.getByRole('button', { name: '消息入口' }));
-    expect(screen.getByText('消息功能待接入').closest('[role="status"]')).toHaveTextContent(
-      '当前阶段仅保留应用级消息入口。',
+    expect(screen.getByText('暂无新消息').closest('[role="status"]')).toHaveTextContent(
+      '新的平台通知将在这里显示。',
     );
 
     await user.click(screen.getByRole('button', { name: '当前用户入口' }));
-    expect(screen.getByText('用户功能待接入').closest('[role="status"]')).toHaveTextContent(
-      '当前阶段不创建真实账号、组织或权限信息。',
+    expect(screen.getByText('当前会话').closest('[role="status"]')).toHaveTextContent(
+      '当前会话未提供账号、组织或权限信息。',
     );
   });
 

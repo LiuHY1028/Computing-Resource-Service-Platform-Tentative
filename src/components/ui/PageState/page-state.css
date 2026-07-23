@@ -1,6 +1,6 @@
 .ui-page-state {
   display: grid;
-  min-height: 220px;
+  min-height: var(--height-page-state-min);
   place-items: center;
   align-content: center;
   gap: var(--space-12);
@@ -9,8 +9,8 @@
 }
 .ui-page-state > span {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: var(--size-page-state-icon);
+  height: var(--size-page-state-icon);
   place-items: center;
   border-radius: 50%;
   color: var(--color-primary);
@@ -19,7 +19,10 @@
 }
 .ui-page-state h2,
 .ui-page-state p { margin: 0; }
-.ui-page-state p { max-width: 560px; color: var(--color-text-secondary); }
+.ui-page-state p {
+  max-width: var(--width-page-state-copy);
+  color: var(--color-text-secondary);
+}
 .ui-page-state[data-tone='error'] > span {
   color: var(--color-error);
   background: var(--color-error-background);

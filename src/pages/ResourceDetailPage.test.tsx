@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -146,18 +146,6 @@ describe('ResourceDetailPage', () => {
     expect(missing.location()).toBe(
       '/resources/cloud-servers/missing-resource',
     );
-  });
-
-  it('recovers from a detail read error without changing the route', async () => {
-    const { user, location } = renderDetail(
-      '/resources/cloud-servers/cs-east-001?viewState=error',
-    );
-    expect(await screen.findByText('资源详情读取失败')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '重新加载' }));
-    expect(
-      await screen.findByRole('heading', { name: '研发计算节点-01' }),
-    ).toBeInTheDocument();
-    await waitFor(() => expect(location()).toContain('viewState=error'));
   });
 
   it('renames through the detail page and keeps the list in sync', async () => {

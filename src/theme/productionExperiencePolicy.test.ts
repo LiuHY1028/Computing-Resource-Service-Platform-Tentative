@@ -50,6 +50,12 @@ describe('production-like user experience policy', () => {
     expect(navigationSource).not.toMatch(/\/__dev\//);
   });
 
+  it('uses complete formal route mappings without URL-driven development states', () => {
+    expect(routerSource).not.toContain('ModulePlaceholderPage');
+    expect(routerSource).not.toContain('PurchasePlaceholderPage');
+    expect(offenders(/viewState/)).toEqual([]);
+  });
+
   it('documents the permanent production experience rule once', () => {
     expect(agentsSource.match(/## Production-like user experience/g)).toHaveLength(1);
     expect(agentsSource).toContain('不得虚构实际未发生的支付、订单、资源、库存、审批、IP、密码、密钥、凭据或其他后端结果。');

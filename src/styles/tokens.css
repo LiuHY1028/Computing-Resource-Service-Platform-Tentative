@@ -122,10 +122,13 @@
   --size-avatar: 30px;
   --size-resize-handle: 8px;
   --size-selection-control-engineering: 16px;
+  --size-page-state-icon: 40px;
   --max-width-tooltip: 220px;
   --height-tabs-title-area: 40px;
   --height-tabs-item: 32px;
   --height-modal-section: 64px;
+  --height-page-state-min: 220px;
+  --width-page-state-copy: 560px;
 
   /* p.4-p.7 Application layout */
   --layout-navbar-height: 56px;

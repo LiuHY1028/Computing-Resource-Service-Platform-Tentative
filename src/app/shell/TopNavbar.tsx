@@ -87,12 +87,12 @@ export function TopNavbar({ product, collapsed }: TopNavbarProps) {
             role="status"
           >
             <strong>
-              {feedbackPanel === 'messages' ? '消息功能待接入' : '用户功能待接入'}
+              {feedbackPanel === 'messages' ? '暂无新消息' : '当前会话'}
             </strong>
             <span>
               {feedbackPanel === 'messages'
-                ? '当前阶段仅保留应用级消息入口。'
-                : '当前阶段不创建真实账号、组织或权限信息。'}
+                ? '新的平台通知将在这里显示。'
+                : '当前会话未提供账号、组织或权限信息。'}
             </span>
           </div>
         )}

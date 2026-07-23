@@ -29,7 +29,7 @@ const INITIAL_RECORDS: readonly PlatformOperationRecord[] = [
     module: 'resource',
     action: '启动资源',
     targetId: 'cs-east-001',
-    targetName: '研发计算节点',
+    targetName: '研发计算节点-01',
     actor: '当前用户',
     createdAt: '2026-07-21T08:20:00.000Z',
     status: 'completed',

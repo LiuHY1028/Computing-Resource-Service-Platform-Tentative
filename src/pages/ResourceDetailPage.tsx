@@ -22,7 +22,6 @@ import {
 } from '../features/resources';
 import '../features/resources/resource-management.css';
 
-type DetailViewState = 'normal' | 'loading' | 'error';
 const DETAIL_TABS = [
   'overview',
   'monitoring',
@@ -32,10 +31,6 @@ const DETAIL_TABS = [
   'operations',
 ] as const;
 
-function parseViewState(value: string | null): DetailViewState {
-  return value === 'loading' || value === 'error' ? value : 'normal';
-}
-
 export function ResourceDetailPage({
   resourceType,
 }: Readonly<{ resourceType: ResourceType }>) {
@@ -43,7 +38,6 @@ export function ResourceDetailPage({
   const location = useLocation();
   const { resourceId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const viewState = parseViewState(searchParams.get('viewState'));
   const requestedTab = searchParams.get('tab');
   const selectedTab = DETAIL_TABS.includes(
     requestedTab as (typeof DETAIL_TABS)[number],
@@ -61,10 +55,9 @@ export function ResourceDetailPage({
   const requestKey = JSON.stringify({
     resourceType,
     resourceId,
-    viewState,
     retryAttempt,
   });
-  const loading = viewState === 'loading' || settledKey !== requestKey;
+  const loading = settledKey !== requestKey;
   const listPath =
     resourceType === 'cloud-server'
       ? '/resources/cloud-servers'
@@ -78,13 +71,11 @@ export function ResourceDetailPage({
       : listPath;
 
   useEffect(() => {
-    if (viewState === 'loading') return undefined;
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     const controller = new AbortController();
     getResourceById(resourceType, resourceId, {
-      delayMs: viewState === 'normal' ? 0 : undefined,
-      simulateError: viewState === 'error' && retryAttempt === 0,
+      delayMs: 0,
       signal: controller.signal,
     })
       .then((nextResource) => {
@@ -112,7 +103,7 @@ export function ResourceDetailPage({
         setSettledKey(requestKey);
       });
     return () => controller.abort();
-  }, [requestKey, resourceId, resourceType, retryAttempt, viewState]);
+  }, [requestKey, resourceId, resourceType, retryAttempt]);
 
   function changeTab(value: string) {
     const next = new URLSearchParams(searchParams);

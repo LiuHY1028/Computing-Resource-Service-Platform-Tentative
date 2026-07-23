@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -75,29 +75,6 @@ describe('ResourceListPage', () => {
     expect(await screen.findByText('没有匹配的资源')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '重置筛选' }));
     expect(await screen.findByText('研发计算节点-01')).toBeInTheDocument();
-  });
-
-  it('covers fixed loading, recoverable error and empty states', async () => {
-    const loading = renderResource(
-      '/resources/cloud-servers?viewState=loading',
-    );
-    expect(await screen.findByText('正在加载…')).toBeInTheDocument();
-    expect(loading.location()).toContain('viewState=loading');
-
-    cleanup();
-    const error = renderResource('/resources/cloud-servers?viewState=error');
-    expect(
-      await screen.findByText('资源数据读取失败，请稍后重试。'),
-    ).toBeInTheDocument();
-    await error.user.click(screen.getByRole('button', { name: '重试' }));
-    expect(await screen.findByText('研发计算节点-01')).toBeInTheDocument();
-
-    cleanup();
-    renderResource('/resources/cloud-servers?viewState=empty');
-    expect(await screen.findByText('暂无资源')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: '前往资源商城' }),
-    ).toBeInTheDocument();
   });
 
   it('switches to the physical machine route and shows physical fields', async () => {

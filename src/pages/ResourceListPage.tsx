@@ -21,13 +21,6 @@ import {
 import '../features/resources/resource-management.css';
 
 const PAGE_SIZE = 5;
-type ListViewState = 'normal' | 'loading' | 'error' | 'empty';
-
-function parseViewState(value: string | null): ListViewState {
-  return value === 'loading' || value === 'error' || value === 'empty'
-    ? value
-    : 'normal';
-}
 
 function validValue(value: string | null, allowed: readonly string[]) {
   return value && allowed.includes(value) ? value : 'all';
@@ -48,7 +41,6 @@ export function ResourceListPage({
     () => getResourceFilterOptions(resourceType),
     [resourceType],
   );
-  const viewState = parseViewState(searchParams.get('viewState'));
   const query = useMemo<ResourceQuery>(
     () => ({
       resourceType,
@@ -88,9 +80,9 @@ export function ResourceListPage({
   const [actionFeedback, setActionFeedback] = useState('');
   const requestRef = useRef(0);
   const page = parsePositiveInteger(searchParams.get('page'));
-  const requestKey = JSON.stringify({ query, viewState, retryAttempt });
+  const requestKey = JSON.stringify({ query, retryAttempt });
   const [settledKey, setSettledKey] = useState('');
-  const loading = viewState === 'loading' || settledKey !== requestKey;
+  const loading = settledKey !== requestKey;
   const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageItems = (result?.items ?? []).slice(
@@ -99,14 +91,11 @@ export function ResourceListPage({
   );
 
   useEffect(() => {
-    if (viewState === 'loading') return undefined;
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     const controller = new AbortController();
     queryResources(query, {
-      delayMs: viewState === 'normal' ? 0 : undefined,
-      simulateEmpty: viewState === 'empty',
-      simulateError: viewState === 'error' && retryAttempt === 0,
+      delayMs: 0,
       signal: controller.signal,
     })
       .then((nextResult) => {
@@ -132,7 +121,7 @@ export function ResourceListPage({
         setSettledKey(requestKey);
       });
     return () => controller.abort();
-  }, [query, requestKey, retryAttempt, viewState]);
+  }, [query, requestKey, retryAttempt]);
 
   useEffect(() => {
     if (!loading && page !== safePage) {
@@ -175,10 +164,7 @@ export function ResourceListPage({
   }
 
   function resetFilters() {
-    const next = new URLSearchParams();
-    const state = searchParams.get('viewState');
-    if (state) next.set('viewState', state);
-    setSearchParams(next);
+    setSearchParams(new URLSearchParams());
   }
 
   function detailPath(resource: Resource, tab?: string) {

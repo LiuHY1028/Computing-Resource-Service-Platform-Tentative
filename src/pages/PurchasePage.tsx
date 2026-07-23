@@ -63,9 +63,8 @@ export function PurchasePage({ resourceType }: PurchasePageProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const productId = searchParams.get('product')?.trim() ?? '';
-  const viewState = searchParams.get('viewState');
   const [retryAttempt, setRetryAttempt] = useState(0);
-  const requestKey = `${resourceType}:${productId}:${viewState ?? 'normal'}:${retryAttempt}`;
+  const requestKey = `${resourceType}:${productId}:${retryAttempt}`;
   const [settledLoad, setSettledLoad] = useState<Readonly<{ requestKey: string; state: LoadState }>>();
   const [cloudConfiguration, setCloudConfiguration] = useState<CloudPurchaseConfiguration>();
   const [physicalConfiguration, setPhysicalConfiguration] = useState<PhysicalPurchaseConfiguration>();
@@ -78,13 +77,9 @@ export function PurchasePage({ resourceType }: PurchasePageProps) {
   const [liveMessage, setLiveMessage] = useState('');
 
   useEffect(() => {
-    if (viewState === 'loading') {
-      return undefined;
-    }
     const controller = new AbortController();
     loadPurchaseProduct(productId, {
       signal: controller.signal,
-      simulateError: viewState === 'error' && retryAttempt === 0,
     })
       .then((product) => {
         setSettledLoad({ requestKey, state: { status: 'success', product } });
@@ -123,7 +118,7 @@ export function PurchasePage({ resourceType }: PurchasePageProps) {
         });
       });
     return () => controller.abort();
-  }, [productId, requestKey, resourceType, retryAttempt, viewState]);
+  }, [productId, requestKey, resourceType, retryAttempt]);
 
   useEffect(() => {
     if (!dirty) return undefined;
@@ -133,9 +128,7 @@ export function PurchasePage({ resourceType }: PurchasePageProps) {
   }, [dirty]);
 
   const loadState =
-    viewState === 'loading' || settledLoad?.requestKey !== requestKey
-      ? undefined
-      : settledLoad.state;
+    settledLoad?.requestKey !== requestKey ? undefined : settledLoad.state;
   const product = loadState?.status === 'success' ? loadState.product : undefined;
   const cloudSummary = useMemo(
     () => product?.resourceType === 'cloud-server' && cloudConfiguration

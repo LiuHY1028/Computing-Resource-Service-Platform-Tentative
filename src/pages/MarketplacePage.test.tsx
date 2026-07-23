@@ -463,53 +463,6 @@ describe('MarketplacePage', () => {
     expect(search).toHaveValue('');
   });
 
-  it('keeps the development loading state persistent across type changes', async () => {
-    const { user, location } = renderMarketplace(
-      '/marketplace?viewState=loading',
-    );
-
-    const loadingTitle = screen.getByText('正在加载资源规格');
-    expect(loadingTitle.closest('[data-state]')).toHaveAttribute(
-      'data-state',
-      'loading',
-    );
-    expect(screen.queryByRole('article')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('tab', { name: '物理机' }));
-
-    expect(screen.getByText('正在加载资源规格')).toBeInTheDocument();
-    expect(screen.queryByRole('article')).not.toBeInTheDocument();
-    expect(location()).toBe('/marketplace?viewState=loading&type=physical');
-  });
-
-  it('turns the error state into successful results after a real retry', async () => {
-    const { user } = renderMarketplace('/marketplace?viewState=error');
-
-    const error = await screen.findByRole('alert');
-    expect(error).toHaveAttribute('data-state', 'error');
-    expect(error).toHaveTextContent('资源加载失败');
-
-    await user.click(within(error).getByRole('button', { name: '重新加载' }));
-
-    await waitForCloudCatalog();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByText('正在重新加载资源目录。')).toBeInTheDocument();
-  });
-
-  it('uses empty-catalog copy that is distinct from filtered no results', async () => {
-    const { user } = renderMarketplace('/marketplace?viewState=empty');
-
-    expect(await screen.findByText('当前暂无云服务器资源')).toBeInTheDocument();
-    expect(
-      screen.getByText('当前资源类型暂无可展示内容，可查看另一类资源。'),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('未找到匹配资源')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: '查看另一类资源' }));
-    await waitForPhysicalCatalog();
-    expect(screen.getByText('已切换至物理机并退出空目录验收场景。')).toBeInTheDocument();
-  });
-
   it('renders cloud fields with system-disk semantics and no fake GPU on CPU cards', async () => {
     renderMarketplace();
     await waitForCloudCatalog();
