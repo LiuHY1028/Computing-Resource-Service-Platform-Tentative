@@ -693,7 +693,7 @@
 .resource-product-card__footer {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-6) var(--space-16);
@@ -708,6 +708,25 @@
     var(--marketplace-card-surface-secondary) 58%,
     var(--color-surface-default)
   );
+}
+
+.resource-product-card__pricing {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2, 2px);
+}
+
+.resource-product-card__pricing strong {
+  color: var(--marketplace-card-accent);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.resource-product-card__pricing span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
 }
 
 .resource-product-card__action-note,

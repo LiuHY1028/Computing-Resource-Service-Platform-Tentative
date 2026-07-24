@@ -8,6 +8,7 @@ import {
   ResourceActionDialog,
   ResourceDelivery,
   ResourceDetailHeader,
+  ResourceBilling,
   ResourceHealth,
   ResourceImageSystem,
   ResourceLifecycleDialog,
@@ -51,6 +52,7 @@ export function ResourceDetailPage({ resourceType }: Readonly<{ resourceType: Re
   const connection = <ConnectionInformation connection={resource.connection} physicalResource={resource.resourceType === 'physical-machine' ? resource : undefined} />;
   const cloudTabs: readonly TabItem[] = [
     { value: 'overview', label: '概览', panel: <ResourceOverview resource={resource} /> },
+    { value: 'billing', label: '计费信息', panel: <ResourceBilling resource={resource} onLifecycle={() => setLifecycleAction('renew')} /> },
     { value: 'monitoring', label: '监控', panel: <MonitoringPanel resource={resource} /> },
     { value: 'storage', label: '存储', panel: <ResourceStorage resource={resource} /> },
     { value: 'network', label: '网络与访问', panel: <ResourceNetwork resource={resource} connectionContent={connection} /> },
@@ -60,6 +62,7 @@ export function ResourceDetailPage({ resourceType }: Readonly<{ resourceType: Re
   ];
   const physicalTabs: readonly TabItem[] = [
     { value: 'overview', label: '概览', panel: <ResourceOverview resource={resource} /> },
+    { value: 'billing', label: '费用与期限', panel: <ResourceBilling resource={resource} onLifecycle={() => setLifecycleAction('extend')} /> },
     { value: 'health', label: '硬件与健康', panel: <ResourceHealth resource={resource} /> },
     { value: 'monitoring', label: '监控', panel: <MonitoringPanel resource={resource} /> },
     { value: 'storage', label: '本地存储', panel: <ResourceStorage resource={resource} /> },

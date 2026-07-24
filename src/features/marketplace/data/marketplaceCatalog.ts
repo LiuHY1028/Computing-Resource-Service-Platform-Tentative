@@ -1,4 +1,5 @@
 import { MARKETPLACE_CATALOG_PRODUCTS } from '../data/marketplaceProducts';
+import { getComputePrice } from '../../pricing';
 import type {
   MarketplaceFilterOptions,
   MarketplaceProduct,
@@ -111,10 +112,22 @@ export function queryMarketplaceProducts(
   const products = resourceCatalog.filter((product) =>
     matchesQuery(product, query),
   );
+  const sorted = [...products].sort((left, right) => {
+    if (query.priceSort === 'recommended') return 0;
+    const leftPrice = getComputePrice(left.skuId);
+    const rightPrice = getComputePrice(right.skuId);
+    if (!leftPrice || !rightPrice) return 0;
+    const priceFor = (entry: typeof leftPrice) =>
+      entry.resourceType === 'cloud-server' && query.billingMode === 'pay-as-you-go'
+        ? entry.hourlyPriceFen
+        : entry.monthlyPriceFen;
+    const difference = priceFor(leftPrice) - priceFor(rightPrice);
+    return query.priceSort === 'price-asc' ? difference : -difference;
+  });
 
   return {
-    items: products,
-    total: products.length,
+    items: sorted,
+    total: sorted.length,
     catalogTotal: resourceCatalog.length,
   };
 }

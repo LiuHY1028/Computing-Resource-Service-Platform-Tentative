@@ -29,6 +29,11 @@ import {
   type PurchaseFieldErrors,
 } from '../features/purchase';
 import type { MarketplaceResourceType } from '../features/marketplace';
+import {
+  calculateCloudPrice,
+  calculatePhysicalPrice,
+} from '../features/pricing';
+import { findStorageSpace } from '../features/storage';
 import '../features/purchase/purchase.css';
 
 type PurchasePageProps = Readonly<{
@@ -158,6 +163,51 @@ function PurchasePageContent({
       : [],
     [physicalConfiguration, product],
   );
+  const cloudQuote = useMemo(() => {
+    if (product?.resourceType !== 'cloud-server' || !cloudConfiguration) {
+      return undefined;
+    }
+    const sharedSpace =
+      cloudConfiguration.storageType === 'shared'
+        ? findStorageSpace(cloudConfiguration.storageSpaceId)
+        : undefined;
+    return calculateCloudPrice({
+      skuId: product.skuId,
+      billingMode: cloudConfiguration.billingMode,
+      quantity: Number(cloudConfiguration.quantity) || 1,
+      durationMonths:
+        cloudConfiguration.billingMode === 'subscription'
+          ? Number(cloudConfiguration.periodMonths) as 1 | 3 | 6 | 12
+          : undefined,
+      systemDiskGb: cloudConfiguration.systemDiskGb,
+      storage:
+        cloudConfiguration.storageType === 'host-path'
+          ? {
+              skuId: 'storage-local-100gb-month',
+              capacityGb: 100,
+              label: '本地数据存储（随当前规格包含）',
+              included: true,
+            }
+          : sharedSpace
+            ? {
+                skuId: 'storage-shared-gb-month',
+                capacityGb: sharedSpace.capacityGb,
+                label: `${sharedSpace.name} · ${sharedSpace.capacityGb} GB`,
+              }
+            : undefined,
+      imageId: cloudConfiguration.imageId,
+    });
+  }, [cloudConfiguration, product]);
+  const physicalQuote = useMemo(() => {
+    if (product?.resourceType !== 'physical-machine' || !physicalConfiguration) {
+      return undefined;
+    }
+    return calculatePhysicalPrice({
+      skuId: product.skuId,
+      quantity: Number(physicalConfiguration.quantity) || 1,
+      durationMonths: Number(physicalConfiguration.periodMonths) as 1 | 3 | 6 | 12,
+    });
+  }, [physicalConfiguration, product]);
 
   function returnToMarketplace() {
     navigate(`/marketplace?type=${marketplaceType(resourceType)}`, {
@@ -215,10 +265,14 @@ function PurchasePageContent({
     setSubmitting(true);
     setLiveMessage('正在提交配置。');
     try {
+      const quote = product.resourceType === 'cloud-server' ? cloudQuote : physicalQuote;
+      if (!quote) throw new Error('无法生成当前配置的费用明细。');
       const nextResult = await submitConfiguration(
         resourceType,
         product.name,
         product.resourceType === 'cloud-server' ? cloudSummary : physicalSummary,
+        quote,
+        product.skuId,
       );
       clearPurchaseDraft(product.id);
       setDirty(false);
@@ -262,7 +316,7 @@ function PurchasePageContent({
     return <PurchaseStatePanel tone="unavailable" title="该商品暂不可配置" description={product.unavailableReason ?? '当前规格暂不可进入配置流程。'} onReturn={returnToMarketplace} />;
   }
 
-  if (product.resourceType === 'cloud-server' && cloudConfiguration) {
+  if (product.resourceType === 'cloud-server' && cloudConfiguration && cloudQuote) {
     const validation = validateCloudConfiguration(cloudConfiguration);
     return (
       <>
@@ -272,6 +326,7 @@ function PurchasePageContent({
           description="配置镜像、系统盘、数据存储与网络访问，并核对提交信息。"
           anchors={[
             { id: 'purchase-selected-product', label: '已选资源' },
+            { id: 'purchase-billing', label: '计费配置' },
             { id: 'purchase-basic-information', label: '基础信息' },
             { id: 'purchase-system-disk', label: '系统盘' },
             { id: 'purchase-data-storage', label: '数据盘' },
@@ -279,18 +334,18 @@ function PurchasePageContent({
             { id: 'purchase-network', label: '网络与访问' },
           ]}
           liveMessage={liveMessage}
-          summary={<ConfigurationSummary title="云服务器配置" items={cloudSummary} missingItems={validation.missingItems} dirty={dirty} onConfirm={validateAndConfirm} onReturn={requestReturn} onClearDraft={clearDraft} />}
+          summary={<ConfigurationSummary title="云服务器配置" items={cloudSummary} quote={cloudQuote} missingItems={validation.missingItems} dirty={dirty} onConfirm={validateAndConfirm} onReturn={requestReturn} onClearDraft={clearDraft} />}
         >
           <SelectedProductSummary product={product} onReturn={requestReturn} onChangeProduct={requestReturn} />
           <CloudPurchaseForm product={product} value={cloudConfiguration} errors={errors} onChange={updateCloud} onConfirm={validateAndConfirm} onReturn={requestReturn} />
         </PurchasePageLayout>
-        <ConfirmationModal open={confirmationOpen} resourceLabel="云服务器" productName={product.name} items={cloudSummary} submitting={submitting} onClose={() => setConfirmationOpen(false)} onSubmit={submitPurchase} />
+        <ConfirmationModal open={confirmationOpen} resourceLabel="云服务器" productName={product.name} items={cloudSummary} quote={cloudQuote} submitting={submitting} onClose={() => setConfirmationOpen(false)} onSubmit={submitPurchase} />
         <PromptModal open={leaveOpen} title="离开当前配置？" description="当前配置尚未确认。离开后仍可在本次浏览会话中恢复草稿。" variant="warning" confirmLabel="确认离开" cancelLabel="继续配置" onClose={() => setLeaveOpen(false)} onConfirm={returnToMarketplace} />
       </>
     );
   }
 
-  if (product.resourceType === 'physical-machine' && physicalConfiguration) {
+  if (product.resourceType === 'physical-machine' && physicalConfiguration && physicalQuote) {
     const validation = validatePhysicalConfiguration(physicalConfiguration);
     return (
       <>
@@ -305,12 +360,12 @@ function PurchasePageContent({
             { id: 'purchase-network', label: '网络意向' },
           ]}
           liveMessage={liveMessage}
-          summary={<ConfigurationSummary title="物理机配置" items={physicalSummary} missingItems={validation.missingItems} dirty={dirty} onConfirm={validateAndConfirm} onReturn={requestReturn} onClearDraft={clearDraft} />}
+          summary={<ConfigurationSummary title="物理机配置" items={physicalSummary} quote={physicalQuote} missingItems={validation.missingItems} dirty={dirty} onConfirm={validateAndConfirm} onReturn={requestReturn} onClearDraft={clearDraft} />}
         >
           <SelectedProductSummary product={product} onReturn={requestReturn} onChangeProduct={requestReturn} />
           <PhysicalPurchaseForm value={physicalConfiguration} errors={errors} onChange={updatePhysical} onConfirm={validateAndConfirm} onReturn={requestReturn} />
         </PurchasePageLayout>
-        <ConfirmationModal open={confirmationOpen} resourceLabel="物理机" productName={product.name} items={physicalSummary} submitting={submitting} onClose={() => setConfirmationOpen(false)} onSubmit={submitPurchase} />
+        <ConfirmationModal open={confirmationOpen} resourceLabel="物理机" productName={product.name} items={physicalSummary} quote={physicalQuote} submitting={submitting} onClose={() => setConfirmationOpen(false)} onSubmit={submitPurchase} />
         <PromptModal open={leaveOpen} title="离开当前配置？" description="当前配置尚未确认。离开后仍可在本次浏览会话中恢复草稿。" variant="warning" confirmLabel="确认离开" cancelLabel="继续配置" onClose={() => setLeaveOpen(false)} onConfirm={returnToMarketplace} />
       </>
     );

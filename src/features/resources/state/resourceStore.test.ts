@@ -140,6 +140,10 @@ describe('resourceStore', () => {
     expect(cloud?.resourceType === 'cloud-server' && cloud.imageId).toBe('preset-image-base-linux');
     expect(physical?.resourceType === 'physical-machine' && physical.assetNumber).toBeTruthy();
     expect(physical?.resourceType === 'physical-machine' && physical.localStorage.raidLevel).toBe('RAID 5');
+    expect(cloud?.priceSnapshot.skuId).toBe('catalog-cloud-cpu-c16-west');
+    expect(cloud?.priceSnapshot.total.amountFen).toBe(
+      getOrdersForResource('cs-east-001')[0]?.priceSnapshot.total.amountFen,
+    );
   });
 
   it('submits renewal without changing the formal expiry and creates a linked order', () => {
@@ -155,6 +159,13 @@ describe('resourceStore', () => {
     expect(after?.lifecycleRequestState).toBe('renewal-processing');
     expect(after?.pendingExpiresAt).not.toBe(before?.expiresAt);
     expect(result[0]?.order.applicationType).toBe('cloud-renewal');
+    expect(result[0]?.order.priceSnapshot.total.amountFen).toBeGreaterThan(0);
+    expect(
+      result[0]?.order.priceSnapshot.lineItems.reduce(
+        (sum, item) => sum + item.amount.amountFen,
+        0,
+      ),
+    ).toBe(result[0]?.order.priceSnapshot.total.amountFen);
     expect(getOrdersForResource('cs-east-002')[0]?.status).toBe('pending');
   });
 
@@ -178,6 +189,8 @@ describe('resourceStore', () => {
     expect(after?.expiresAt).toBe(before?.expiresAt);
     expect(after?.resourceType === 'physical-machine' && after.extensionStatus).toBe('pending');
     expect(result[0]?.order.applicationType).toBe('physical-extension');
+    expect(result[0]?.order.priceSnapshot.duration).toBe(6);
+    expect(result[0]?.order.priceSnapshot.total.amountFen).toBeGreaterThan(0);
   });
 
   it('synchronizes project and tags into the resource operation record', () => {

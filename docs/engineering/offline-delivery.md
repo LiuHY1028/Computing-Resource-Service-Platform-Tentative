@@ -6,7 +6,7 @@
 
 ## 静态数据位置
 
-商品和购买配置数据位于各领域的 `data/`；资源、存储、镜像、软件、网络、订单与操作记录的内置初始数据位于对应 `state/*Store.ts`。对象通过稳定 ID 保持跨模块一致。
+商品和购买配置数据位于各领域的 `data/`；统一价格目录位于 `src/features/pricing/data/priceCatalog.json`；资源、存储、镜像、软件、网络、订单与操作记录的内置初始数据位于对应 `state/*Store.ts`。对象通过稳定 ID 和价格快照保持跨模块一致。
 
 ## 前端状态边界
 
@@ -33,6 +33,8 @@ release/算力资源服务平台.html
 ```bash
 npm run build:offline
 npm run verify:offline
+npm run verify:pricing
+npm run verify:relations
 ```
 
 验证器检查目标文件、单文件结构、内联入口、样式、字体、外部资源、API 地址、动态 Chunk、开发路由和合理文件体积。

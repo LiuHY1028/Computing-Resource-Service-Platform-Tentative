@@ -4,6 +4,7 @@ import type {
   MarketplaceProduct,
   MarketplaceResourceType,
 } from '../marketplace';
+import type { PriceQuote, PriceSnapshot } from '../pricing';
 
 export type PurchaseProduct = MarketplaceProduct;
 export type CloudPurchaseProduct = MarketplaceCloudServerProduct;
@@ -40,6 +41,9 @@ export type CloudPurchaseConfiguration = Readonly<{
   sharedMountPath: string;
   sharedReadOnly: boolean;
   imageId: string | null;
+  billingMode: 'subscription' | 'pay-as-you-go';
+  periodMonths: '1' | '3' | '6' | '12';
+  autoRenewalEnabled: boolean;
   network: NetworkConfiguration;
 }>;
 
@@ -47,6 +51,7 @@ export type PhysicalPurchaseConfiguration = Readonly<{
   resourceName: string;
   quantity: string;
   purpose: string;
+  periodMonths: '1' | '3' | '6' | '12';
   network: NetworkConfiguration;
 }>;
 
@@ -74,6 +79,8 @@ export type PurchaseSubmissionResult = Readonly<{
   resourceType: MarketplaceResourceType;
   productName: string;
   summary: readonly PurchaseSummaryItem[];
+  priceSnapshot: PriceSnapshot;
+  quote: PriceQuote;
 }>;
 
 export type PurchaseViewState = 'normal' | 'loading' | 'error';

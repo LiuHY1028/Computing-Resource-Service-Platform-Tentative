@@ -109,7 +109,7 @@ describe('ResourceDetailPage', () => {
     );
     await screen.findByRole('heading', { name: '训练物理节点-02' });
     expect(screen.getByText('物理机配置')).toBeInTheDocument();
-    expect(screen.getByText('高密度加速计算服务器')).toBeInTheDocument();
+    expect(screen.getByText('整机加速计算 P8')).toBeInTheDocument();
     expect(screen.queryByText('系统盘')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: '网络与访问' }));

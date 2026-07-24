@@ -1,5 +1,6 @@
 import { Modal } from '../../../components/ui';
 import type { PurchaseSummaryItem } from '../types';
+import { PricingSummary, type PriceQuote } from '../../pricing';
 
 type ConfirmationModalProps = Readonly<{
   open: boolean;
@@ -9,6 +10,7 @@ type ConfirmationModalProps = Readonly<{
   submitting: boolean;
   onClose: () => void;
   onSubmit: () => void;
+  quote: PriceQuote;
 }>;
 
 export function ConfirmationModal({
@@ -19,6 +21,7 @@ export function ConfirmationModal({
   submitting,
   onClose,
   onSubmit,
+  quote,
 }: ConfirmationModalProps) {
   return (
     <Modal
@@ -43,6 +46,7 @@ export function ConfirmationModal({
             </div>
           ))}
         </dl>
+        <PricingSummary value={quote} title="预计费用" />
         <p aria-live="polite">{submitting ? '正在提交配置，请勿重复操作。' : ''}</p>
       </div>
     </Modal>

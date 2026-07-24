@@ -5,6 +5,7 @@ import {
   queryOrders,
   resetOrderStore,
 } from './orderStore';
+import { calculateCloudPrice, createPriceSnapshot } from '../../pricing';
 
 const storage = new Map<string, string>();
 
@@ -31,6 +32,16 @@ describe('orderStore', () => {
         { label: '数量', value: '1' },
         { label: 'CPU', value: '8 vCPU' },
       ],
+      priceSnapshot: createPriceSnapshot(
+        'catalog-cloud-cpu-c8-east',
+        calculateCloudPrice({
+          skuId: 'catalog-cloud-cpu-c8-east',
+          billingMode: 'subscription',
+          quantity: 1,
+          durationMonths: 1,
+          systemDiskGb: 30,
+        }),
+      ),
     });
     expect(order.id).toMatch(/^REQ-\d{8}-\d{4}$/);
     expect(order.status).toBe('pending');

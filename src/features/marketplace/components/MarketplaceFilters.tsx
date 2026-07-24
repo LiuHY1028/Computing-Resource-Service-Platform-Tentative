@@ -36,6 +36,18 @@ const availabilityOptions: readonly SelectOption[] = [
   { value: 'unavailable', label: '暂不可配置' },
 ];
 
+const billingModeOptions: readonly SelectOption[] = [
+  { value: 'all', label: '全部计费模式' },
+  { value: 'subscription', label: '包月' },
+  { value: 'pay-as-you-go', label: '按量' },
+];
+
+const priceSortOptions: readonly SelectOption[] = [
+  { value: 'recommended', label: '推荐排序' },
+  { value: 'price-asc', label: '价格从低到高' },
+  { value: 'price-desc', label: '价格从高到低' },
+];
+
 function computeTypeLabel(value: MarketplaceQuery['computeType']) {
   return computeTypeOptions.find((option) => option.value === value)?.label;
 }
@@ -61,6 +73,8 @@ export function MarketplaceFilters({
     value: String(count),
     label: `${count} 张`,
   }));
+  const hasPricingFilters =
+    query.billingMode !== 'all' || query.priceSort !== 'recommended';
   const hasActiveFilters =
     query.resourceType !== 'cloud-server' ||
     query.search.trim().length > 0 ||
@@ -68,14 +82,16 @@ export function MarketplaceFilters({
     query.computeType !== 'all' ||
     query.acceleratorModels.length > 0 ||
     query.acceleratorCounts.length > 0 ||
-    query.availability !== 'all';
+    query.availability !== 'all' ||
+    hasPricingFilters;
   const hasVisibleFilterTags =
     query.search.trim().length > 0 ||
     query.sites.length > 0 ||
     query.computeType !== 'all' ||
     query.acceleratorModels.length > 0 ||
     query.acceleratorCounts.length > 0 ||
-    query.availability !== 'all';
+    query.availability !== 'all' ||
+    hasPricingFilters;
 
   function update(patch: Partial<MarketplaceQuery>) {
     onQueryChange({ ...query, ...patch });
@@ -188,6 +204,39 @@ export function MarketplaceFilters({
                     ? {}
                     : { acceleratorModels: [], acceleratorCounts: [] }),
                 })
+              }
+            />
+          </label>
+        </GridItem>
+        {query.resourceType === 'cloud-server' && (
+          <GridItem span={5}>
+            <label className="marketplace-filter-field" htmlFor="marketplace-billing-mode">
+              <span>计费模式</span>
+              <Select
+                id="marketplace-billing-mode"
+                aria-label="计费模式"
+                options={billingModeOptions}
+                value={query.billingMode}
+                onValueChange={(billingMode) =>
+                  update({
+                    billingMode:
+                      billingMode as MarketplaceQuery['billingMode'],
+                  })
+                }
+              />
+            </label>
+          </GridItem>
+        )}
+        <GridItem span={5}>
+          <label className="marketplace-filter-field" htmlFor="marketplace-price-sort">
+            <span>价格排序</span>
+            <Select
+              id="marketplace-price-sort"
+              aria-label="价格排序"
+              options={priceSortOptions}
+              value={query.priceSort}
+              onValueChange={(priceSort) =>
+                update({ priceSort: priceSort as MarketplaceQuery['priceSort'] })
               }
             />
           </label>
@@ -320,6 +369,26 @@ export function MarketplaceFilters({
                 }
               >
                 {availabilityLabel(query.availability)}
+              </FilterTag>
+            )}
+            {query.resourceType === 'cloud-server' && query.billingMode !== 'all' && (
+              <FilterTag
+                selected
+                onSelectedChange={(selected) =>
+                  !selected && update({ billingMode: 'all' })
+                }
+              >
+                {billingModeOptions.find((option) => option.value === query.billingMode)?.label}
+              </FilterTag>
+            )}
+            {query.priceSort !== 'recommended' && (
+              <FilterTag
+                selected
+                onSelectedChange={(selected) =>
+                  !selected && update({ priceSort: 'recommended' })
+                }
+              >
+                {priceSortOptions.find((option) => option.value === query.priceSort)?.label}
               </FilterTag>
             )}
           </div>

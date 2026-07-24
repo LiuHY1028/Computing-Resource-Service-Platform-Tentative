@@ -59,7 +59,7 @@
   font-size: var(--font-size-caption);
 }
 .management-table .ui-table { min-width: 1100px; }
-.management-primary-cell { display: grid; gap: var(--space-4); min-width: 170px; }
+.management-primary-cell { display: grid; gap: var(--space-4); min-width: 0; }
 .management-link-button {
   width: fit-content;
   padding: 0;

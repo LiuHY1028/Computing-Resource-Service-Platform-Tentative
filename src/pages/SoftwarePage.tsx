@@ -25,11 +25,23 @@ import {
   type Resource,
 } from '../features/resources';
 import '../styles/management.css';
+import {
+  getSoftwarePrice,
+  money,
+  pricePolicyLabel,
+} from '../features/pricing';
 
 const PAGE_SIZE = 6;
 
 function resourcePath(resourceId: string) {
   return `/resources/${resourceId.startsWith('pm-') ? 'physical-machines' : 'cloud-servers'}/${resourceId}?tab=software`;
+}
+
+function softwarePriceLabel(softwareId: string) {
+  const price = getSoftwarePrice(softwareId);
+  return price
+    ? pricePolicyLabel(price.policy, money(price.monthlyPriceFen))
+    : '需授权';
 }
 
 export function SoftwarePage() {
@@ -145,6 +157,7 @@ export function SoftwarePage() {
                     <div><dt>版本</dt><dd>{item.versions.join('、')}</dd></div>
                     <div><dt>发布方</dt><dd>{item.publisher}</dd></div>
                     <div><dt>环境要求</dt><dd>{item.environmentRequirement}</dd></div>
+                    <div><dt>费用</dt><dd>{softwarePriceLabel(item.id)}</dd></div>
                     <div><dt>当前安装数量</dt><dd>{getSoftwareInstallCount(item.id)} 个</dd></div>
                   </dl>
                   <div className="management-card__actions">
@@ -172,6 +185,7 @@ export function SoftwarePage() {
               <div><dt>适用资源</dt><dd>{selected.compatibleComputeTypes.map((item) => item.toUpperCase()).join(' / ')}</dd></div>
               <div><dt>简介</dt><dd>{selected.description}</dd></div>
               <div><dt>当前安装数量</dt><dd>{getSoftwareInstallCount(selected.id)} 个</dd></div>
+              <div><dt>费用</dt><dd>{softwarePriceLabel(selected.id)}</dd></div>
             </dl>
             <div className="management-related-links">
               <strong>已安装或处理中资源</strong>
@@ -185,6 +199,7 @@ export function SoftwarePage() {
         {selected && (
           <Form>
             <p>为 <strong>{selected.name}</strong> 选择版本和目标资源。提交后可在操作记录中查看处理状态。</p>
+            <p>费用：{softwarePriceLabel(selected.id)}</p>
             <FormField label="软件版本" required><Select value={version} onValueChange={setVersion} options={selected.versions.map((item) => ({ value: item, label: item }))} /></FormField>
             <FormField label="目标资源" required error={error || undefined}>
               <Select

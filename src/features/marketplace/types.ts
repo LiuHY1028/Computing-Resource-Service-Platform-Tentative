@@ -9,6 +9,13 @@ export type MarketplaceAvailabilityFilter =
   | 'configurable'
   | 'unavailable';
 
+export type MarketplaceBillingModeFilter =
+  | 'all'
+  | 'subscription'
+  | 'pay-as-you-go';
+
+export type MarketplacePriceSort = 'recommended' | 'price-asc' | 'price-desc';
+
 export interface MarketplaceAccelerator {
   readonly model: string;
   readonly count: number;
@@ -16,6 +23,7 @@ export interface MarketplaceAccelerator {
 
 interface MarketplaceProductBase {
   readonly id: string;
+  readonly skuId: string;
   readonly resourceType: MarketplaceResourceType;
   readonly name: string;
   readonly site: string;
@@ -52,6 +60,8 @@ export interface MarketplaceQuery {
   readonly acceleratorModels: readonly string[];
   readonly acceleratorCounts: readonly number[];
   readonly availability: MarketplaceAvailabilityFilter;
+  readonly billingMode: MarketplaceBillingModeFilter;
+  readonly priceSort: MarketplacePriceSort;
 }
 
 export interface MarketplaceQueryResult {

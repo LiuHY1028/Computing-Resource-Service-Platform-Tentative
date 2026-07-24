@@ -40,8 +40,8 @@ describe('ResourceListPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('研发计算节点-01')).toBeInTheDocument();
     expect(screen.getByText('共 8 个结果')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: '镜像与系统' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: '计费模式' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '系统与网络' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '计费与到期' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '第 2 页' }));
     expect(location()).toContain('page=2');
@@ -88,11 +88,32 @@ describe('ResourceListPage', () => {
     );
     expect(await screen.findByText('研发物理节点-01')).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: '系统与主机名' }),
+      screen.getByRole('columnheader', { name: '位置与网络' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('columnheader', { name: '镜像与系统' }),
+      screen.queryByRole('columnheader', { name: '系统与网络' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps the default table fluid and enables internal scrolling only for extension columns', async () => {
+    const { user } = renderResource();
+    const table = await screen.findByRole('table', { name: '云服务器列表' });
+    const shell = table.closest('.ui-table-shell');
+    expect(shell).toHaveAttribute('data-overflow', 'clip');
+    expect(table).toHaveStyle({ minWidth: '0' });
+    expect(screen.getByRole('columnheader', { name: '资源' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '状态' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: '操作' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '列表列设置' }));
+    await user.click(screen.getByRole('menuitem', { name: '镜像完整信息' }));
+    expect(screen.getByRole('columnheader', { name: '镜像完整信息' })).toBeInTheDocument();
+    expect(shell).toHaveAttribute('data-overflow', 'auto');
+
+    await user.click(screen.getByRole('button', { name: '列表列设置' }));
+    await user.click(screen.getByRole('menuitem', { name: '恢复默认列' }));
+    expect(screen.queryByRole('columnheader', { name: '镜像完整信息' })).not.toBeInTheDocument();
+    expect(shell).toHaveAttribute('data-overflow', 'clip');
   });
 
   it('opens details and connection information through stable routes', async () => {

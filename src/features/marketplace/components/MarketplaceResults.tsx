@@ -8,6 +8,7 @@ import {
 } from '../../../components/ui';
 import type {
   MarketplaceProduct,
+  MarketplaceBillingModeFilter,
   MarketplaceQueryResult,
   MarketplaceResourceType,
 } from '../types';
@@ -27,6 +28,7 @@ type MarketplaceResultsProps = Readonly<{
   onClearSearch: () => void;
   onResetFilters: () => void;
   onSwitchResourceType: () => void;
+  billingMode: MarketplaceBillingModeFilter;
 }>;
 
 function resourceTypeLabel(resourceType: MarketplaceResourceType) {
@@ -71,6 +73,7 @@ export function MarketplaceResults({
   onClearSearch,
   onResetFilters,
   onSwitchResourceType,
+  billingMode,
 }: MarketplaceResultsProps) {
   const total = state.result.total;
   const heading =
@@ -146,6 +149,7 @@ export function MarketplaceResults({
                 >
                   <ResourceProductCard
                     product={product}
+                    preferredBillingMode={billingMode}
                     onConfigure={onConfigure}
                   />
                 </GridItem>

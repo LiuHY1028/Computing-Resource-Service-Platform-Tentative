@@ -21,6 +21,14 @@ function isAvailability(value: unknown) {
   return value === 'all' || value === 'configurable' || value === 'unavailable';
 }
 
+function isBillingMode(value: unknown) {
+  return value === 'all' || value === 'subscription' || value === 'pay-as-you-go';
+}
+
+function isPriceSort(value: unknown) {
+  return value === 'recommended' || value === 'price-asc' || value === 'price-desc';
+}
+
 export function saveMarketplaceNavigationContext(
   query: MarketplaceQuery,
   page: number,
@@ -57,6 +65,8 @@ export function loadMarketplaceNavigationContext(
       !query.acceleratorCounts.every((count) => typeof count === 'number') ||
       !isComputeType(query.computeType) ||
       !isAvailability(query.availability) ||
+      !isBillingMode(query.billingMode) ||
+      !isPriceSort(query.priceSort) ||
       (resourceType && query.resourceType !== resourceType)
     ) {
       return undefined;

@@ -55,6 +55,7 @@ describe('storageStore', () => {
       capacityGb: 800,
     });
     expect(created.status).toBe('processing');
+    expect(created.priceSnapshot.total.amountFen).toBe(64000);
     expect((await queryStorageSpaces({ search: created.id }))[0]?.name).toBe('项目共享空间');
 
     await requestStorageExpansion(created.id, 1000);
@@ -63,6 +64,9 @@ describe('storageStore', () => {
       resourceType: 'storage',
       storageId: created.id,
       status: 'pending',
+      priceSnapshot: {
+        total: { amountFen: 16000, currency: 'CNY' },
+      },
     });
   });
 

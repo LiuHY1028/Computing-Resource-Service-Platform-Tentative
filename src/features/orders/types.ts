@@ -1,3 +1,5 @@
+import type { PriceSnapshot } from '../pricing';
+
 export type OrderStatus = 'pending' | 'preparing' | 'delivered' | 'cancelled' | 'failed';
 export type OrderResourceType = 'cloud-server' | 'physical-machine' | 'storage';
 export type ApplicationType =
@@ -37,6 +39,7 @@ export type PurchaseOrder = Readonly<{
   configurationChanges?: string;
   summary: readonly OrderSummaryItem[];
   timeline: readonly OrderTimelineItem[];
+  priceSnapshot: PriceSnapshot;
 }>;
 
 export type OrderQuery = Readonly<{

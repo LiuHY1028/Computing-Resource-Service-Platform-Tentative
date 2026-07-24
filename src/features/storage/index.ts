@@ -1,5 +1,6 @@
 export {
   createStorageSpace,
+  createStoragePriceQuote,
   deleteStorageSpace,
   findStorageSpace,
   getStorageMountsForResource,

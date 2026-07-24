@@ -1,9 +1,19 @@
 import { useId } from 'react';
 import { Button, Container, Tooltip } from '../../../components/ui';
-import type { MarketplaceProduct } from '../types';
+import {
+  formatHourlyPrice,
+  formatMonthlyPrice,
+  getComputePrice,
+  money,
+} from '../../pricing';
+import type {
+  MarketplaceBillingModeFilter,
+  MarketplaceProduct,
+} from '../types';
 
 type ResourceProductCardProps = Readonly<{
   product: MarketplaceProduct;
+  preferredBillingMode?: MarketplaceBillingModeFilter;
   onConfigure: (product: MarketplaceProduct) => void;
 }>;
 
@@ -106,11 +116,13 @@ function productMetrics(product: MarketplaceProduct): readonly ProductMetric[] {
 
 export function ResourceProductCard({
   product,
+  preferredBillingMode = 'all',
   onConfigure,
 }: ResourceProductCardProps) {
   const unavailableReasonId = useId();
   const availabilityLabel = product.configurable ? '可继续配置' : '暂不可配置';
   const metrics = productMetrics(product);
+  const price = getComputePrice(product.skuId);
   const configureButton = (
     <Button
       variant="primary"
@@ -216,6 +228,26 @@ export function ResourceProductCard({
       </div>
 
       <footer className="resource-product-card__footer">
+        {price && (
+          <div className="resource-product-card__pricing" aria-label="资源价格">
+            {price.resourceType === 'cloud-server' ? (
+              <>
+                <strong>
+                  {preferredBillingMode === 'pay-as-you-go'
+                    ? formatHourlyPrice(money(price.hourlyPriceFen))
+                    : formatMonthlyPrice(money(price.monthlyPriceFen))}
+                </strong>
+                <span>
+                  {preferredBillingMode === 'pay-as-you-go'
+                    ? `包月 ${formatMonthlyPrice(money(price.monthlyPriceFen))}`
+                    : `按量 ${formatHourlyPrice(money(price.hourlyPriceFen))}`}
+                </span>
+              </>
+            ) : (
+              <strong>{formatMonthlyPrice(money(price.monthlyPriceFen))}</strong>
+            )}
+          </div>
+        )}
         {product.configurable ? (
           <p className="resource-product-card__action-note">
             进入配置页继续选择

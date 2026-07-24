@@ -14,8 +14,16 @@ import {
   submitResourceApplication,
   updateAutoRenewal,
   updateResourceMetadata,
+  createExtensionQuote,
+  createRenewalQuote,
 } from '../state/resourceStore';
 import type { Resource } from '../types';
+import {
+  combinePriceQuotes,
+  formatHourlyPrice,
+  formatMonthlyPrice,
+  PricingSummary,
+} from '../../pricing';
 
 export type LifecycleDialogAction =
   | 'renew'
@@ -64,8 +72,27 @@ export function ResourceLifecycleDialog({
   const [busy, setBusy] = useState(false);
   const first = resources[0];
   const resourceIds = useMemo(() => resources.map((resource) => resource.id), [resources]);
-  if (!open || !first) return null;
   const months = Number(period) as 1 | 3 | 6 | 12;
+  const priceQuote = useMemo(() => {
+    if (action === 'renew' || action === 'auto-renew') {
+      const quotes = resources
+        .filter((resource) => resource.resourceType === 'cloud-server')
+        .map((resource) => createRenewalQuote(resource, months, renewStorage));
+      return quotes.length
+        ? combinePriceQuotes(quotes, 'subscription', months)
+        : undefined;
+    }
+    if (action === 'extend') {
+      const quotes = resources
+        .filter((resource) => resource.resourceType === 'physical-machine')
+        .map((resource) => createExtensionQuote(resource, months));
+      return quotes.length
+        ? combinePriceQuotes(quotes, 'monthly-rental', months)
+        : undefined;
+    }
+    return undefined;
+  }, [action, months, renewStorage, resources]);
+  if (!open || !first) return null;
 
   async function submit() {
     setBusy(true);
@@ -128,12 +155,15 @@ export function ResourceLifecycleDialog({
         {(action === 'renew' || action === 'extend') && (
           <>
             <dl className="resource-lifecycle-facts">
+              <div><dt>当前规格</dt><dd>{first.resourceType === 'cloud-server' ? first.instanceSpec : first.machineModel}</dd></div>
+              <div><dt>{first.resourceType === 'cloud-server' ? '当前规格价格' : '当前月租价格'}</dt><dd>{first.resourceType === 'cloud-server' && first.billingMode === 'pay-as-you-go' ? formatHourlyPrice(first.priceSnapshot.unitPrice) : formatMonthlyPrice(first.priceSnapshot.unitPrice)}</dd></div>
               <div><dt>当前到期时间</dt><dd>{new Date(first.expiresAt).toLocaleDateString('zh-CN')}</dd></div>
               <div><dt>预计新到期时间</dt><dd>{addMonths(first.expiresAt, months)}</dd></div>
               <div><dt>项目</dt><dd>{first.project}</dd></div>
               <div><dt>{first.resourceType === 'cloud-server' ? '计费模式' : '责任人'}</dt><dd>{first.resourceType === 'cloud-server' ? '包年包月' : first.owner}</dd></div>
             </dl>
             {periodField}
+            {priceQuote && <PricingSummary value={priceQuote} title={action === 'renew' ? '续费费用明细' : '延期费用明细'} />}
           </>
         )}
         {action === 'renew' && (
@@ -148,7 +178,12 @@ export function ResourceLifecycleDialog({
               <Select value={autoEnabled ? 'on' : 'off'} onValueChange={(value) => setAutoEnabled(value === 'on')} options={[{ value: 'on', label: '开启' }, { value: 'off', label: '关闭' }]} />
             </FormField>
             {periodField}
-            <p className="resource-lifecycle-note">保存的是当前前端管理状态，不代表已建立扣款或支付协议。</p>
+            <dl className="resource-lifecycle-facts">
+              <div><dt>当前参考续费金额</dt><dd>{priceQuote ? formatMonthlyPrice(priceQuote.lineItems[0]?.unitPrice ?? first.priceSnapshot.unitPrice) : '—'}</dd></div>
+              <div><dt>下次预计续费时间</dt><dd>{new Date(first.expiresAt).toLocaleDateString('zh-CN')}</dd></div>
+            </dl>
+            {priceQuote && <PricingSummary value={priceQuote} title="自动续费参考金额" />}
+            <p className="resource-lifecycle-note">该设置仅保存续费偏好，不代表已建立自动扣款或支付协议。</p>
           </>
         )}
         {action === 'extend' && (

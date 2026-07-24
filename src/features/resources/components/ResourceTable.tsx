@@ -23,6 +23,11 @@ import {
   formatAccelerator,
 } from '../formatters';
 import type { HealthStatus, Resource, ResourceAction, ResourceType } from '../types';
+import {
+  formatHourlyPrice,
+  formatMoney,
+  formatMonthlyPrice,
+} from '../../pricing';
 import { ResourceStatusBadge } from './ResourceStatusBadge';
 
 export type ResourceMenuAction =
@@ -159,40 +164,67 @@ export function ResourceActionMenu({ resource, onAction }: Readonly<{ resource: 
   );
 }
 
-function cloudColumns(): TableColumn<Resource>[] {
+function cloudCoreColumns(): TableColumn<Resource>[] {
   return [
-    { key: 'name', title: '名称与实例 ID', multiline: true, render: (resource) => <div className="resource-table__primary"><strong>{resource.name}</strong><span>{resource.id}</span></div> },
-    { key: 'status', title: '状态与健康', multiline: true, render: statusCell },
-    { key: 'specification', title: '实例规格', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.vCpu} vCPU · {resource.memoryGb} GB</strong><span>{formatAccelerator(resource)}</span><span>{resource.instanceSpec}</span></div> },
-    { key: 'platform', title: '镜像与系统', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><Truncated value={resource.image} /><span>{resource.operatingSystem}</span></div> },
-    { key: 'network', title: 'IP 与网络', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><span>内网 {resource.ip.privateIp}</span><span>{resource.ip.publicIp ? `公网 ${resource.ip.publicIp}` : '未分配公网 IP'}</span><span>{resource.vpc}</span></div> },
-    { key: 'billing', title: '计费模式', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.billingMode === 'subscription' ? '包年包月' : '按量计费'}</strong><span>{resource.billingMode === 'subscription' ? (resource.autoRenewal.enabled ? `自动续费 ${resource.autoRenewal.periodMonths} 个月` : '自动续费未开启') : '无需续费'}</span></div> },
-    { key: 'expiry', title: '到期时间', multiline: true, render: (resource) => <div className="resource-table__primary"><strong>{formatDate(resource.expiresAt)}</strong><span>{expiryText(resource)}</span>{resource.lifecycleRequestState === 'renewal-processing' && <StatusBadge tone="info">续费处理中</StatusBadge>}</div> },
-    { key: 'scope', title: '项目与标签', multiline: true, render: (resource) => <div className="resource-table__primary"><strong>{resource.project}</strong><span>{resource.tags.join(' · ')}</span></div> },
+    { key: 'resource', title: '资源', width: '14%', multiline: true, render: (resource) => <div className="resource-table__primary"><Truncated value={resource.name} /><span>{resource.id}</span><span>{resource.project || resource.tags[0]}</span></div> },
+    { key: 'status', title: '状态', width: '9%', multiline: true, render: statusCell },
+    { key: 'specification', title: '规格', width: '14%', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.vCpu} vCPU · {resource.memoryGb} GB</strong>{resource.accelerator && <span>{formatAccelerator(resource)}</span>}<span>{resource.instanceSpec}</span></div> },
+    { key: 'system-network', title: '系统与网络', width: '18%', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><Truncated value={resource.operatingSystem || resource.image} /><span>内网 {resource.ip.privateIp}</span><span>{resource.ip.publicIp ? `公网 ${resource.ip.publicIp}` : '公网 IP 未分配'}</span></div> },
+    { key: 'billing-expiry', title: '计费与到期', width: '23%', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.billingMode === 'subscription' ? `包月 · ${formatMonthlyPrice(resource.priceSnapshot.unitPrice)}` : `按量 · ${formatHourlyPrice(resource.priceSnapshot.unitPrice)}`}</strong><span>{resource.billingMode === 'subscription' ? `当前周期 ${formatMoney(resource.priceSnapshot.total)} · ${formatDate(resource.expiresAt)}` : '按实际使用时长计费'}</span>{resource.billingMode === 'subscription' && <span>{resource.autoRenewal.enabled ? `自动续费 ${resource.autoRenewal.periodMonths} 个月` : '自动续费未开启'} · {expiryText(resource)}</span>}{resource.lifecycleRequestState === 'renewal-processing' && <StatusBadge tone="info">续费处理中</StatusBadge>}</div> },
   ];
 }
 
-function physicalColumns(): TableColumn<Resource>[] {
+function physicalCoreColumns(): TableColumn<Resource>[] {
   return [
-    { key: 'name', title: '名称与资产编号', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><strong>{resource.name}</strong><span>{resource.assetNumber}</span><span>{resource.id}</span></div> },
-    { key: 'status', title: '状态与硬件健康', multiline: true, render: statusCell },
-    { key: 'hardware', title: '整机配置', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><strong>{resource.cpuModel} × {resource.cpuSockets}</strong><span>{resource.memoryGb} GB 内存</span><span>{formatAccelerator(resource)}</span><span>{resource.storageSummary}</span></div> },
-    { key: 'location', title: '物理位置', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><strong>{resource.site}</strong><span>{resource.room} · {resource.rack} · {resource.rackUnit}</span></div> },
-    { key: 'platform', title: '系统与主机名', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><Truncated value={resource.operatingSystem} /><span>{resource.hostname}</span></div> },
-    { key: 'network', title: '网络', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><span>管理 {resource.managementNetwork}</span><span>业务 {resource.ip.privateIp}</span><span>{resource.ip.publicIp ? `公网 ${resource.ip.publicIp}` : '未分配公网 IP'}</span></div> },
-    { key: 'expiry', title: '使用期限', multiline: true, render: (resource) => <div className="resource-table__primary"><strong>{formatDate(resource.expiresAt)}</strong><span>{expiryText(resource)}</span>{resource.lifecycleRequestState === 'extension-processing' && <StatusBadge tone="info">延期申请处理中</StatusBadge>}</div> },
-    { key: 'scope', title: '项目与责任人', multiline: true, render: (resource) => <div className="resource-table__primary"><strong>{resource.project}</strong><span>{resource.owner}</span></div> },
+    { key: 'resource', title: '资源', width: '14%', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><Truncated value={resource.name} /><span>{resource.assetNumber}</span><span>{resource.project || resource.owner}</span></div> },
+    { key: 'status', title: '状态', width: '9%', multiline: true, render: statusCell },
+    { key: 'hardware', title: '整机配置', width: '19%', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><Truncated value={`${resource.cpuModel} × ${resource.cpuSockets}`} /><span>{resource.memoryGb} GB 内存{resource.accelerator ? ` · ${formatAccelerator(resource)}` : ''}</span><span>{resource.storageSummary}</span></div> },
+    { key: 'location-network', title: '位置与网络', width: '17%', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><strong>{resource.site}</strong><span>{resource.room} · {resource.rack} · {resource.rackUnit}</span><span>{resource.hostname || resource.ip.privateIp}</span></div> },
+    { key: 'fee-term', title: '费用与期限', width: '19%', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><strong>按月租用 · {formatMonthlyPrice(resource.priceSnapshot.unitPrice)}</strong><span>当前周期 {formatMoney(resource.priceSnapshot.total)}</span><span>{formatDate(resource.expiresAt)} · {expiryText(resource)}</span>{resource.lifecycleRequestState === 'extension-processing' && <StatusBadge tone="info">延期处理中</StatusBadge>}</div> },
+  ];
+}
+
+function extensionColumns(resourceType: ResourceType): TableColumn<Resource>[] {
+  if (resourceType === 'cloud-server') {
+    return [
+      { key: 'image-full', title: '镜像完整信息', width: '190px', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><Truncated value={resource.image} /><span>{resource.imageId}</span></div> },
+      { key: 'system-disk', title: '系统盘', width: '150px', render: (resource) => resource.resourceType === 'cloud-server' ? `${resource.systemDiskGb} GB` : '' },
+      { key: 'data-disks', title: '数据盘', width: '180px', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.dataDisks.filter((disk) => disk.role === 'data').length} 块</strong><span>{resource.dataDisks.filter((disk) => disk.role === 'data').map((disk) => `${disk.capacityGb} GB`).join(' · ') || '未挂载'}</span></div> },
+      { key: 'network-type', title: '网络类型', width: '170px', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.vpc}</strong><span>{resource.sshEnabled ? '远程连接已开启' : '远程连接未开启'}</span></div> },
+      { key: 'created-at', title: '创建时间', width: '160px', render: (resource) => formatDate(resource.createdAt) },
+      { key: 'owner', title: '责任人', width: '140px', render: (resource) => resource.owner },
+      { key: 'tags', title: '标签', width: '180px', render: (resource) => resource.tags.join(' · ') },
+      { key: 'last-operated-at', title: '最近操作时间', width: '160px', render: (resource) => formatDate(resource.lastOperatedAt) },
+    ];
+  }
+  return [
+    { key: 'operating-system', title: '操作系统', width: '190px', render: (resource) => resource.resourceType === 'physical-machine' && <Truncated value={resource.operatingSystem} /> },
+    { key: 'hostname', title: '主机名', width: '160px', render: (resource) => resource.resourceType === 'physical-machine' ? resource.hostname : '' },
+    { key: 'bmc-status', title: 'BMC 状态', width: '150px', render: (resource) => resource.resourceType === 'physical-machine' ? ({ authorized: '已授权', restricted: '受限', 'not-provided': '未提供' }[resource.bmcAccess]) : '' },
+    { key: 'management-network', title: '管理网络', width: '180px', render: (resource) => resource.resourceType === 'physical-machine' ? resource.managementNetwork : '' },
+    { key: 'business-network', title: '业务网络', width: '180px', render: (resource) => resource.resourceType === 'physical-machine' ? resource.businessNetwork : '' },
+    { key: 'raid', title: 'RAID', width: '130px', render: (resource) => resource.resourceType === 'physical-machine' ? resource.localStorage.raidLevel : '' },
+    { key: 'created-at', title: '创建时间', width: '160px', render: (resource) => formatDate(resource.createdAt) },
+    { key: 'tags', title: '标签', width: '180px', render: (resource) => resource.tags.join(' · ') },
+    { key: 'last-operated-at', title: '最近操作时间', width: '160px', render: (resource) => formatDate(resource.lastOperatedAt) },
   ];
 }
 
 export function ResourceTable(props: ResourceTableProps) {
-  const columns = (props.resourceType === 'cloud-server' ? cloudColumns() : physicalColumns())
-    .filter((column) => ['name', 'status'].includes(column.key) || props.visibleOptionalColumns.includes(column.key));
+  const core = props.resourceType === 'cloud-server' ? cloudCoreColumns() : physicalCoreColumns();
+  const extensions = extensionColumns(props.resourceType)
+    .filter((column) => props.visibleOptionalColumns.includes(column.key));
+  const hasExtensions = extensions.length > 0;
+  const columns = [...core, ...extensions];
   return (
     <Table
       aria-label={props.resourceType === 'cloud-server' ? '云服务器列表' : '物理机列表'}
       className="resource-table"
       columns={columns}
+      layout="fixed"
+      minWidth={hasExtensions ? `${1000 + extensions.length * 170}px` : '0'}
+      overflow={hasExtensions ? 'auto' : 'clip'}
+      actionsWidth="128px"
       rows={props.rows}
       loading={props.loading}
       error={props.error}

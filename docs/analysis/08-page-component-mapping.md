@@ -116,7 +116,7 @@
 
 | 组件 | 最小职责 | 关键状态 | 边界 | 页面 |
 |---|---|---|---|---|
-| `PurchaseSnapshot` | 复述购买时已确认配置 | Loading、字段缺失、正常 | 不展示未经确认的金额/支付/账期 | `ORD-01/02` |
+| `PurchaseSnapshot` | 复述购买时已确认配置和提交时价格快照 | Loading、字段缺失、正常 | 金额只来自统一价格目录；不表达支付结果 | `ORD-01/02` |
 | `OrderStatusBadge` | 显示接口返回的订单状态 | Known、Unknown | 不自行建立订单状态机 | `ORD-01/02` |
 | `OperationResultBadge` | 显示动作处理/结果 | Processing、Success、Failure、Unknown | 只作界面语义，不定义后端任务流转 | `OPS-01` |
 | `FailureDetailPanel` | 展示可理解的失败原因和可用下一步 | Loading、Detail、Unavailable | 不泄露 K8S Pod/内部错误；重试条件由业务确认 | `OPS-01` 及各操作反馈 |
@@ -138,6 +138,7 @@
 | `Progress` | 上传镜像、安装软件、异步交付需要过程反馈 | Indeterminate、Determinate（仅有数据时）、Success、Failure | PDF 缺失；不得虚构百分比 |
 | `DropdownMenu` / `DropdownMenuItem` / `DropdownMenuGroup` / `DropdownMenuSeparator` | 资源列表和详情需要在触发器附近承载分组操作，避免使用大型弹窗导航 | Closed、Open、Keyboard focus、Disabled、Danger、Viewport edge | Task 09；使用 Portal 避免表格裁切，具体操作仍由 Modal 承担确认或填写 |
 | `CapacityProgress` | 存储详情必须同时表达总量、已用、可用和使用率，并以文字区分正常、偏高、容量不足 | Normal、High、Critical、Unknown | Task 09；复用 `Progress` 的确定值能力，不引入随机或服务端指标 |
+| `PricingSummary` | 在购买、续费、延期、扩容和订单中统一展示整数分费用明细与总额 | Free、Included、Monthly、Hourly、Quantity、Duration | Task 10；金额只读 `src/features/pricing/`，不表达支付或扣款结果 |
 | `PendingDecisionNotice` | 防止将待确认项实现成确定规则 | Inline、Section、Blocking | 使用 p.8 信息/注意容器；文案明确“暂定/待确认” |
 
 ## 7. 公共组件状态覆盖要求

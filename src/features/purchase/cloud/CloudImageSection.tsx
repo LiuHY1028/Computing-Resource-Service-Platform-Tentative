@@ -1,6 +1,11 @@
 import { CardRadio, RadioGroup } from '../../../components/ui';
 import type { MarketplaceComputeType } from '../../marketplace';
 import { getCompatiblePresetImages } from '../data/presetImages';
+import {
+  getImagePrice,
+  money,
+  pricePolicyLabel,
+} from '../../pricing';
 
 type CloudImageSectionProps = Readonly<{
   computeType: MarketplaceComputeType;
@@ -26,12 +31,17 @@ export function CloudImageSection({ computeType, value, onChange }: CloudImageSe
           description="镜像为可选项"
         />
         {images.map((image) => (
-          <CardRadio
-            key={image.id}
-            value={image.id}
-            title={image.name}
-            description={`${image.category} · ${image.operatingSystem} · ${image.environmentSummary}`}
-          />
+          (() => {
+            const price = getImagePrice(image.id);
+            return (
+              <CardRadio
+                key={image.id}
+                value={image.id}
+                title={image.name}
+                description={`${image.category} · ${image.operatingSystem} · ${image.environmentSummary} · ${price ? pricePolicyLabel(price.policy, money(price.monthlyPriceFen)) : '价格待确认'}`}
+              />
+            );
+          })()
         ))}
       </RadioGroup>
       <p className="purchase-inline-notice">

@@ -26,6 +26,12 @@ import {
 } from '../../orders';
 import { getOperationsForTarget, type PlatformOperationRecord } from '../../operations';
 import {
+  formatHourlyPrice,
+  formatMoney,
+  formatMonthlyPrice,
+  PricingSummary,
+} from '../../pricing';
+import {
   EXPIRY_STATE_LABELS,
   formatAccelerator,
   formatDateTime,
@@ -34,6 +40,7 @@ import {
 import type { CloudDataDisk, Resource } from '../types';
 import { ResourceStatusBadge } from './ResourceStatusBadge';
 import { ResourceActionMenu, type ResourceMenuAction } from './ResourceTable';
+import { createExtensionQuote, createRenewalQuote } from '../state/resourceStore';
 
 function capacityStatus(percent: number) {
   return percent >= 90
@@ -107,6 +114,61 @@ export function ResourceOverview({ resource }: Readonly<{ resource: Resource }>)
         <div className="resource-section__heading"><div><span>生命周期申请</span><h3>相关申请</h3></div></div>
         {relatedOrders.length ? <div className="management-related-links">{relatedOrders.map((order) => <Link to={`/orders/${order.id}`} key={order.id}>{order.id} · {APPLICATION_TYPE_LABELS[order.applicationType]} · {ORDER_STATUS_VIEWS[order.status].label}</Link>)}</div> : <EmptyTable title="暂无相关申请" />}
       </Container>
+    </div>
+  );
+}
+
+export function ResourceBilling({
+  resource,
+  onLifecycle,
+}: Readonly<{
+  resource: Resource;
+  onLifecycle: () => void;
+}>) {
+  const latestOrder = getOrdersForResource(resource.id)[0];
+  const isCloud = resource.resourceType === 'cloud-server';
+  const canRenew = isCloud ? resource.billingMode === 'subscription' : true;
+  const latestQuote = canRenew
+    ? isCloud
+      ? createRenewalQuote(resource, 1)
+      : createExtensionQuote(resource, 1)
+    : undefined;
+  const fields: readonly (readonly [string, ReactNode])[] = isCloud
+    ? [
+        ['计费模式', resource.billingMode === 'subscription' ? '包月' : '按量'],
+        ['当前规格价格', resource.billingMode === 'subscription' ? formatMonthlyPrice(resource.priceSnapshot.unitPrice) : formatHourlyPrice(resource.priceSnapshot.unitPrice)],
+        ['当前周期', resource.billingMode === 'subscription' ? `${resource.priceSnapshot.duration ?? 1} 个月` : '按实际使用时长'],
+        ['当前周期费用', resource.billingMode === 'subscription' ? formatMoney(resource.priceSnapshot.total) : '按小时累计'],
+        ['自动续费', resource.billingMode === 'subscription' ? (resource.autoRenewal.enabled ? `已开启 · ${resource.autoRenewal.periodMonths} 个月` : '未开启') : '不适用'],
+        ['到期时间', resource.billingMode === 'subscription' ? formatDateTime(resource.expiresAt) : '不适用'],
+        ['价格生成时间', formatDateTime(resource.priceSnapshot.generatedAt)],
+        ['最近订单', latestOrder ? <Link to={`/orders/${latestOrder.id}`}>{latestOrder.id}</Link> : '暂无'],
+      ]
+    : [
+        ['月租价格', formatMonthlyPrice(resource.priceSnapshot.unitPrice)],
+        ['当前使用周期', `${resource.priceSnapshot.duration ?? 1} 个月`],
+        ['当前周期费用', formatMoney(resource.priceSnapshot.total)],
+        ['到期时间', formatDateTime(resource.expiresAt)],
+        ['延期状态', resource.extensionStatus === 'pending' ? '处理中' : '无待处理申请'],
+        ['价格生成时间', formatDateTime(resource.priceSnapshot.generatedAt)],
+        ['最近申请', latestOrder ? <Link to={`/orders/${latestOrder.id}`}>{latestOrder.id}</Link> : '暂无'],
+      ];
+  return (
+    <div className="resource-detail-stack">
+      <DefinitionSection
+        eyebrow={isCloud ? '价格快照与有效期' : '月租与使用期限'}
+        title={isCloud ? '计费信息' : '费用与期限'}
+        fields={fields}
+      />
+      {latestQuote && (
+        <Container as="section" className="resource-section">
+          <div className="resource-section__heading">
+            <div><span>使用当前价目</span><h3>{isCloud ? '续费价格参考' : '延期价格参考'}</h3></div>
+            <Button onClick={onLifecycle}>{isCloud ? '提交续费申请' : '提交延期申请'}</Button>
+          </div>
+          <PricingSummary value={latestQuote} title="1 个月费用参考" />
+        </Container>
+      )}
     </div>
   );
 }

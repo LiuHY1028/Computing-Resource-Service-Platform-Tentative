@@ -14,6 +14,7 @@ export type StorageMount = Readonly<{
 
 export type StorageSpace = Readonly<{
   id: string;
+  skuId: string;
   name: string;
   type: StorageType;
   site: string;
@@ -35,6 +36,7 @@ export type StorageSpace = Readonly<{
   createdAt: string;
   updatedAt: string;
   mounts: readonly StorageMount[];
+  priceSnapshot: PriceSnapshot;
 }>;
 
 export function storageAvailableGb(space: Pick<StorageSpace, 'capacityGb' | 'usedGb'>) {
@@ -64,3 +66,4 @@ export type CreateStorageInput = Readonly<{
   site: string;
   capacityGb: number;
 }>;
+import type { PriceSnapshot } from '../pricing';

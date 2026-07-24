@@ -6,6 +6,10 @@
   background: var(--color-surface-default);
 }
 
+.ui-table-shell[data-overflow='clip'] {
+  overflow-x: clip;
+}
+
 .ui-table {
   width: 100%;
   min-width: var(--engineering-table-min-width);
@@ -14,6 +18,14 @@
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-light);
   line-height: var(--line-height-body);
+}
+
+.ui-table[data-layout='fixed'] {
+  table-layout: fixed;
+}
+
+.ui-table__selection-column {
+  width: var(--height-control-default);
 }
 
 .ui-table caption {

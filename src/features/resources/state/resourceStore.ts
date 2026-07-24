@@ -1,5 +1,11 @@
 import { createApplicationOrder } from '../../orders';
 import { recordOperation } from '../../operations';
+import {
+  calculateCloudPrice,
+  calculatePhysicalPrice,
+  createPriceSnapshot,
+  type PriceQuote,
+} from '../../pricing';
 import { createInitialResourceCatalog } from '../data/resourceCatalog';
 import type {
   CloudServerResource,
@@ -156,6 +162,58 @@ function addMonths(value: string, months: number) {
   return date.toISOString();
 }
 
+export function createRenewalQuote(
+  resource: CloudServerResource,
+  periodMonths: 1 | 3 | 6 | 12,
+  renewStorage = true,
+): PriceQuote {
+  const dataDisk = renewStorage
+    ? resource.dataDisks.find((disk) => disk.role === 'data')
+    : undefined;
+  const snapshotStorage = renewStorage && !dataDisk
+    ? resource.priceSnapshot.lineItems.find((item) => item.category === 'dataStorage')
+    : undefined;
+  const snapshotStorageSku = snapshotStorage?.id.split(':storage')[0];
+  return calculateCloudPrice({
+    skuId: resource.skuId,
+    billingMode: 'subscription',
+    quantity: 1,
+    durationMonths: periodMonths,
+    systemDiskGb: resource.systemDiskGb,
+    imageId: resource.imageId,
+    storage: dataDisk
+      ? {
+          skuId: dataDisk.displayType === '高性能共享存储'
+            ? 'storage-shared-gb-month'
+            : 'storage-local-100gb-month',
+          capacityGb: dataDisk.capacityGb,
+          label: dataDisk.displayType,
+          included: dataDisk.displayType === '本地数据存储',
+        }
+      : snapshotStorage && snapshotStorageSku
+        ? {
+            skuId: snapshotStorageSku,
+            capacityGb: snapshotStorageSku === 'storage-local-100gb-month'
+              ? snapshotStorage.quantity * 100
+              : snapshotStorage.quantity,
+            label: snapshotStorage.label,
+            included: snapshotStorage.included,
+          }
+      : undefined,
+  });
+}
+
+export function createExtensionQuote(
+  resource: PhysicalMachineResource,
+  periodMonths: 1 | 3 | 6 | 12,
+): PriceQuote {
+  return calculatePhysicalPrice({
+    skuId: resource.skuId,
+    quantity: 1,
+    durationMonths: periodMonths,
+  });
+}
+
 function updateResource(resourceId: string, update: (resource: Resource) => Resource) {
   const index = resources.findIndex((resource) => resource.id === resourceId);
   if (index < 0) throw new ResourceActionError(`未找到目标资源：${resourceId}`);
@@ -248,11 +306,15 @@ export function submitRenewalRequest(input: RenewalRequest) {
       lastOperatedAt: record.createdAt,
       operationRecords: [record, ...resource.operationRecords],
     })) as CloudServerResource;
+    const priceSnapshot = createPriceSnapshot(
+      current.skuId,
+      createRenewalQuote(current, input.periodMonths, input.renewStorage),
+    );
     const order = createApplicationOrder({
       applicationType: 'cloud-renewal',
       resourceType: 'cloud-server',
       resourceId: current.id,
-      resourceIds: input.resourceIds,
+      resourceIds: [current.id],
       resourceName: current.name,
       site: current.site,
       expectedExpiresAt: pendingExpiresAt,
@@ -264,6 +326,7 @@ export function submitRenewalRequest(input: RenewalRequest) {
         { label: '关联存储', value: input.renewStorage ? '同步提交续期' : '保持当前期限' },
         { label: '网络资源', value: input.renewNetwork ? '同步提交续期' : '保持当前期限' },
       ],
+      priceSnapshot,
     });
     return { resource: clone(updated), order };
   });
@@ -287,7 +350,7 @@ export function updateAutoRenewal(resourceIds: readonly string[], enabled: boole
       applicationType: 'auto-renewal',
       resourceType: 'cloud-server',
       resourceId: current.id,
-      resourceIds,
+      resourceIds: [current.id],
       resourceName: current.name,
       site: current.site,
       summary: [
@@ -295,6 +358,10 @@ export function updateAutoRenewal(resourceIds: readonly string[], enabled: boole
         { label: '当前状态', value: enabled ? '已开启' : '已关闭' },
         { label: '自动续费周期', value: `${periodMonths} 个月` },
       ],
+      priceSnapshot: createPriceSnapshot(
+        current.skuId,
+        createRenewalQuote(current, periodMonths),
+      ),
     });
     return clone(updated);
   });
@@ -318,11 +385,15 @@ export function submitExtensionRequest(input: ExtensionRequest) {
       lastOperatedAt: record.createdAt,
       operationRecords: [record, ...resource.operationRecords],
     })) as PhysicalMachineResource;
+    const priceSnapshot = createPriceSnapshot(
+      current.skuId,
+      createExtensionQuote(current, input.periodMonths),
+    );
     const order = createApplicationOrder({
       applicationType: 'physical-extension',
       resourceType: 'physical-machine',
       resourceId: current.id,
-      resourceIds: input.resourceIds,
+      resourceIds: [current.id],
       resourceName: current.name,
       site: current.site,
       expectedExpiresAt: pendingExpiresAt,
@@ -335,6 +406,7 @@ export function submitExtensionRequest(input: ExtensionRequest) {
         { label: '项目', value: current.project },
         { label: '责任人', value: current.owner },
       ],
+      priceSnapshot,
     });
     return { resource: clone(updated), order };
   });

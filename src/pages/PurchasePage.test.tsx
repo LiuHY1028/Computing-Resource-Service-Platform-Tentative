@@ -80,6 +80,31 @@ describe('PurchasePage', () => {
     expect(screen.getByRole('complementary', { name: '云服务器配置' })).toHaveTextContent('未选择（可选）');
   });
 
+  it('updates the quote for billing mode, duration, quantity and image price', async () => {
+    const user = renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east');
+    await waitForCloud();
+    const summary = screen.getByRole('complementary', { name: '云服务器配置' });
+    expect(summary).toHaveTextContent('预计总费用¥680');
+    expect(summary).toHaveTextContent('30 GB 系统盘已包含');
+
+    const quantity = screen.getByLabelText(/实例数量/);
+    await user.clear(quantity);
+    await user.type(quantity, '2');
+    expect(summary).toHaveTextContent('预计总费用¥1,360');
+
+    await user.click(screen.getByLabelText(/购买时长/));
+    await user.click(screen.getByRole('option', { name: '3 个月' }));
+    expect(summary).toHaveTextContent('预计总费用¥4,080');
+
+    await user.click(screen.getByRole('radio', { name: /开发工具链镜像/ }));
+    expect(summary).toHaveTextContent('预计总费用¥5,160');
+
+    await user.click(screen.getByRole('radio', { name: /按量/ }));
+    expect(screen.queryByLabelText(/购买时长/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /自动续费/ })).not.toBeInTheDocument();
+    expect(summary).toHaveTextContent('预计每小时费用¥2.70');
+  });
+
   it('uses a compact shared summary without internal scrolling', async () => {
     renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east');
     await waitForCloud();

@@ -36,6 +36,8 @@ function defaultFilters(): MarketplaceFilterState {
     acceleratorModels: [],
     acceleratorCounts: [],
     availability: 'all',
+    billingMode: 'all',
+    priceSort: 'recommended',
   };
 }
 
@@ -47,6 +49,8 @@ function filtersFromQuery(query: MarketplaceQuery): MarketplaceFilterState {
     acceleratorModels: query.acceleratorModels,
     acceleratorCounts: query.acceleratorCounts,
     availability: query.availability,
+    billingMode: query.billingMode,
+    priceSort: query.priceSort,
   };
 }
 
@@ -82,11 +86,14 @@ function sanitizeFilters(
           options.acceleratorCounts.includes(count),
         )
       : [];
+  const billingMode =
+    resourceType === 'cloud-server' ? filters.billingMode : 'all';
 
   if (
     sameStrings(filters.sites, sites) &&
     sameStrings(filters.acceleratorModels, acceleratorModels) &&
     sameNumbers(filters.acceleratorCounts, acceleratorCounts)
+    && filters.billingMode === billingMode
   ) {
     return filters;
   }
@@ -96,6 +103,7 @@ function sanitizeFilters(
     sites,
     acceleratorModels,
     acceleratorCounts,
+    billingMode,
   };
 }
 
@@ -254,6 +262,7 @@ export function MarketplacePage() {
         }
         onResetFilters={handleReset}
         onSwitchResourceType={switchResourceType}
+        billingMode={effectiveQuery.billingMode}
       />
     </div>
   );

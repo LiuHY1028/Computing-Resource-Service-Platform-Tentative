@@ -22,6 +22,9 @@ const baseCloud: CloudPurchaseConfiguration = {
   sharedMountPath: '',
   sharedReadOnly: false,
   imageId: null,
+  billingMode: 'subscription',
+  periodMonths: '1',
+  autoRenewalEnabled: false,
   network: { sshEnabled: false, sourceCidr: '', portRules: [] },
 };
 
@@ -29,6 +32,7 @@ const basePhysical: PhysicalPurchaseConfiguration = {
   resourceName: 'physical-resource',
   quantity: '1',
   purpose: '',
+  periodMonths: '1',
   network: { sshEnabled: false, sourceCidr: '', portRules: [] },
 };
 

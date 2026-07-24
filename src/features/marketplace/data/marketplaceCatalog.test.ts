@@ -19,6 +19,8 @@ function createQuery(
     acceleratorModels: [],
     acceleratorCounts: [],
     availability: 'all',
+    billingMode: 'all',
+    priceSort: 'recommended',
     ...overrides,
   };
 }
@@ -104,6 +106,24 @@ describe('built-in marketplace catalog', () => {
     expect(result.catalogTotal).toBeGreaterThan(0);
     expect(result.total).toBe(0);
     expect(result.items).toEqual([]);
+  });
+
+  it('sorts by monthly and hourly catalog prices without changing products', () => {
+    const monthly = queryMarketplaceProducts(
+      createQuery('cloud-server', {
+        priceSort: 'price-asc',
+        billingMode: 'subscription',
+      }),
+    );
+    const hourly = queryMarketplaceProducts(
+      createQuery('cloud-server', {
+        priceSort: 'price-desc',
+        billingMode: 'pay-as-you-go',
+      }),
+    );
+    expect(monthly.items[0]?.id).toBe('catalog-cloud-cpu-c8-east');
+    expect(hourly.items[0]?.id).toBe('catalog-cloud-gpu-g4-west');
+    expect(monthly.total).toBe(hourly.total);
   });
 
   it('finds one product by its stable cross-module id', () => {

@@ -13,6 +13,8 @@ const query: MarketplaceQuery = {
   acceleratorModels: ['通用加速卡 80GB'],
   acceleratorCounts: [1],
   availability: 'configurable',
+  billingMode: 'subscription',
+  priceSort: 'price-desc',
 };
 
 describe('marketplace navigation context', () => {

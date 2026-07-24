@@ -1,3 +1,5 @@
+import type { PriceSnapshot } from '../pricing';
+
 export type ResourceType = 'cloud-server' | 'physical-machine';
 export type ResourceStatus = 'preparing' | 'running' | 'stopped' | 'operating' | 'abnormal' | 'expired';
 export type ComputeType = 'cpu' | 'gpu';
@@ -81,6 +83,7 @@ export interface HealthCheck {
 
 interface ResourceBase {
   readonly id: string;
+  readonly skuId: string;
   readonly name: string;
   readonly resourceType: ResourceType;
   readonly site: string;
@@ -106,6 +109,7 @@ interface ResourceBase {
   readonly networkRules: readonly PortRule[];
   readonly software: readonly InstalledSoftware[];
   readonly operationRecords: readonly OperationRecord[];
+  readonly priceSnapshot: PriceSnapshot;
 }
 
 export interface DiskPerformance {

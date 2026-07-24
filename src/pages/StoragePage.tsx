@@ -19,6 +19,7 @@ import {
 } from '../components/ui';
 import {
   createStorageSpace,
+  createStoragePriceQuote,
   deleteStorageSpace,
   getStorageSpace,
   queryStorageSpaces,
@@ -34,6 +35,11 @@ import {
   type StorageStatus,
   type StorageType,
 } from '../features/storage';
+import {
+  formatMoney,
+  getStoragePrice,
+  PricingSummary,
+} from '../features/pricing';
 import {
   getOperationsForTarget,
   type PlatformOperationRecord,
@@ -81,7 +87,9 @@ function capacityView(space: StorageSpace) {
 const STORAGE_COLUMNS: readonly TableColumn<StorageSpace>[] = [
   {
     key: 'name',
-    title: '存储名称',
+    title: '存储',
+    width: '21%',
+    multiline: true,
     render: (space) => (
       <div className="management-primary-cell">
         <Link to={`/storage/${space.id}`}>{space.name}</Link>
@@ -89,23 +97,34 @@ const STORAGE_COLUMNS: readonly TableColumn<StorageSpace>[] = [
       </div>
     ),
   },
-  { key: 'type', title: '存储类型', render: (space) => typeLabel(space.type) },
-  { key: 'capacity', title: '总容量', render: (space) => formatCapacity(space.capacityGb) },
-  { key: 'used', title: '已使用', render: (space) => formatCapacity(space.usedGb) },
-  { key: 'available', title: '可用容量', render: (space) => formatCapacity(storageAvailableGb(space)) },
   {
-    key: 'usage',
-    title: '使用率与容量状态',
+    key: 'capacity',
+    title: '容量使用',
+    width: '25%',
     multiline: true,
     render: (space) => {
       const view = capacityView(space);
-      return <div className="management-storage-usage"><Progress value={space.usedGb} max={space.capacityGb} label={view.label} tone={view.tone} /><StatusBadge tone={view.badge}>{view.label}</StatusBadge></div>;
+      return <div className="management-storage-usage"><Progress value={space.usedGb} max={space.capacityGb} label={view.label} tone={view.tone} /><span>总量 {formatCapacity(space.capacityGb)} · 已用 {formatCapacity(space.usedGb)} · 剩余 {formatCapacity(storageAvailableGb(space))}</span></div>;
     },
   },
-  { key: 'mounts', title: '挂载资源', render: (space) => `${space.mounts.length} 个` },
+  {
+    key: 'billing',
+    title: '单价与月度费用',
+    width: '22%',
+    multiline: true,
+    render: (space) => {
+      const catalog = getStoragePrice(space.skuId);
+      const unit = catalog?.billingUnit === 'package-month'
+        ? `${formatMoney(space.priceSnapshot.unitPrice)}/${catalog.packageSizeGb} GB/月`
+        : `${formatMoney(space.priceSnapshot.unitPrice)}/GB/月`;
+      return <div className="management-primary-cell"><strong>{unit}</strong><span>预计每月 {formatMoney(space.priceSnapshot.total)}</span></div>;
+    },
+  },
+  { key: 'relation', title: '类型与关联', width: '13%', multiline: true, render: (space) => <div className="management-primary-cell"><strong>{typeLabel(space.type)}</strong><span>{space.mounts.length} 个挂载资源</span></div> },
   {
     key: 'status',
     title: '状态',
+    width: '9%',
     render: (space) => {
       const view = statusView(space.status);
       return <StatusBadge tone={view.tone}>{view.label}</StatusBadge>;
@@ -269,6 +288,10 @@ export function StorageListPage() {
           className="management-table"
           aria-label="存储空间列表"
           columns={STORAGE_COLUMNS}
+          layout="fixed"
+          minWidth="0"
+          overflow="clip"
+          actionsWidth="88px"
           rows={rows}
           getRowKey={(space) => space.id}
           empty={
@@ -327,6 +350,16 @@ export function StorageListPage() {
           <FormField label="容量（GB）" required help="提交后存储空间将进入准备流程。">
             <Input type="number" min={1} value={draft.capacity} onChange={(event) => setDraft({ ...draft, capacity: event.target.value })} />
           </FormField>
+          {Number(draft.capacity) > 0 && (
+            <PricingSummary
+              value={createStoragePriceQuote({
+                skuId: draft.type === 'shared' ? 'storage-shared-gb-month' : 'storage-local-100gb-month',
+                capacityGb: Number(draft.capacity),
+                name: draft.name.trim() || typeLabel(draft.type),
+              })}
+              title="预计月度费用"
+            />
+          )}
           <div className="management-form-actions">
             <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>取消</Button>
             <Button type="submit" variant="primary" disabled={submitting}>{submitting ? '处理中' : '提交创建请求'}</Button>
@@ -392,6 +425,14 @@ export function StorageDetailPage() {
   }
   const currentSpace = space;
   const currentCapacity = capacityView(currentSpace);
+  const targetCapacity = Number(value);
+  const expansionQuote = action === 'expand' && targetCapacity > currentSpace.capacityGb
+    ? createStoragePriceQuote(currentSpace, targetCapacity - currentSpace.capacityGb)
+    : undefined;
+  const storageCatalog = getStoragePrice(currentSpace.skuId);
+  const unitPriceLabel = storageCatalog?.billingUnit === 'package-month'
+    ? `${formatMoney(currentSpace.priceSnapshot.unitPrice)}/${storageCatalog.packageSizeGb} GB/月`
+    : `${formatMoney(currentSpace.priceSnapshot.unitPrice)}/GB/月`;
 
   async function submitAction() {
     setError('');
@@ -497,6 +538,17 @@ export function StorageDetailPage() {
           </dl>
         </Container>
         <Container as="section" className="management-detail-section">
+          <h3>费用信息</h3>
+          <dl className="management-definition-grid">
+            <div><dt>计费方式</dt><dd>{storageCatalog?.billingUnit === 'package-month' ? '固定容量包月' : '按 GB/月'}</dd></div>
+            <div><dt>单价</dt><dd>{unitPriceLabel}</dd></div>
+            <div><dt>计费容量</dt><dd>{formatCapacity(space.capacityGb)}</dd></div>
+            <div><dt>当前月度预计费用</dt><dd>{formatMoney(space.priceSnapshot.total)}</dd></div>
+            <div><dt>费用归属</dt><dd>{space.mounts.length ? `关联 ${space.mounts.length} 个资源` : '独立存储空间'}</dd></div>
+            <div><dt>到期时间</dt><dd>{formatDate(space.expiresAt)}</dd></div>
+          </dl>
+        </Container>
+        <Container as="section" className="management-detail-section">
           <h3>稳定性能指标</h3>
           <dl className="management-definition-grid">
             <div><dt>读吞吐</dt><dd>{space.performance.readThroughputMbs} MB/s</dd></div>
@@ -547,7 +599,12 @@ export function StorageDetailPage() {
         secondaryAction={{ label: '取消', onClick: () => setAction(undefined) }}
       >
         {action === 'rename' && <FormField label="存储名称" required error={error || undefined}><Input value={value} onChange={(event) => setValue(event.target.value)} /></FormField>}
-        {action === 'expand' && <FormField label="目标容量（GB）" required error={error || undefined} help={`当前容量 ${space.capacityGb} GB，提交后等待基础设施处理。`}><Input type="number" min={space.capacityGb + 1} value={value} onChange={(event) => setValue(event.target.value)} /></FormField>}
+        {action === 'expand' && (
+          <>
+            <FormField label="目标容量（GB）" required error={error || undefined} help={`当前容量 ${space.capacityGb} GB，提交后等待基础设施处理。`}><Input type="number" min={space.capacityGb + 1} value={value} onChange={(event) => setValue(event.target.value)} /></FormField>
+            {expansionQuote && <PricingSummary value={expansionQuote} title="扩容费用明细" />}
+          </>
+        )}
         {action === 'mount' && (
           <Form>
             <FormField label="目标资源" required error={error || undefined}>

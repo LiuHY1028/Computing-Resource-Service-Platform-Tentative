@@ -15,6 +15,9 @@ export function createInitialCloudConfiguration(product: MarketplaceCloudServerP
     sharedMountPath: '',
     sharedReadOnly: false,
     imageId: null,
+    billingMode: 'subscription',
+    periodMonths: '1',
+    autoRenewalEnabled: false,
     network: { sshEnabled: false, sourceCidr: '', portRules: [] },
   };
 }
@@ -24,6 +27,7 @@ export function createInitialPhysicalConfiguration(): PhysicalPurchaseConfigurat
     resourceName: '',
     quantity: '1',
     purpose: '',
+    periodMonths: '1',
     network: { sshEnabled: false, sourceCidr: '', portRules: [] },
   };
 }

@@ -27,6 +27,11 @@ import {
   type ImageType,
   type PlatformImage,
 } from '../features/images';
+import {
+  getImagePrice,
+  money,
+  pricePolicyLabel,
+} from '../features/pricing';
 import '../styles/management.css';
 
 const PAGE_SIZE = 8;
@@ -46,6 +51,13 @@ function statusView(status: ImageStatus) {
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false });
+}
+
+function imagePriceLabel(imageId: string) {
+  const price = getImagePrice(imageId);
+  return price
+    ? pricePolicyLabel(price.policy, money(price.monthlyPriceFen))
+    : '价格待确认';
 }
 
 type ImageDraft = Readonly<{
@@ -122,6 +134,7 @@ export function ImagesPage() {
     { key: 'architecture', title: '架构', render: (image) => image.architecture },
     { key: 'environment', title: '环境摘要', render: (image) => image.environmentSummary, multiline: true },
     { key: 'compute', title: '适用计算类型', render: (image) => image.compatibleComputeTypes.map((item) => item.toUpperCase()).join(' / ') },
+    { key: 'price', title: '费用', render: (image) => imagePriceLabel(image.id) },
     {
       key: 'status',
       title: '状态',
@@ -262,6 +275,7 @@ export function ImagesPage() {
             <div><dt>大小</dt><dd>{selected.sizeGb ? `${selected.sizeGb} GB` : '等待任务处理'}</dd></div>
             <div><dt>创建时间</dt><dd>{formatDate(selected.createdAt)}</dd></div>
             <div><dt>使用资源数量</dt><dd>{selected.resourceIds.length} 个</dd></div>
+            <div><dt>费用</dt><dd>{imagePriceLabel(selected.id)}</dd></div>
             {selected.sourceFile && <div><dt>文件元数据</dt><dd>{selected.sourceFile.name}</dd></div>}
           </dl>
         )}

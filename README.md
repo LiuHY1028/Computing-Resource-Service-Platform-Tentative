@@ -27,6 +27,8 @@ Vite 开发地址以终端输出为准。正式构建和独立 HTML 构建分别
 npm run build
 npm run build:offline
 npm run verify:offline
+npm run verify:pricing
+npm run verify:relations
 ```
 
 ## 应用结构
@@ -35,6 +37,7 @@ npm run verify:offline
 - `src/components/ui/`：公共 UI 组件及统一导出。
 - `src/features/*/data/`：随应用打包的目录与配置数据。
 - `src/features/*/state/`：领域状态、操作和跨模块关联。
+- `src/features/pricing/`：SKU 价目、整数分报价、统一格式化和价格快照。
 - `src/features/platform/`：可选浏览器存储与兼容能力。
 - `src/pages/`：正式页面及只在开发环境注册的组件检查页。
 - `release/算力资源服务平台.html`：可直接打开的交付文件。
@@ -51,6 +54,8 @@ npm run verify:offline
 npm run typecheck
 npm run lint
 npm run test:run
+npm run verify:pricing
+npm run verify:relations
 npm run build
 npm run build:offline
 npm run verify:offline

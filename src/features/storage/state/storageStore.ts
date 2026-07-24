@@ -12,13 +12,40 @@ import type {
   StorageSpace,
 } from '../types';
 import { getResourceByAnyId } from '../../resources/state/resourceStore';
+import {
+  calculateStoragePrice,
+  createPriceSnapshot,
+  type PriceQuote,
+} from '../../pricing';
 
 const STORAGE_KEY = 'computing-platform:storage';
-const VERSION = 2;
+const VERSION = 3;
+
+function quoteForStorage(
+  skuId: string,
+  capacityGb: number,
+  name: string,
+): PriceQuote {
+  return calculateStoragePrice({ skuId, capacityGb, label: name });
+}
+
+function storagePriceSnapshot(
+  skuId: string,
+  capacityGb: number,
+  name: string,
+  generatedAt: string,
+) {
+  return createPriceSnapshot(
+    skuId,
+    quoteForStorage(skuId, capacityGb, name),
+    generatedAt,
+  );
+}
 
 const INITIAL_SPACES: readonly StorageSpace[] = [
   {
     id: 'storage-shared-east-001',
+    skuId: 'storage-shared-gb-month',
     name: '研发共享存储',
     type: 'shared',
     site: '东部算力中心',
@@ -44,9 +71,11 @@ const INITIAL_SPACES: readonly StorageSpace[] = [
         status: 'effective',
       },
     ],
+    priceSnapshot: storagePriceSnapshot('storage-shared-gb-month', 2048, '研发共享存储', '2026-06-18T02:20:00.000Z'),
   },
   {
     id: 'storage-local-east-001',
+    skuId: 'storage-local-100gb-month',
     name: '本地工作数据',
     type: 'local',
     site: '东部算力中心',
@@ -72,9 +101,11 @@ const INITIAL_SPACES: readonly StorageSpace[] = [
         status: 'effective',
       },
     ],
+    priceSnapshot: storagePriceSnapshot('storage-local-100gb-month', 500, '本地工作数据', '2026-07-02T06:10:00.000Z'),
   },
   {
     id: 'storage-shared-west-001',
+    skuId: 'storage-shared-gb-month',
     name: '西部共享空间',
     type: 'shared',
     site: '西部算力中心',
@@ -90,6 +121,7 @@ const INITIAL_SPACES: readonly StorageSpace[] = [
     createdAt: '2026-06-25T03:40:00.000Z',
     updatedAt: '2026-07-19T05:20:00.000Z',
     mounts: [],
+    priceSnapshot: storagePriceSnapshot('storage-shared-gb-month', 4096, '西部共享空间', '2026-06-25T03:40:00.000Z'),
   },
 ];
 
@@ -99,13 +131,16 @@ function isSpace(value: unknown): value is StorageSpace {
   return (
     typeof space.id === 'string' &&
     typeof space.name === 'string' &&
+    typeof space.skuId === 'string' &&
     (space.type === 'local' || space.type === 'shared') &&
     typeof space.site === 'string' &&
     typeof space.capacityGb === 'number' &&
     typeof space.usedGb === 'number' &&
     typeof space.expiresAt === 'string' &&
     typeof space.performance === 'object' &&
-    Array.isArray(space.mounts)
+    Array.isArray(space.mounts) &&
+    typeof space.priceSnapshot === 'object' &&
+    Number.isSafeInteger(space.priceSnapshot?.total?.amountFen)
   );
 }
 
@@ -205,6 +240,7 @@ export async function createStorageSpace(input: CreateStorageInput) {
   const createdAt = new Date().toISOString();
   const space: StorageSpace = {
     id: `storage-local-${createdAt.replace(/\D/g, '').slice(0, 14)}`,
+    skuId: input.type === 'shared' ? 'storage-shared-gb-month' : 'storage-local-100gb-month',
     name,
     type: input.type,
     site: input.site,
@@ -226,6 +262,12 @@ export async function createStorageSpace(input: CreateStorageInput) {
     createdAt,
     updatedAt: createdAt,
     mounts: [],
+    priceSnapshot: storagePriceSnapshot(
+      input.type === 'shared' ? 'storage-shared-gb-month' : 'storage-local-100gb-month',
+      input.capacityGb,
+      name,
+      createdAt,
+    ),
   };
   writeSpaces([space, ...readSpaces()]);
   recordOperation({
@@ -269,6 +311,15 @@ export async function requestStorageExpansion(
   if (!Number.isFinite(capacityGb) || capacityGb <= current.capacityGb) {
     throw new Error('目标容量必须大于当前容量。');
   }
+  const additionalCapacityGb = capacityGb - current.capacityGb;
+  const priceSnapshot = createPriceSnapshot(
+    current.skuId,
+    quoteForStorage(
+      current.skuId,
+      additionalCapacityGb,
+      `${current.name}扩容量`,
+    ),
+  );
   recordOperation({
     module: 'storage',
     action: '提交扩容申请',
@@ -292,8 +343,16 @@ export async function requestStorageExpansion(
       { label: '目标容量', value: `${capacityGb} GB` },
       { label: '处理说明', value: '申请处理完成前当前容量保持不变' },
     ],
+    priceSnapshot,
   });
   return current;
+}
+
+export function createStoragePriceQuote(
+  space: Pick<StorageSpace, 'skuId' | 'capacityGb' | 'name'>,
+  capacityGb = space.capacityGb,
+) {
+  return quoteForStorage(space.skuId, capacityGb, space.name);
 }
 
 export async function requestStorageMount(

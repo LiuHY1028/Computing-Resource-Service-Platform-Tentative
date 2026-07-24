@@ -15,6 +15,7 @@ const UNAVAILABLE_REASON = '该规格当前暂不可继续配置。';
 export const MARKETPLACE_CATALOG_PRODUCTS = [
   {
     id: 'catalog-cloud-cpu-c8-east',
+    skuId: 'catalog-cloud-cpu-c8-east',
     resourceType: 'cloud-server',
     name: '通用计算 C8',
     site: '东部算力中心',
@@ -26,6 +27,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-cloud-cpu-c16-west',
+    skuId: 'catalog-cloud-cpu-c16-west',
     resourceType: 'cloud-server',
     name: '通用计算 C16',
     site: '西部算力中心',
@@ -38,6 +40,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-cloud-gpu-g1-east',
+    skuId: 'catalog-cloud-gpu-g1-east',
     resourceType: 'cloud-server',
     name: '加速计算 G1',
     site: '东部算力中心',
@@ -53,6 +56,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-cloud-gpu-g2-west',
+    skuId: 'catalog-cloud-gpu-g2-west',
     resourceType: 'cloud-server',
     name: '加速计算 G2',
     site: '西部算力中心',
@@ -68,6 +72,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-cloud-gpu-g3-east',
+    skuId: 'catalog-cloud-gpu-g3-east',
     resourceType: 'cloud-server',
     name: '加速计算 G3',
     site: '东部算力中心',
@@ -84,6 +89,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-cloud-gpu-g4-west',
+    skuId: 'catalog-cloud-gpu-g4-west',
     resourceType: 'cloud-server',
     name: '加速计算 G4',
     site: '西部算力中心',
@@ -99,6 +105,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-physical-cpu-p1-east',
+    skuId: 'catalog-physical-cpu-p1-east',
     resourceType: 'physical-machine',
     name: '整机通用计算 P1',
     site: '东部算力中心',
@@ -110,6 +117,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-physical-gpu-p4-east',
+    skuId: 'catalog-physical-gpu-p4-east',
     resourceType: 'physical-machine',
     name: '整机加速计算 P4',
     site: '东部算力中心',
@@ -125,6 +133,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-physical-gpu-p4-west',
+    skuId: 'catalog-physical-gpu-p4-west',
     resourceType: 'physical-machine',
     name: '整机加速计算 P4-B',
     site: '西部算力中心',
@@ -141,6 +150,7 @@ export const MARKETPLACE_CATALOG_PRODUCTS = [
   },
   {
     id: 'catalog-physical-gpu-p8-west',
+    skuId: 'catalog-physical-gpu-p8-west',
     resourceType: 'physical-machine',
     name: '整机加速计算 P8',
     site: '西部算力中心',

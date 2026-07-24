@@ -3,6 +3,10 @@ import {
   type MarketplaceResourceType,
 } from '../../marketplace';
 import { createPurchaseOrder } from '../../orders';
+import {
+  createPriceSnapshot,
+  type PriceQuote,
+} from '../../pricing';
 import type {
   CloudPurchaseConfiguration,
   PurchaseSubmissionResult,
@@ -23,11 +27,15 @@ export async function submitConfiguration(
   resourceType: MarketplaceResourceType,
   productName: string,
   summary: readonly PurchaseSummaryItem[],
+  quote: PriceQuote,
+  skuId: string,
 ): Promise<PurchaseSubmissionResult> {
+  const priceSnapshot = createPriceSnapshot(skuId, quote);
   const order = await createPurchaseOrder({
     resourceType,
     productName,
     summary,
+    priceSnapshot,
   });
   return {
     applicationId: order.id,
@@ -35,6 +43,8 @@ export async function submitConfiguration(
     resourceType,
     productName,
     summary,
+    priceSnapshot,
+    quote,
   };
 }
 
@@ -125,6 +135,10 @@ export function isCloudDraft(
     typeof configuration.sharedMountPath === 'string' &&
     typeof configuration.sharedReadOnly === 'boolean' &&
     (configuration.imageId === null || typeof configuration.imageId === 'string')
+    && (configuration.billingMode === 'subscription' || configuration.billingMode === 'pay-as-you-go')
+    && typeof configuration.periodMonths === 'string'
+    && ['1', '3', '6', '12'].includes(configuration.periodMonths)
+    && typeof configuration.autoRenewalEnabled === 'boolean'
   );
 }
 
@@ -136,6 +150,8 @@ export function isPhysicalDraft(
     typeof configuration.resourceName === 'string' &&
     typeof configuration.quantity === 'string' &&
     typeof configuration.purpose === 'string' &&
+    typeof configuration.periodMonths === 'string' &&
+    ['1', '3', '6', '12'].includes(configuration.periodMonths) &&
     isNetworkConfiguration(configuration.network)
   );
 }

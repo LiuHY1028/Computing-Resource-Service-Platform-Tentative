@@ -92,20 +92,22 @@ describe('marketplace production-source policies', () => {
     ).toEqual([]);
   });
 
-  it('contains no currency, price, discount, or billing-cycle literals', () => {
+  it('sources prices from the pricing domain and contains no promotional commerce claims', () => {
     expect(
       sourceOffenders(
-        /[\u00a5\uffe5\u20ac\u00a3]|\b(?:CNY|RMB|USD)\b|\d+(?:\.\d{1,2})?\s*(?:\u5143|\u7f8e\u5143)|\u4ef7\u683c|\u552e\u4ef7|\u5355\u4ef7|\u91d1\u989d|\u6298\u6263|\u8ba1\u8d39\u5468\u671f/iu,
+        /[\u00a5\uffe5]\s*\d|\d+(?:\.\d{1,2})?\s*\u5143/iu,
       ),
-    ).toEqual([]);
-    expect(
-      sourceOffenders(/\b(?:price|pricing|billing|approval|permission)\b/iu),
     ).toEqual([]);
     expect(
       sourceOffenders(
         /\u539f\u4ef7|\u5212\u7ebf\u4ef7|\u4f18\u60e0\u5238|\u65b0\u4eba\u4f18\u60e0|\u9650\u65f6|\u5012\u8ba1\u65f6|\u4fc3\u9500|\u6d3b\u52a8\u4ef7|\u7acb\u5373\u8d2d\u4e70|\u5145\u503c|\u652f\u4ed8|\b(?:discount|coupon|promotion|checkout)\b/iu,
       ),
     ).toEqual([]);
+    expect(
+      Object.values(productionSources).some((source) =>
+        source.includes("from '../../pricing'"),
+      ),
+    ).toBe(true);
   });
 
   it('contains no prohibited AI-platform product or managed-workflow merchandising', () => {

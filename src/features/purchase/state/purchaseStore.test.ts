@@ -14,6 +14,10 @@ import {
 import { getMarketplaceProductById } from '../../marketplace';
 import { queryOrders } from '../../orders';
 import { listOperationRecords } from '../../operations';
+import {
+  calculateCloudPrice,
+  calculatePhysicalPrice,
+} from '../../pricing';
 
 describe('purchase store', () => {
   beforeEach(() => window.sessionStorage.clear());
@@ -54,11 +58,25 @@ describe('purchase store', () => {
       'cloud-server',
       '云服务器申请',
       [],
+      calculateCloudPrice({
+        skuId: 'catalog-cloud-cpu-c8-east',
+        billingMode: 'subscription',
+        quantity: 1,
+        durationMonths: 1,
+        systemDiskGb: 30,
+      }),
+      'catalog-cloud-cpu-c8-east',
     );
     const physical = await submitConfiguration(
       'physical-machine',
       '物理机申请',
       [],
+      calculatePhysicalPrice({
+        skuId: 'catalog-physical-cpu-p1-east',
+        quantity: 1,
+        durationMonths: 1,
+      }),
+      'catalog-physical-cpu-p1-east',
     );
 
     expect(cloud.applicationId).toMatch(/^REQ-\d{8}-\d{4}$/);

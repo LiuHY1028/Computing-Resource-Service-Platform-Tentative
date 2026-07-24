@@ -34,17 +34,23 @@ import {
 import '../features/resources/resource-management.css';
 
 const PAGE_SIZE = 5;
-const CLOUD_COLUMNS = ['specification', 'platform', 'network', 'billing', 'expiry', 'scope'] as const;
-const PHYSICAL_COLUMNS = ['hardware', 'location', 'platform', 'network', 'expiry', 'scope'] as const;
+const CLOUD_COLUMNS = ['image-full', 'system-disk', 'data-disks', 'network-type', 'created-at', 'owner', 'tags', 'last-operated-at'] as const;
+const PHYSICAL_COLUMNS = ['operating-system', 'hostname', 'bmc-status', 'management-network', 'business-network', 'raid', 'created-at', 'tags', 'last-operated-at'] as const;
 const COLUMN_LABELS: Readonly<Record<string, string>> = {
-  specification: '实例规格',
-  hardware: '整机配置',
-  location: '物理位置',
-  platform: '镜像或操作系统',
-  network: '网络',
-  billing: '计费模式',
-  expiry: '有效期',
-  scope: '项目与标签',
+  'image-full': '镜像完整信息',
+  'system-disk': '系统盘',
+  'data-disks': '数据盘',
+  'network-type': '网络类型',
+  'operating-system': '操作系统',
+  hostname: '主机名',
+  'bmc-status': 'BMC 状态',
+  'management-network': '管理网络',
+  'business-network': '业务网络',
+  raid: 'RAID',
+  'created-at': '创建时间',
+  owner: '责任人',
+  tags: '标签',
+  'last-operated-at': '最近操作时间',
 };
 
 function validValue(value: string | null, allowed: readonly string[]) {
@@ -88,8 +94,8 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
   });
   const defaultColumns = resourceType === 'cloud-server' ? CLOUD_COLUMNS : PHYSICAL_COLUMNS;
   const [columnsByType, setColumnsByType] = useState<Readonly<Record<ResourceType, readonly string[]>>>({
-    'cloud-server': CLOUD_COLUMNS,
-    'physical-machine': PHYSICAL_COLUMNS,
+    'cloud-server': [],
+    'physical-machine': [],
   });
   const selectedKeys = selectedByType[resourceType];
   const visibleColumns = columnsByType[resourceType];
@@ -225,14 +231,14 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
           <div className="resource-results__tools">
             <p aria-live="polite">共 {result.total} 个结果</p>
             <DropdownMenu trigger="列设置" aria-label="列表列设置">
-              <DropdownMenuGroup label="可选列">
+              <DropdownMenuGroup label="扩展列">
                 {defaultColumns.map((column) => (
                   <DropdownMenuItem key={column} onSelect={() => setVisibleColumns((current) => current.includes(column) ? current.filter((item) => item !== column) : [...current, column])}>
                     {visibleColumns.includes(column) ? '✓ ' : ''}{COLUMN_LABELS[column]}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuGroup>
-              <DropdownMenuItem onSelect={() => setVisibleColumns(defaultColumns)}>恢复默认列</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setVisibleColumns([])}>恢复默认列</DropdownMenuItem>
             </DropdownMenu>
           </div>
         </div>

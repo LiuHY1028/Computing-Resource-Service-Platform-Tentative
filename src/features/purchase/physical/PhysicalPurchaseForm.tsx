@@ -4,6 +4,7 @@ import {
   FormField,
   FormSection,
   Input,
+  Select,
   Textarea,
 } from '../../../components/ui';
 import { NetworkRulesEditor } from '../components/NetworkRulesEditor';
@@ -33,6 +34,23 @@ export function PhysicalPurchaseForm({ value, errors, onChange, onConfirm, onRet
             <Input inputMode="numeric" value={value.quantity} onChange={(event) => onChange({ ...value, quantity: event.target.value })} />
           </FormField>
         </div>
+        <FormField label="使用时长" required help="物理机按月租用，按所选使用时长计算预计费用。">
+          <Select
+            value={value.periodMonths}
+            onValueChange={(periodMonths) =>
+              onChange({
+                ...value,
+                periodMonths: periodMonths as PhysicalPurchaseConfiguration['periodMonths'],
+              })
+            }
+            options={[
+              { value: '1', label: '1 个月' },
+              { value: '3', label: '3 个月' },
+              { value: '6', label: '6 个月' },
+              { value: '12', label: '12 个月' },
+            ]}
+          />
+        </FormField>
         <FormField id="physical-purpose" label="用途说明" help="请勿填写密码、密钥等敏感信息。">
           <Textarea maxLength={240} showCount value={value.purpose} placeholder="简要说明整机使用场景（选填）" onChange={(event) => onChange({ ...value, purpose: event.target.value })} />
         </FormField>

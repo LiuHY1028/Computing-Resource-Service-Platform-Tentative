@@ -20,6 +20,7 @@ describe('MarketplaceResults', () => {
       },
       resourceType: 'cloud-server' as const,
       search: '',
+      billingMode: 'all' as const,
       pageSize: 1,
       onPageChange,
       onConfigure: vi.fn(),

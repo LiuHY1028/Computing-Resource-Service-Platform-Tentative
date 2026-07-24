@@ -1,5 +1,6 @@
 import { Button, Container, TextButton } from '../../../components/ui';
 import type { PurchaseSummaryItem } from '../types';
+import { PricingSummary, type PriceQuote } from '../../pricing';
 
 type ConfigurationSummaryProps = Readonly<{
   title: string;
@@ -9,6 +10,7 @@ type ConfigurationSummaryProps = Readonly<{
   onConfirm: () => void;
   onReturn: () => void;
   onClearDraft: () => void;
+  quote: PriceQuote;
 }>;
 
 const PRODUCT_SUMMARY_LABELS = new Set([
@@ -29,6 +31,7 @@ export function ConfigurationSummary({
   onConfirm,
   onReturn,
   onClearDraft,
+  quote,
 }: ConfigurationSummaryProps) {
   const complete = missingItems.length === 0;
   const productItems = items.filter((item) => PRODUCT_SUMMARY_LABELS.has(item.label));
@@ -68,6 +71,7 @@ export function ConfigurationSummary({
           ))}
         </dl>
       </section>
+      <PricingSummary value={quote} />
       <div className="purchase-summary__validation" data-complete={complete} role="status">
         <strong>{complete ? '必填项已完成' : `还有 ${missingItems.length} 项必填项待完成`}</strong>
         {!complete && <span>{missingItems.join('、')}</span>}

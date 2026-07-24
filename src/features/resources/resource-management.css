@@ -97,15 +97,6 @@
   line-height: var(--line-height-title);
 }
 
-.resource-table .ui-table {
-  min-width: 1180px;
-}
-
-.resource-table th:first-child,
-.resource-table td:first-child {
-  min-width: 180px;
-}
-
 .resource-table__name {
   overflow: hidden;
   color: var(--color-text-title);
@@ -312,10 +303,6 @@
   margin-right: var(--space-8);
 }
 
-.resource-table .ui-table {
-  min-width: 1320px;
-}
-
 .resource-table__primary,
 .resource-table__status-stack,
 .resource-capacity-cell {
@@ -325,7 +312,7 @@
 }
 
 .resource-table__primary {
-  min-width: 150px;
+  min-width: 0;
 }
 
 .resource-table__primary > span,
@@ -341,11 +328,30 @@
 }
 
 .resource-table__actions {
+  justify-content: flex-end;
   white-space: nowrap;
 }
 
 .resource-table__actions .ui-dropdown-menu__trigger {
   min-height: 30px;
+}
+
+.resource-table .ui-table__actions-heading,
+.resource-table td.ui-table__actions {
+  position: sticky;
+  z-index: 1;
+  right: 0;
+  border-left: var(--border-default);
+  background: var(--color-surface-default);
+}
+
+.resource-table .ui-table__actions-heading {
+  z-index: 2;
+  background: var(--table-header-background);
+}
+
+.resource-table tr[data-selected] td.ui-table__actions {
+  background: var(--table-row-selected-background);
 }
 
 .resource-lifecycle-summary {

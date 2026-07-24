@@ -28,6 +28,10 @@ import {
   type OperationStatus,
   type PlatformOperationRecord,
 } from '../features/operations';
+import {
+  formatMoney,
+  PricingSummary,
+} from '../features/pricing';
 import '../styles/management.css';
 
 const PAGE_SIZE = 8;
@@ -50,6 +54,14 @@ function resourceTypeLabel(order: PurchaseOrder) {
     : order.resourceType === 'physical-machine'
       ? '物理机'
       : '存储空间';
+}
+
+function billingModeLabel(mode: string) {
+  if (mode === 'subscription') return '包月';
+  if (mode === 'pay-as-you-go') return '按量';
+  if (mode === 'monthly-rental') return '按月租用';
+  if (mode === 'monthly-capacity') return '按月计费';
+  return '不计费';
 }
 
 export function OrderListPage() {
@@ -88,24 +100,13 @@ export function OrderListPage() {
   const safePage = Math.min(page, totalPages);
   const rows = orders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const columns: readonly TableColumn<PurchaseOrder>[] = [
-    { key: 'id', title: '申请编号', render: (order) => <Link to={`/orders/${order.id}`}>{order.id}</Link> },
-    { key: 'application', title: '申请类型', render: (order) => APPLICATION_TYPE_LABELS[order.applicationType] },
-    { key: 'type', title: '资源类型', render: resourceTypeLabel },
-    { key: 'spec', title: '规格摘要', render: (order) => order.specificationSummary || order.productName, multiline: true },
-    { key: 'quantity', title: '数量', render: (order) => order.quantity },
-    { key: 'site', title: '站点', render: (order) => order.site },
-    { key: 'applicant', title: '责任人', render: (order) => order.applicant },
-    { key: 'time', title: '提交时间', render: (order) => formatDate(order.submittedAt) },
-    { key: 'status', title: '当前状态', render: (order) => <StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>{ORDER_STATUS_VIEWS[order.status].label}</StatusBadge> },
-    { key: 'resource', title: '关联资源', render: (order) => {
+    { key: 'type-resource', title: '类型与资源', width: '22%', multiline: true, render: (order) => <div className="management-primary-cell"><Link to={`/orders/${order.id}`}>{order.id}</Link><strong>{APPLICATION_TYPE_LABELS[order.applicationType]} · {resourceTypeLabel(order)}</strong><span>{order.productName} · 数量 {order.quantity}</span></div> },
+    { key: 'spec', title: '配置与站点', width: '21%', multiline: true, render: (order) => <div className="management-primary-cell"><strong>{order.specificationSummary || order.productName}</strong><span>{order.site}</span></div> },
+    { key: 'billing-amount', title: '计费与金额', width: '18%', multiline: true, render: (order) => <div className="management-primary-cell"><strong>{billingModeLabel(order.priceSnapshot.billingMode)} · {formatMoney(order.priceSnapshot.total)}</strong><span>{order.priceSnapshot.duration ? `${order.priceSnapshot.duration} 个月` : order.priceSnapshot.billingMode === 'pay-as-you-go' ? '按小时计费' : '当前申请'}</span></div> },
+    { key: 'status-time', title: '状态与时间', width: '15%', multiline: true, render: (order) => <div className="management-primary-cell"><StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>{ORDER_STATUS_VIEWS[order.status].label}</StatusBadge><span>{formatDate(order.submittedAt)}</span></div> },
+    { key: 'resource', title: '关联对象', width: '14%', render: (order) => {
       const current = order.resourceId ? getResourceByAnyId(order.resourceId) : undefined;
       return resourcePath(order) ? <Link to={resourcePath(order)!}>{order.storageId ? order.resourceName : current?.name ?? order.resourceName ?? order.resourceId}</Link> : '等待资源准备';
-    } },
-    { key: 'scope', title: '项目与标签', multiline: true, render: (order) => {
-      const current = order.resourceId ? getResourceByAnyId(order.resourceId) : undefined;
-      return current
-        ? <div className="management-primary-cell"><strong>{current.project}</strong><span>{current.tags.join(' · ') || '暂无标签'}</span></div>
-        : '—';
     } },
   ];
 
@@ -124,7 +125,7 @@ export function OrderListPage() {
       </Container>
       <Container className="management-results">
         <div className="management-results__header"><div><span>资源配置申请</span><h2>申请记录</h2></div><p>共 {orders.length} 个结果</p></div>
-        <Table className="management-table" aria-label="订单列表" columns={columns} rows={rows} getRowKey={(order) => order.id} empty={<PageState title={query.search ? '没有匹配的申请记录' : '暂无申请记录'} description={query.search ? '请调整搜索或筛选条件。' : '从资源商城提交配置后可在此查看处理进度。'} />} renderRowActions={(order) => <Link to={`/orders/${order.id}`}>查看详情</Link>} />
+        <Table className="management-table" aria-label="订单列表" columns={columns} rows={rows} getRowKey={(order) => order.id} layout="fixed" minWidth="0" overflow="clip" actionsWidth="88px" empty={<PageState title={query.search ? '没有匹配的申请记录' : '暂无申请记录'} description={query.search ? '请调整搜索或筛选条件。' : '从资源商城提交配置后可在此查看处理进度。'} />} renderRowActions={(order) => <Link to={`/orders/${order.id}`}>查看详情</Link>} />
         {orders.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={orders.length} onPageChange={(next) => setParam('page', String(next))} />}
       </Container>
     </div>
@@ -189,6 +190,18 @@ export function OrderDetailPage() {
             {order.expectedExpiresAt && <div><dt>预计到期时间</dt><dd>{formatDate(order.expectedExpiresAt)}</dd></div>}
             {order.configurationChanges && <div><dt>配置变化</dt><dd>{order.configurationChanges}</dd></div>}
           </dl>
+        </Container>
+        <Container as="section" className="management-detail-section">
+          <h3>价格快照</h3>
+          <dl className="management-definition-grid">
+            <div><dt>SKU</dt><dd>{order.priceSnapshot.skuId}</dd></div>
+            <div><dt>计费模式</dt><dd>{billingModeLabel(order.priceSnapshot.billingMode)}</dd></div>
+            <div><dt>数量</dt><dd>{order.priceSnapshot.quantity}</dd></div>
+            <div><dt>周期</dt><dd>{order.priceSnapshot.duration ? `${order.priceSnapshot.duration} 个月` : '按实际用量'}</dd></div>
+            <div><dt>总额</dt><dd>{formatMoney(order.priceSnapshot.total)}</dd></div>
+            <div><dt>价格生成时间</dt><dd>{formatDate(order.priceSnapshot.generatedAt)}</dd></div>
+          </dl>
+          <PricingSummary value={order.priceSnapshot} title="费用明细" />
         </Container>
         <Container as="section" className="management-detail-section">
           <h3>处理进度</h3>

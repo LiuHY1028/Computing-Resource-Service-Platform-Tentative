@@ -3,6 +3,7 @@ import {
   useMemo,
   useState,
   type HTMLAttributes,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
 import { Button, Checkbox } from '../index';
@@ -16,6 +17,7 @@ export type TableColumn<T> = Readonly<{
   render: (row: T, rowIndex: number) => ReactNode;
   align?: 'left' | 'center' | 'right';
   multiline?: boolean;
+  width?: string;
 }>;
 
 export type EmptyTableProps = HTMLAttributes<HTMLDivElement> &
@@ -71,6 +73,10 @@ export type TableProps<T> = Readonly<{
   error?: ReactNode;
   onRetry?: () => void;
   className?: string;
+  layout?: 'auto' | 'fixed';
+  minWidth?: string;
+  overflow?: 'auto' | 'clip';
+  actionsWidth?: string;
   'aria-label'?: string;
 }>;
 
@@ -94,6 +100,10 @@ function TableInner<T>(
     error,
     onRetry,
     className,
+    layout = 'auto',
+    minWidth,
+    overflow = 'auto',
+    actionsWidth,
     'aria-label': ariaLabel,
   }: TableProps<T>,
   ref: React.ForwardedRef<HTMLDivElement>,
@@ -149,9 +159,25 @@ function TableInner<T>(
   }
 
   return (
-    <div ref={ref} className={['ui-table-shell', className].filter(Boolean).join(' ')}>
-      <table className="ui-table" data-compact={compact || undefined} aria-label={ariaLabel} aria-busy={loading || undefined}>
+    <div
+      ref={ref}
+      className={['ui-table-shell', className].filter(Boolean).join(' ')}
+      data-overflow={overflow}
+    >
+      <table
+        className="ui-table"
+        data-compact={compact || undefined}
+        data-layout={layout}
+        aria-label={ariaLabel}
+        aria-busy={loading || undefined}
+        style={{ minWidth } as CSSProperties}
+      >
         {caption && <caption>{caption}</caption>}
+        <colgroup>
+          {selectable && <col className="ui-table__selection-column" />}
+          {columns.map((column) => <col key={column.key} style={{ width: column.width }} />)}
+          {renderRowActions && <col style={{ width: actionsWidth }} />}
+        </colgroup>
         <thead>
           <tr>
             {selectable && (
@@ -171,7 +197,7 @@ function TableInner<T>(
                 {column.title}
               </th>
             ))}
-            {renderRowActions && <th scope="col">{actionsTitle}</th>}
+            {renderRowActions && <th className="ui-table__actions-heading" scope="col">{actionsTitle}</th>}
           </tr>
         </thead>
         <tbody>

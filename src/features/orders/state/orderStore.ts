@@ -1,5 +1,12 @@
 import { recordOperation } from '../../operations';
 import {
+  calculateCloudPrice,
+  calculatePhysicalPrice,
+  createPriceSnapshot,
+  createZeroPriceSnapshot,
+  type PriceSnapshot,
+} from '../../pricing';
+import {
   readVersionedState,
   removeVersionedState,
   writeVersionedState,
@@ -13,14 +20,42 @@ import type {
 } from '../types';
 
 const STORAGE_KEY = 'computing-platform:orders';
-const VERSION = 3;
+const VERSION = 4;
+
+const INITIAL_CLOUD_PRICE = createPriceSnapshot(
+  'catalog-cloud-cpu-c16-west',
+  calculateCloudPrice({
+    skuId: 'catalog-cloud-cpu-c16-west',
+    billingMode: 'subscription',
+    quantity: 1,
+    durationMonths: 1,
+    systemDiskGb: 30,
+    storage: {
+      skuId: 'storage-shared-gb-month',
+      capacityGb: 2048,
+      label: '研发共享存储 · 2048 GB',
+    },
+    imageId: 'preset-image-base-linux',
+  }),
+  '2026-07-18T02:30:00.000Z',
+);
+
+const INITIAL_PHYSICAL_PRICE = createPriceSnapshot(
+  'catalog-physical-gpu-p8-west',
+  calculatePhysicalPrice({
+    skuId: 'catalog-physical-gpu-p8-west',
+    quantity: 1,
+    durationMonths: 1,
+  }),
+  '2026-07-20T05:10:00.000Z',
+);
 
 const INITIAL_ORDERS: readonly PurchaseOrder[] = [
   {
     id: 'REQ-20260718-0001',
     applicationType: 'new-purchase',
     resourceType: 'cloud-server',
-    productName: '通用计算 C8',
+    productName: '通用计算 C16',
     specificationSummary: '16 vCPU · 64 GB · Linux LTS · 30 GB 系统盘',
     quantity: 1,
     site: '东部算力中心',
@@ -44,6 +79,7 @@ const INITIAL_ORDERS: readonly PurchaseOrder[] = [
       { label: '资源准备', time: '2026-07-18T02:35:00.000Z', status: 'completed', description: '资源进入准备流程。' },
       { label: '已交付', time: '2026-07-18T03:20:00.000Z', status: 'completed', description: '资源已关联至当前申请记录。' },
     ],
+    priceSnapshot: INITIAL_CLOUD_PRICE,
   },
   {
     id: 'REQ-20260720-0002',
@@ -67,6 +103,7 @@ const INITIAL_ORDERS: readonly PurchaseOrder[] = [
       { label: '申请已提交', time: '2026-07-20T05:10:00.000Z', status: 'completed', description: '资源配置申请已受理。' },
       { label: '资源准备', time: '2026-07-20T05:18:00.000Z', status: 'current', description: '等待资源和网络准备。' },
     ],
+    priceSnapshot: INITIAL_PHYSICAL_PRICE,
   },
 ];
 
@@ -84,7 +121,10 @@ function isOrder(value: unknown): value is PurchaseOrder {
     typeof order.productName === 'string' &&
     typeof order.status === 'string' &&
     Array.isArray(order.summary) &&
-    Array.isArray(order.timeline)
+    Array.isArray(order.timeline) &&
+    typeof order.priceSnapshot === 'object' &&
+    Array.isArray(order.priceSnapshot?.lineItems) &&
+    Number.isSafeInteger(order.priceSnapshot?.total?.amountFen)
   );
 }
 
@@ -127,6 +167,7 @@ export function createPurchaseOrder(input: Readonly<{
   resourceType: OrderResourceType;
   productName: string;
   summary: readonly OrderSummaryItem[];
+  priceSnapshot: PriceSnapshot;
 }>) {
   const submittedAt = new Date().toISOString();
   const id = nextApplicationId(new Date(submittedAt));
@@ -154,6 +195,7 @@ export function createPurchaseOrder(input: Readonly<{
         description: '资源配置申请已提交，等待处理。',
       },
     ],
+    priceSnapshot: structuredClone(input.priceSnapshot),
   };
   writeOrders([order, ...readOrders()]);
   recordOperation({
@@ -180,6 +222,7 @@ export function createApplicationOrder(input: Readonly<{
   summary: readonly OrderSummaryItem[];
   expectedExpiresAt?: string;
   configurationChanges?: string;
+  priceSnapshot?: PriceSnapshot;
 }>) {
   const submittedAt = new Date().toISOString();
   const id = nextApplicationId(new Date(submittedAt));
@@ -207,6 +250,14 @@ export function createApplicationOrder(input: Readonly<{
       status: 'current',
       description: '申请已提交，等待处理。',
     }],
+    priceSnapshot: structuredClone(
+      input.priceSnapshot ??
+        createZeroPriceSnapshot(
+          'not-billable',
+          '当前申请不产生可确认费用',
+          submittedAt,
+        ),
+    ),
   };
   writeOrders([order, ...readOrders()]);
   recordOperation({

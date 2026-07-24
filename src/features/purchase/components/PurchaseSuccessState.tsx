@@ -1,5 +1,6 @@
 import { Button, Container, TextButton } from '../../../components/ui';
 import type { PurchaseSubmissionResult } from '../types';
+import { PricingSummary } from '../../pricing';
 
 type PurchaseSuccessStateProps = Readonly<{
   result: PurchaseSubmissionResult;
@@ -27,6 +28,7 @@ export function PurchaseSuccessState({ result, onReturn, onViewOrder }: Purchase
             ))}
           </dl>
         </details>
+        <PricingSummary value={result.priceSnapshot} title="提交时费用快照" />
         {result.resourceType === 'physical-machine' && (
           <section className="purchase-success__delivery" aria-labelledby="purchase-success-delivery-title">
             <h3 id="purchase-success-delivery-title">交付流程</h3>

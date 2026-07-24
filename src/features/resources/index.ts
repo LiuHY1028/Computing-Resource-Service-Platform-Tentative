@@ -8,6 +8,7 @@ export {
   getRenewalAvailability,
   listResources,
   queryResources,
+  resetResourceStore,
   ResourceActionError,
   submitResourceAction,
   submitBatchPowerAction,
@@ -33,6 +34,7 @@ export { ConnectionInformation } from './components/ConnectionInformation';
 export { MonitoringPanel } from './components/MonitoringPanel';
 export {
   ResourceDetailHeader,
+  ResourceBilling,
   ResourceDelivery,
   ResourceHealth,
   ResourceImageSystem,
