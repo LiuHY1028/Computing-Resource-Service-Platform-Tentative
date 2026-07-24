@@ -52,14 +52,14 @@ check(
   '运行代码不得引用外部运行时资源。',
 );
 check(
-  !read('src/pages/FileManagerPage.tsx').includes('file-manager-toolbar-actions'),
-  '文件管理器仍包含旧的孤立工具栏。',
+  !read('src/pages/FileManagerPage.tsx').match(/file-manager-(?:header|toolbar|address|command|selection|details|task)/),
+  '文件管理器仍包含旧的页面、工具栏、Inspector 或任务中心结构。',
 );
 check(
-  read('src/pages/FileManagerPage.tsx').includes('useState(false)')
-    && read('src/pages/FileManagerPage.tsx').includes('file-task-drawer')
+  read('src/pages/FileManagerPage.tsx').includes('const [detailsOpen, setDetailsOpen] = useState(false)')
+    && read('src/pages/FileManagerPage.tsx').includes('file-workbench-task-popover')
     && read('src/pages/FileManagerPage.tsx').includes('ContextMenu'),
-  '文件管理器必须默认折叠 Inspector，并使用任务抽屉和上下文菜单。',
+  '文件管理器必须默认折叠 Inspector，并使用任务浮层和上下文菜单。',
 );
 check(
   !read('src/pages/FileManagerPage.tsx').includes("type: 'tasks'"),
@@ -70,6 +70,12 @@ check(
     && read('src/pages/FileManagerPage.tsx').includes('<UsageMeter')
     && read('src/features/resources/components/ResourceDetailPanels.tsx').includes('<UsageMeter'),
   '存储列表、资源详情和文件管理器必须使用统一容量组件。',
+);
+check(
+  read('src/components/ui/DataTable/DataTable.tsx').includes('data-version="2"')
+    && read('src/components/ui/UsageMeter/UsageMeter.tsx').includes('data-version="2"')
+    && read('src/components/ui/StatusBadge/StatusBadge.tsx').includes('data-version="2"'),
+  'DataTable、UsageMeter 与 StatusBadge 必须使用 V2 语义标记。',
 );
 check(
   !formalPageSource.includes('storageUsagePercent('),

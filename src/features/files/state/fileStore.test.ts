@@ -6,6 +6,7 @@ import {
   canUndoFileOperation,
   createFolder,
   deleteNodes,
+  downloadNode,
   getNodePath,
   getRootFolder,
   listDirectory,
@@ -85,5 +86,27 @@ describe('fileStore', () => {
     expect(listDirectory(root.storageId, root.nodeId).some((item) => item.nodeId === created.nodeId)).toBe(true);
     expect(undoLastFileOperation(root.storageId)).toContain('新建文件夹');
     expect(listDirectory(root.storageId, root.nodeId).some((item) => item.nodeId === created.nodeId)).toBe(false);
+  });
+
+  it('downloads folders as self-contained zip archives', async () => {
+    let archive: Blob | undefined;
+    let downloadName = '';
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn((value: Blob) => {
+        archive = value;
+        return 'blob:folder-archive';
+      }),
+      revokeObjectURL: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click(this: HTMLAnchorElement) {
+      downloadName = this.download;
+    });
+
+    await downloadNode('folder-projects');
+
+    expect(archive?.type).toBe('application/zip');
+    expect(archive?.size).toBeGreaterThan(22);
+    expect(downloadName).toBe('项目.zip');
   });
 });

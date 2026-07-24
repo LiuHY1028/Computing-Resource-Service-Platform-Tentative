@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Button,
-  Container,
   DropdownMenu,
   DropdownMenuGroup,
   DropdownMenuItem,
   Modal,
   Pagination,
+  Toast,
   TitleBarTabs,
   type TableKey,
 } from '../components/ui';
+import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
 import {
   APP_PATHS,
   resourceDetailPath,
@@ -159,7 +160,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
     }
   }, [location.pathname, location.search, resourceType]);
 
-  function goPurchase() {
+  const goPurchase = useCallback(() => {
     const path = `${location.pathname}${location.search}`;
     try {
       window.sessionStorage.setItem(
@@ -173,7 +174,19 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
       `${APP_PATHS.marketplace}?type=${resourceType === 'cloud-server' ? 'cloud' : 'physical'}`,
       { state: { fromResourceList: path } },
     );
-  }
+  }, [location.pathname, location.search, navigate, resourceType]);
+
+  const pageHeader = useMemo(() => ({
+    description: resourceType === 'cloud-server'
+      ? '统一查看实例状态、规格、网络、计费与到期风险。'
+      : '统一查看整机状态、硬件配置、位置、费用与使用期限。',
+    actions: (
+      <Button variant="primary" onClick={goPurchase}>
+        {resourceType === 'cloud-server' ? '购买云服务器' : '购买物理机'}
+      </Button>
+    ),
+  }), [goPurchase, resourceType]);
+  useConsolePageHeader(pageHeader);
 
   function setParam(key: string, value: string, resetPage = true) {
     const next = new URLSearchParams(searchParams);
@@ -252,26 +265,26 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
   const listContent = (
     <div className="resource-list__content">
       <div className="resource-overview" aria-label={`${resourceType === 'cloud-server' ? '云服务器' : '物理机'}资源概览`}>
-        {overview.map(([label, value]) => <Container key={label} className="resource-overview__item"><span>{label}</span><strong>{value}</strong></Container>)}
+        {overview.map(([label, value]) => <div key={label} className="resource-overview__item"><span>{label}</span><strong>{value}</strong></div>)}
       </div>
       {expiringCount > 0 && (
-        <Container className="resource-expiry-alert" role="status">
+        <div className="resource-expiry-alert" role="status">
           <div><strong>{expiringCount} 个资源存在到期风险</strong><span>可筛选查看剩余天数，并从行内菜单快速处理有效期。</span></div>
           <Button variant="secondary" onClick={() => setParam('expiry', 'expiring')}>查看即将到期</Button>
-        </Container>
+        </div>
       )}
-      <ResourceFilters resourceType={resourceType} query={query} options={options} onChange={updateFilter} onReset={() => setSearchParams({})} />
-      {feedback && <Container className="resource-action-feedback" role="status">{feedback}</Container>}
-      <Container as="section" className="resource-results">
-        <div className="resource-results__header">
-          <div><span>{resourceType === 'cloud-server' ? '云实例资源' : '整机硬件资源'}</span><h2>{resourceType === 'cloud-server' ? '云服务器' : '物理机'}资源</h2></div>
-          <div className="resource-results__tools">
-            <p aria-live="polite">共 {result.total} 个结果</p>
-            <DropdownMenu trigger={`密度：${density === 'compact' ? '紧凑' : density === 'comfortable' ? '宽松' : '标准'}`} aria-label="资源表格密度">
-              <DropdownMenuItem onSelect={() => setDensity('compact')}>{density === 'compact' ? '✓ ' : ''}紧凑</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDensity('standard')}>{density === 'standard' ? '✓ ' : ''}标准</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDensity('comfortable')}>{density === 'comfortable' ? '✓ ' : ''}宽松</DropdownMenuItem>
-            </DropdownMenu>
+      <ResourceTable
+        resourceType={resourceType}
+        rows={pageItems}
+        loading={false}
+        catalogEmpty={result.catalogTotal === 0}
+        selectedKeys={selectedKeys}
+        density={density}
+        onDensityChange={setDensity}
+        visibleOptionalColumns={visibleColumns}
+        toolbar={<ResourceFilters resourceType={resourceType} query={query} options={options} onChange={updateFilter} onReset={() => setSearchParams({})} />}
+        utilityActions={(
+          <>
             <DropdownMenu trigger="列设置" aria-label="列表列设置">
               <DropdownMenuGroup label="扩展列">
                 {defaultColumns.map((column) => (
@@ -282,11 +295,10 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
               </DropdownMenuGroup>
               <DropdownMenuItem onSelect={() => setVisibleColumns([])}>恢复默认列</DropdownMenuItem>
             </DropdownMenu>
-          </div>
-        </div>
-        {selectedResources.length > 0 && (
-          <div className="resource-batch-toolbar" role="toolbar" aria-label="批量操作">
-            <strong>已选择 {selectedResources.length} 个资源</strong>
+          </>
+        )}
+        selectionActions={(
+          <>
             <Button variant="secondary" onClick={() => openBatch('start')}>批量启动</Button>
             <Button variant="secondary" onClick={() => openBatch('stop')}>批量停止</Button>
             <Button variant="secondary" onClick={() => openBatch('restart')}>批量重启</Button>
@@ -297,26 +309,17 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
               </>
             ) : <Button variant="secondary" onClick={() => openBatch('extend')}>批量申请延期</Button>}
             <Button variant="secondary" onClick={() => openBatch('metadata')}>批量项目与标签</Button>
-            <Button variant="ghost" onClick={() => setSelectedKeys([])}>清除选择</Button>
-          </div>
+          </>
         )}
-        <ResourceTable
-          resourceType={resourceType}
-          rows={pageItems}
-          loading={false}
-          catalogEmpty={result.catalogTotal === 0}
-          selectedKeys={selectedKeys}
-          density={density}
-          visibleOptionalColumns={visibleColumns}
-          onSelectionChange={setSelectedKeys}
-          onRetry={() => undefined}
-          onResetFilters={() => setSearchParams({})}
-          onGoMarketplace={goPurchase}
-          onConnection={(resource) => detailPath(resource, 'network')}
-          onAction={handleAction}
-        />
-        {result.total > 0 && <Pagination className="resource-results__pagination" page={safePage} totalPages={totalPages} totalItems={result.total} onPageChange={(next) => setParam('page', String(next), false)} />}
-      </Container>
+        resultLabel={`共 ${result.total} 个结果`}
+        pagination={result.total > 0 ? <Pagination page={safePage} totalPages={totalPages} totalItems={result.total} onPageChange={(next) => setParam('page', String(next), false)} /> : undefined}
+        onSelectionChange={setSelectedKeys}
+        onRetry={() => undefined}
+        onResetFilters={() => setSearchParams({})}
+        onGoMarketplace={goPurchase}
+        onConnection={(resource) => detailPath(resource, 'network')}
+        onAction={handleAction}
+      />
     </div>
   );
 
@@ -326,16 +329,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
 
   return (
     <div className="resource-page" data-resource-type={resourceType}>
-      <Container className="resource-list-titlebar">
-        <div>
-          <span>{resourceType === 'cloud-server' ? '云实例资源' : '整机硬件资源'}</span>
-          <strong>查看已购资源，并直接进入购买、连接与关联能力。</strong>
-        </div>
-        <Button variant="primary" onClick={goPurchase}>
-          {resourceType === 'cloud-server' ? '购买云服务器' : '购买物理机'}
-        </Button>
-      </Container>
-      <Container className="resource-type-tabs">
+      <div className="resource-type-tabs">
         <TitleBarTabs
           aria-label="我的资源类型"
           value={resourceType === 'cloud-server' ? 'cloud' : 'physical'}
@@ -345,7 +339,8 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
             { value: 'physical', label: '物理机', panel: listContent },
           ]}
         />
-      </Container>
+      </div>
+      {feedback && <Toast title={feedback} onClose={() => setFeedback('')} />}
       {resourceAction && <ResourceActionDialog resource={resourceAction.resource} action={resourceAction.action} open onClose={() => setResourceAction(undefined)} onCompleted={(resultValue) => { setFeedback(resultValue.record.message); setResourceAction(undefined); setRevision((value) => value + 1); }} />}
       {lifecycleAction && <ResourceLifecycleDialog resources={lifecycleAction.resources} action={lifecycleAction.action} open onClose={() => setLifecycleAction(undefined)} onCompleted={(message) => { setFeedback(message); setLifecycleAction(undefined); setSelectedKeys([]); setRevision((value) => value + 1); }} />}
       <Modal

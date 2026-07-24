@@ -2,13 +2,13 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Button,
   Checkbox,
+  DataTable,
   EmptyTable,
   FormField,
   Input,
   Modal,
   PromptModal,
   Select,
-  Table,
   TextButton,
   Textarea,
   type TableColumn,
@@ -163,8 +163,12 @@ export function NetworkRulesEditor({
         <div><strong>端口暴露与转发规则</strong><span>配置资源就绪后需要开放或转发的端口。</span></div>
         <Button ref={addButtonRef} variant="secondary" onClick={openCreate}>新增端口规则</Button>
       </div>
-      <Table
-        compact
+      <DataTable
+        title="端口规则"
+        embedded
+        density="compact"
+        enableDensity={false}
+        enableColumnSettings={false}
         aria-label="端口规则"
         columns={columns}
         rows={value.portRules}

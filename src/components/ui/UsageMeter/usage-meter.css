@@ -20,7 +20,7 @@
 
 .ui-usage-meter__headline span,
 .ui-usage-meter__legend {
-  color: var(--color-text-secondary);
+  color: var(--workspace-text-secondary);
   white-space: nowrap;
 }
 
@@ -67,6 +67,24 @@
 
 .ui-usage-meter[data-size='large'] .ui-usage-meter__track {
   height: var(--usage-meter-large-track-height);
+}
+
+.ui-usage-meter[data-variant='overview'] {
+  min-width: 0;
+}
+
+.ui-usage-meter[data-variant='overview'] .ui-usage-meter__track {
+  height: var(--usage-meter-overview-track-height);
+}
+
+.ui-usage-meter[data-variant='sidebar'] {
+  min-width: 0;
+}
+
+.ui-usage-meter[data-variant='sidebar'] .ui-usage-meter__headline {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 @media (prefers-reduced-motion: reduce) {

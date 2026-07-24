@@ -26,7 +26,9 @@ export type DataTableProps<T> = Omit<
     title: ReactNode;
     description?: ReactNode;
     toolbar?: ReactNode;
+    filterSummary?: ReactNode;
     actions?: ReactNode;
+    utilityActions?: ReactNode;
     resultLabel?: ReactNode;
     pagination?: ReactNode;
     selectionActions?: ReactNode;
@@ -35,6 +37,8 @@ export type DataTableProps<T> = Omit<
     enableDensity?: boolean;
     enableColumnSettings?: boolean;
     defaultHiddenColumnKeys?: readonly string[];
+    embedded?: boolean;
+    showResult?: boolean;
   }>;
 
 const DENSITY_LABEL: Readonly<Record<DataTableDensity, string>> = {
@@ -50,7 +54,9 @@ export function DataTable<T>({
   title,
   description,
   toolbar,
+  filterSummary,
   actions,
+  utilityActions,
   resultLabel,
   pagination,
   selectionActions,
@@ -59,6 +65,8 @@ export function DataTable<T>({
   enableDensity = true,
   enableColumnSettings = true,
   defaultHiddenColumnKeys = [],
+  embedded = false,
+  showResult = true,
   selectedKeys = [],
   onSelectionChange,
   ...tableProps
@@ -101,58 +109,64 @@ export function DataTable<T>({
   }
 
   return (
-    <section className="ui-data-table" aria-label={typeof title === 'string' ? title : undefined}>
-      <header className="ui-data-table__header">
-        <div className="ui-data-table__heading">
-          {eyebrow && <span>{eyebrow}</span>}
-          <h2>{title}</h2>
-          {description && <p>{description}</p>}
-        </div>
-        {actions && <div className="ui-data-table__primary-actions">{actions}</div>}
-      </header>
-      {toolbar && <div className="ui-data-table__filters">{toolbar}</div>}
-      <div className="ui-data-table__utility">
-        {selectedCount > 0 ? (
-          <div className="ui-data-table__selection-bar" role="toolbar" aria-label="已选数据操作">
-            <strong>已选择 {selectedCount} 项</strong>
-            <div>{selectionActions}</div>
-            <Button variant="ghost" onClick={() => onSelectionChange?.([])}>取消选择</Button>
-          </div>
-        ) : (
-          <>
-            <span className="ui-data-table__result" aria-live="polite">
-              {resultLabel ?? `共 ${rows.length} 项`}
-            </span>
-            <div className="ui-data-table__settings">
-              {enableDensity && (
-                <DropdownMenu trigger={`密度：${DENSITY_LABEL[density]}`} aria-label="表格密度">
-                  {(Object.keys(DENSITY_LABEL) as DataTableDensity[]).map((item) => (
-                    <DropdownMenuItem key={item} onSelect={() => changeDensity(item)}>
-                      {item === density ? '✓ ' : ''}{DENSITY_LABEL[item]}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenu>
-              )}
-              {enableColumnSettings && hideableColumns.length > 1 && (
-                <DropdownMenu trigger="列设置" aria-label="表格列设置">
-                  <DropdownMenuGroup label="显示列">
-                    {hideableColumns.map((column) => (
-                      <DropdownMenuItem
-                        key={column.key}
-                        disabled={visibleColumns.length === 1 && !hiddenKeys.includes(column.key)}
-                        onSelect={() => toggleColumn(column.key)}
-                      >
-                        {!hiddenKeys.includes(column.key) ? '✓ ' : ''}{column.title}
+    <section
+      className="ui-data-table"
+      aria-label={typeof title === 'string' ? title : undefined}
+      data-version="2"
+      data-embedded={embedded || undefined}
+    >
+      <span className="ui-visually-hidden">
+        {eyebrow}{title}{description}
+      </span>
+      {!embedded && (
+        <div className="ui-data-table__command">
+          {selectedCount > 0 ? (
+            <div className="ui-data-table__selection-bar" role="toolbar" aria-label="已选数据操作">
+              <strong>已选择 {selectedCount} 项</strong>
+              <div>{selectionActions}</div>
+              <Button variant="ghost" onClick={() => onSelectionChange?.([])}>取消选择</Button>
+            </div>
+          ) : (
+            <>
+              <div className="ui-data-table__filters">{toolbar}</div>
+              <div className="ui-data-table__settings">
+                {actions}
+                {utilityActions}
+                {enableDensity && (
+                  <DropdownMenu trigger={`密度：${DENSITY_LABEL[density]}`} aria-label="表格密度">
+                    {(Object.keys(DENSITY_LABEL) as DataTableDensity[]).map((item) => (
+                      <DropdownMenuItem key={item} onSelect={() => changeDensity(item)}>
+                        {item === density ? '✓ ' : ''}{DENSITY_LABEL[item]}
                       </DropdownMenuItem>
                     ))}
-                  </DropdownMenuGroup>
-                  <DropdownMenuItem onSelect={() => setHiddenKeys(defaultHiddenColumnKeys)}>恢复默认列</DropdownMenuItem>
-                </DropdownMenu>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+                  </DropdownMenu>
+                )}
+                {enableColumnSettings && hideableColumns.length > 1 && (
+                  <DropdownMenu trigger="列设置" aria-label="表格列设置">
+                    <DropdownMenuGroup label="显示列">
+                      {hideableColumns.map((column) => (
+                        <DropdownMenuItem
+                          key={column.key}
+                          disabled={visibleColumns.length === 1 && !hiddenKeys.includes(column.key)}
+                          onSelect={() => toggleColumn(column.key)}
+                        >
+                          {!hiddenKeys.includes(column.key) ? '✓ ' : ''}{column.title}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuGroup>
+                    <DropdownMenuItem onSelect={() => setHiddenKeys(defaultHiddenColumnKeys)}>恢复默认列</DropdownMenuItem>
+                  </DropdownMenu>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {!embedded && filterSummary && (
+        <div className="ui-data-table__filter-summary" aria-label="已选筛选条件">
+          {filterSummary}
+        </div>
+      )}
       <Table<T>
         {...tableProps}
         columns={visibleColumns}
@@ -164,7 +178,16 @@ export function DataTable<T>({
         sortDirection={sortDirection}
         onSortChange={changeSort}
       />
-      {pagination && <footer className="ui-data-table__pagination">{pagination}</footer>}
+      {!embedded && (showResult || pagination) && (
+        <footer className="ui-data-table__footer">
+          {showResult && (
+            <span className="ui-data-table__result" aria-live="polite">
+              {resultLabel ?? `共 ${rows.length} 项`}
+            </span>
+          )}
+          {pagination}
+        </footer>
+      )}
     </section>
   );
 }

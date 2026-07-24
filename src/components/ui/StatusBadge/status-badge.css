@@ -5,24 +5,30 @@
   min-height: var(--height-control-tag);
   padding: 0 var(--space-8);
   border: var(--border-default);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-pill);
   color: var(--color-text-body);
   background: var(--color-background-header);
   font-size: var(--font-size-caption);
   line-height: var(--line-height-caption);
   white-space: nowrap;
 }
-.ui-status-badge > span {
-  width: var(--space-8);
-  height: var(--space-8);
-  border-radius: 50%;
+.ui-status-badge__mark {
+  display: inline-grid;
+  width: var(--status-badge-mark-size);
+  height: var(--status-badge-mark-size);
+  border-radius: var(--status-badge-mark-radius);
+  color: var(--color-surface-default);
   background: var(--color-text-secondary);
+  font-size: var(--status-badge-mark-font-size);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  place-items: center;
 }
 .ui-status-badge[data-tone='info'] { border-color: var(--color-primary-disabled); background: var(--color-primary-background); }
-.ui-status-badge[data-tone='info'] > span { background: var(--color-primary); }
+.ui-status-badge[data-tone='info'] .ui-status-badge__mark { background: var(--color-primary); }
 .ui-status-badge[data-tone='success'] { border-color: var(--color-success-disabled); background: var(--color-success-background); }
-.ui-status-badge[data-tone='success'] > span { background: var(--color-success); }
+.ui-status-badge[data-tone='success'] .ui-status-badge__mark { background: var(--color-success); }
 .ui-status-badge[data-tone='warning'] { border-color: var(--color-warning-disabled); background: var(--color-warning-background); }
-.ui-status-badge[data-tone='warning'] > span { background: var(--color-warning); }
+.ui-status-badge[data-tone='warning'] .ui-status-badge__mark { background: var(--color-warning); }
 .ui-status-badge[data-tone='error'] { border-color: var(--color-error-disabled); background: var(--color-error-background); }
-.ui-status-badge[data-tone='error'] > span { background: var(--color-error); }
+.ui-status-badge[data-tone='error'] .ui-status-badge__mark { background: var(--color-error); }

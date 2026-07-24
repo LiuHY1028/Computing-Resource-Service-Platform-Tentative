@@ -76,9 +76,9 @@ describe('ResourceListPage', () => {
     await user.click(status);
     await user.click(screen.getByRole('option', { name: '运行中' }));
     expect(location()).toContain('status=running');
-    expect(screen.getByText('当前条件')).toBeInTheDocument();
+    expect(screen.getByText('已选条件')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '重置全部' }));
+    await user.click(screen.getByRole('button', { name: '清除全部' }));
     await waitFor(() => expect(location()).toBe('/console/resources/cloud-servers'));
     expect(await screen.findByText('研发计算节点-01')).toBeInTheDocument();
   });

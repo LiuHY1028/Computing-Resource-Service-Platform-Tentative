@@ -56,6 +56,16 @@ Business requirements override UI examples on behavior. UI specifications govern
 - Preserve documented PDF conflicts; component-specific rules take precedence until design confirms otherwise.
 - New components outside the PDF must be documented in `docs/analysis/08-page-component-mapping.md` with their requirement basis and state coverage.
 
+### Structural redesign requirement
+
+- When a user explicitly rejects a page's visual quality, do not limit the response to CSS tuning.
+- First determine whether the problem is color, component styling, information architecture, or page composition.
+- Composition problems must be solved by rebuilding DOM structure, layout regions, and interaction flow.
+- Do not present added radius, shadow, gradient, hover, or padding as a redesign.
+- Establish and accept one visual reference page before migrating the same system to other complex pages.
+- The UI specification is the minimum consistency baseline, not the visual or interaction ceiling.
+- If the rebuilt page remains compositionally similar to a rejected screenshot, the task is not complete.
+
 ### UI specification as a quality baseline
 
 - The existing UI specification is the minimum consistency baseline for typography, component semantics, sizing, spacing, states, and accessibility; it is not a ceiling on visual quality.

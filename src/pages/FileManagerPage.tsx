@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -7,6 +8,7 @@ import {
 } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { APP_PATHS, resourceDetailPath, storageDetailPath } from '../app/routes';
+import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
 import { NavigationIcon } from '../app/shell/icons/AppShellIcons';
 import {
   Button,
@@ -14,6 +16,7 @@ import {
   DropdownMenu,
   DropdownMenuItem,
   Input,
+  IconButton,
   Modal,
   PageState,
   Progress,
@@ -21,6 +24,7 @@ import {
   Select,
   StatusBadge,
   TextButton,
+  Toast,
   UsageMeter,
 } from '../components/ui';
 import {
@@ -53,7 +57,7 @@ import {
 import '../styles/file-manager.css';
 
 type ActionDialog =
-  | { type: 'folder' }
+  | { type: 'folder'; parentId?: string }
   | { type: 'rename'; node: FileNode }
   | { type: 'copy' | 'move'; nodeIds: string[] }
   | { type: 'delete'; nodeIds: string[] }
@@ -92,10 +96,16 @@ function canPreview(node: FileNode) {
   );
 }
 
+function isInvalidDrop(nodeIds: readonly string[], targetId: string) {
+  const targetPath = new Set(getPathNodes(targetId).map((node) => node.nodeId));
+  return nodeIds.some((nodeId) => targetPath.has(nodeId));
+}
+
 export function FileManagerPage() {
   const { storageId = '' } = useParams();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadParentRef = useRef<string | undefined>(undefined);
   const workspaceRef = useRef<HTMLElement>(null);
   const lastSelectedId = useRef<string | undefined>(undefined);
   const storage = getStorageSpace(storageId);
@@ -110,13 +120,30 @@ export function FileManagerPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [treeOpen, setTreeOpen] = useState(true);
   const [taskOpen, setTaskOpen] = useState(false);
-  const [quickAccess, setQuickAccess] = useState<'folder' | 'recent' | 'images' | 'documents'>('folder');
+  const [quickAccess, setQuickAccess] = useState<'folder' | 'recent' | 'images' | 'documents' | 'datasets' | 'models'>('folder');
   const [clipboard, setClipboard] = useState<{ mode: 'copy' | 'cut'; nodeIds: string[] }>();
   const [contextTarget, setContextTarget] = useState<ContextTarget>();
   const [dialog, setDialog] = useState<ActionDialog>();
   const [feedback, setFeedback] = useState('');
   const [dragging, setDragging] = useState(false);
   const [dragTargetId, setDragTargetId] = useState('');
+  const [dragInvalidTargetId, setDragInvalidTargetId] = useState('');
+  const [draggedIds, setDraggedIds] = useState<string[]>([]);
+
+  const pageHeader = useMemo(() => ({
+    description: '在当前存储中浏览、整理和传输文件。',
+    context: storage
+      ? <span>{storage.name} · {storage.site} · {storage.usedGb} / {storage.capacityGb} GB</span>
+      : undefined,
+    actions: storage ? (
+      <>
+        <TextButton onClick={() => navigate(storageDetailPath(storage.id))}>返回存储详情</TextButton>
+        <Button aria-pressed={detailsOpen} onClick={() => setDetailsOpen((value) => !value)}>详细信息</Button>
+      </>
+    ) : undefined,
+    workspace: Boolean(storage && root && canManageStorageFiles(storage)),
+  }), [detailsOpen, navigate, root, setDetailsOpen, storage]);
+  useConsolePageHeader(pageHeader);
 
   useEffect(() => {
     const close = () => setContextTarget(undefined);
@@ -125,10 +152,10 @@ export function FileManagerPage() {
   }, []);
 
   if (!storage || !root) {
-    return <main className="file-manager-page"><PageState tone="error" title="未找到文件系统" description="存储或根目录不可用。" actionLabel="返回存储管理" onAction={() => navigate(APP_PATHS.storage)} /></main>;
+    return <main className="file-workbench-state"><PageState tone="error" title="未找到文件系统" description="存储或根目录不可用。" actionLabel="返回存储管理" onAction={() => navigate(APP_PATHS.storage)} /></main>;
   }
   if (!canManageStorageFiles(storage)) {
-    return <main className="file-manager-page"><PageState title="暂不能管理文件" description={storage.type === 'cloud-disk' ? '请先挂载云硬盘并初始化文件系统。' : '当前存储状态不可用。'} actionLabel="查看存储详情" onAction={() => navigate(storageDetailPath(storage.id))} /></main>;
+    return <main className="file-workbench-state"><PageState title="暂不能管理文件" description={storage.type === 'cloud-disk' ? '请先挂载云硬盘并初始化文件系统。' : '当前存储状态不可用。'} actionLabel="查看存储详情" onAction={() => navigate(storageDetailPath(storage.id))} /></main>;
   }
 
   void revision;
@@ -148,6 +175,14 @@ export function FileManagerPage() {
         || node.mimeType === 'application/json'
         || node.mimeType === 'application/pdf'
         || ['md', 'json', 'txt'].includes(node.extension)
+      );
+      if (quickAccess === 'datasets') return node.type === 'file' && (
+        ['csv', 'parquet', 'jsonl', 'xlsx'].includes(node.extension.toLocaleLowerCase())
+        || node.name.toLocaleLowerCase().includes('dataset')
+      );
+      if (quickAccess === 'models') return node.type === 'file' && (
+        ['onnx', 'pt', 'pth', 'safetensors'].includes(node.extension.toLocaleLowerCase())
+        || node.name.toLocaleLowerCase().includes('model')
       );
       return false;
     })
@@ -200,23 +235,26 @@ export function FileManagerPage() {
   }
 
   async function handleFiles(files: FileList | readonly File[]) {
+    const uploadParentId = uploadParentRef.current ?? currentFolderId;
     try {
-      await uploadFiles(storageId, currentFolderId, Array.from(files));
+      await uploadFiles(storageId, uploadParentId, Array.from(files));
       refresh(`已将 ${files.length} 个文件加入当前目录。`);
     } catch (reason) {
       setFeedback(reason instanceof Error ? reason.message : '上传失败。');
       setRevision((value) => value + 1);
+    } finally {
+      uploadParentRef.current = undefined;
+      if (inputRef.current) inputRef.current.value = '';
     }
   }
 
   function downloadSelection() {
-    const files = selected.filter((item) => item.type === 'file');
-    if (!files.length) {
-      setFeedback('请选择至少一个文件下载。');
+    if (!selected.length) {
+      setFeedback('请选择至少一个对象下载。');
       return;
     }
-    files.forEach((item) => downloadNode(item.nodeId));
-    refresh(`已在浏览器中发起 ${files.length} 个下载。`);
+    selected.forEach((item) => void downloadNode(item.nodeId));
+    refresh(`已在浏览器中发起 ${selected.length} 个下载。`);
   }
 
   function selectQuickAccess(next: typeof quickAccess) {
@@ -293,6 +331,12 @@ export function FileManagerPage() {
   }
 
   function moveDrop(nodeIds: readonly string[], targetId: string) {
+    if (isInvalidDrop(nodeIds, targetId)) {
+      setFeedback('不能将文件夹移动到自身或其子目录。');
+      setDragTargetId('');
+      setDragInvalidTargetId('');
+      return;
+    }
     try {
       moveNodes(nodeIds, targetId);
       refresh(`${nodeIds.length} 个对象已移动到目标目录。`);
@@ -300,16 +344,21 @@ export function FileManagerPage() {
       setFeedback(reason instanceof Error ? reason.message : '移动失败。');
     } finally {
       setDragTargetId('');
+      setDragInvalidTargetId('');
     }
   }
 
   return (
     <main
       ref={workspaceRef}
-      className="file-manager-page"
+      className="file-workbench-page"
       tabIndex={-1}
       onKeyDown={handleWorkspaceKey}
-      onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+      onDragOver={(event) => {
+        if (!event.dataTransfer.types.includes('Files')) return;
+        event.preventDefault();
+        setDragging(true);
+      }}
       onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
       onDrop={(event) => {
         event.preventDefault();
@@ -317,121 +366,141 @@ export function FileManagerPage() {
         if (event.dataTransfer.files.length) void handleFiles(event.dataTransfer.files);
       }}
     >
-      <header className="file-manager-header">
-        <div>
-          <TextButton onClick={() => navigate(storageDetailPath(storage.id))}>返回存储详情</TextButton>
-          <h2>{storage.name}</h2>
-          <p>{storage.site} · 当前路径 {getNodePath(currentFolderId)}</p>
-        </div>
-        <div className="file-manager-header-actions">
-          <Button onClick={() => setDetailsOpen((value) => !value)} aria-pressed={detailsOpen}>详细信息</Button>
-          <Button onClick={() => setTaskOpen(true)}>任务中心 ({listFileTasks(storageId).length})</Button>
-        </div>
-      </header>
-
-      {feedback && (
-        <div className="file-manager-feedback" role="status">
-          <span>{feedback}</span>
-          {canUndoFileOperation(storageId) && <Button variant="ghost" onClick={undoLast}>撤销</Button>}
-          <button type="button" aria-label="关闭提示" onClick={() => setFeedback('')}>×</button>
-        </div>
-      )}
-      <section className="file-manager-shell" data-details={detailsOpen ? 'open' : 'closed'} data-tree={treeOpen ? 'open' : 'closed'}>
-        <div className="file-manager-toolbar">
-          <div className="file-manager-address-row">
-            <div className="file-manager-nav-buttons" role="toolbar" aria-label="目录导航">
-              <Button aria-label="后退" title="后退" disabled={historyIndex <= 0} onClick={() => goHistory(historyIndex - 1)}>后退</Button>
-              <Button aria-label="前进" title="前进" disabled={historyIndex >= history.length - 1} onClick={() => goHistory(historyIndex + 1)}>前进</Button>
-              <Button aria-label="返回上级" title="返回上级" disabled={!currentFolder.parentId} onClick={() => currentFolder.parentId && openFolder(currentFolder.parentId)}>上级</Button>
-              <Button aria-label="刷新当前目录" onClick={() => refresh('当前目录已刷新。')}>刷新</Button>
+      <input
+        ref={inputRef}
+        className="file-workbench-file-input"
+        type="file"
+        multiple
+        onChange={(event) => event.target.files && void handleFiles(event.target.files)}
+      />
+      <section className="file-workbench" data-inspector={detailsOpen ? 'open' : 'closed'} data-navigation={treeOpen ? 'open' : 'closed'}>
+        <header className="file-workbench-commandbar">
+          <div className="file-workbench-address">
+            <div className="file-workbench-history" role="toolbar" aria-label="目录导航">
+              <IconButton aria-label="后退" title="后退" icon="←" disabled={historyIndex <= 0} onClick={() => goHistory(historyIndex - 1)} />
+              <IconButton aria-label="前进" title="前进" icon="→" disabled={historyIndex >= history.length - 1} onClick={() => goHistory(historyIndex + 1)} />
+              <IconButton aria-label="返回上级" title="返回上级" icon="↑" disabled={!currentFolder.parentId} onClick={() => currentFolder.parentId && openFolder(currentFolder.parentId)} />
+              <IconButton aria-label="刷新当前目录" title="刷新" icon="↻" onClick={() => refresh('当前目录已刷新。')} />
             </div>
-            <nav className="file-manager-breadcrumbs" aria-label="当前路径">
+            <nav className="file-workbench-breadcrumbs" aria-label="当前路径">
               {getPathNodes(currentFolderId).map((item, index, items) => (
-                <span key={item.nodeId}><button type="button" onClick={() => openFolder(item.nodeId)}>{item.parentId === null ? storage.name : item.name}</button>{index < items.length - 1 && <b>/</b>}</span>
+                <span key={item.nodeId}>
+                  <button type="button" onClick={() => openFolder(item.nodeId)}>
+                    {item.parentId === null ? storage.name : item.name}
+                  </button>
+                  {index < items.length - 1 && <b aria-hidden="true">/</b>}
+                </span>
               ))}
             </nav>
-            <SearchInput value={search} placeholder="搜索文件和文件夹" onChange={(event) => setSearch(event.target.value)} clearable onClear={() => setSearch('')} />
+            <SearchInput value={search} placeholder="在当前目录中搜索" onChange={(event) => setSearch(event.target.value)} clearable onClear={() => setSearch('')} />
           </div>
-
           {selected.length > 0 ? (
-            <div className="file-manager-selection-bar" role="toolbar" aria-label="已选文件操作">
+            <div className="file-workbench-selection" role="toolbar" aria-label="已选文件操作">
               <strong>已选择 {selected.length} 项</strong>
               <Button onClick={downloadSelection}>下载</Button>
               <Button onClick={() => copySelection('copy')}>复制</Button>
-              <Button onClick={() => copySelection('cut')}>剪切</Button>
-              <Button onClick={() => setDialog({ type: 'move', nodeIds: selectedIds })}>移动到</Button>
+              <Button onClick={() => setDialog({ type: 'move', nodeIds: selectedIds })}>移动</Button>
               {selected.length === 1 && <Button onClick={() => setDialog({ type: 'rename', node: selected[0] })}>重命名</Button>}
               <Button variant="danger" onClick={() => setDialog({ type: 'delete', nodeIds: selectedIds })}>删除</Button>
+              <DropdownMenu trigger={<span>更多</span>} aria-label="所选文件更多操作">
+                <DropdownMenuItem onSelect={() => copySelection('cut')}>剪切</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setDetailsOpen(true); }}>查看详细信息</DropdownMenuItem>
+              </DropdownMenu>
+              <span className="file-workbench-command-spacer" />
               <Button variant="ghost" onClick={() => setSelectedIds([])}>取消选择</Button>
             </div>
           ) : (
-            <div className="file-manager-command-row" role="toolbar" aria-label="文件操作">
-              <input ref={inputRef} className="file-manager-file-input" type="file" multiple onChange={(event) => event.target.files && void handleFiles(event.target.files)} />
-              <Button variant="primary" onClick={() => inputRef.current?.click()}>上传文件</Button>
+            <div className="file-workbench-actions" role="toolbar" aria-label="文件操作">
+              <Button variant="primary" onClick={() => { uploadParentRef.current = currentFolderId; inputRef.current?.click(); }}>上传</Button>
               <Button onClick={() => setDialog({ type: 'folder' })}>新建文件夹</Button>
-              <Button disabled={!clipboard?.nodeIds.length} onClick={() => pasteClipboard()}>粘贴</Button>
-              <Button disabled={!canUndoFileOperation(storageId)} onClick={undoLast}>撤销</Button>
-              <span className="file-manager-command-spacer" />
+              <span className="file-workbench-command-divider" />
               <Select aria-label="排序" value={sort} onValueChange={(value) => setSort(value as FileSort)} options={[{ value: 'name-asc', label: '名称升序' }, { value: 'name-desc', label: '名称降序' }, { value: 'updated-desc', label: '最近修改' }, { value: 'size-desc', label: '大小降序' }]} />
               <Button aria-pressed={view === 'list'} onClick={() => setView('list')}>列表</Button>
               <Button aria-pressed={view === 'grid'} onClick={() => setView('grid')}>网格</Button>
+              <Button aria-pressed={detailsOpen} onClick={() => setDetailsOpen((value) => !value)}>显示详情</Button>
+              <Button aria-pressed={taskOpen} onClick={() => setTaskOpen((value) => !value)}>任务中心</Button>
+              <DropdownMenu trigger={<span>更多</span>} aria-label="文件工作区更多操作">
+                <DropdownMenuItem disabled={!clipboard?.nodeIds.length} onSelect={() => pasteClipboard()}>粘贴</DropdownMenuItem>
+                <DropdownMenuItem disabled={!canUndoFileOperation(storageId)} onSelect={undoLast}>撤销上一步</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setTreeOpen((value) => !value)}>{treeOpen ? '收起导航' : '展开导航'}</DropdownMenuItem>
+              </DropdownMenu>
             </div>
           )}
-        </div>
+        </header>
 
-        <aside className="file-manager-tree">
-          <div className="file-manager-pane-heading"><strong>导航</strong><button type="button" onClick={() => setTreeOpen(false)} aria-label="收起导航">‹</button></div>
-          <div className="file-manager-quick-access" aria-label="快速访问">
-            <span>快速访问</span>
-            <button type="button" data-current={quickAccess === 'folder' && currentFolderId === root.nodeId || undefined} onClick={() => { openFolder(root.nodeId); selectQuickAccess('folder'); }}>根目录</button>
-            <button type="button" data-current={quickAccess === 'recent' || undefined} onClick={() => selectQuickAccess('recent')}>最近使用</button>
-            <button type="button" data-current={quickAccess === 'images' || undefined} onClick={() => selectQuickAccess('images')}>图片</button>
-            <button type="button" data-current={quickAccess === 'documents' || undefined} onClick={() => selectQuickAccess('documents')}>文档</button>
-          </div>
-          <div className="file-manager-tree-section">
-            <span>文件夹</span>
-            <DirectoryTree
-              nodes={allNodes}
-              parentId={null}
-              currentId={currentFolderId}
-              dragTargetId={dragTargetId}
-              onOpen={openFolder}
-              onContext={(node, event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setContextTarget({ kind: 'folder', node, x: event.clientX, y: event.clientY });
-              }}
-              onDropNodes={moveDrop}
-              onDragTarget={setDragTargetId}
-            />
-          </div>
-          <div className="file-manager-tree-capacity">
-            <strong>{storage.name}</strong>
-            <UsageMeter used={storage.usedGb} total={storage.capacityGb} label="存储容量使用率" size="mini" />
-          </div>
-        </aside>
-        {!treeOpen && <button className="file-manager-pane-opener file-manager-pane-opener--tree" type="button" onClick={() => setTreeOpen(true)} aria-label="展开目录树">›</button>}
+        <div className="file-workbench-body">
+          {treeOpen ? (
+            <aside className="file-workbench-navigation">
+              <div className="file-workbench-pane-heading">
+                <strong>导航</strong>
+                <IconButton aria-label="收起导航" icon="‹" onClick={() => setTreeOpen(false)} />
+              </div>
+              <div className="file-workbench-quick-access" aria-label="快速访问">
+                <span>快速访问</span>
+                <button type="button" data-current={quickAccess === 'folder' && currentFolderId === root.nodeId || undefined} onClick={() => { openFolder(root.nodeId); selectQuickAccess('folder'); }}>⌂ <b>全部文件</b></button>
+                <button type="button" data-current={quickAccess === 'recent' || undefined} onClick={() => selectQuickAccess('recent')}>◷ <b>最近使用</b></button>
+                <button type="button" data-current={quickAccess === 'images' || undefined} onClick={() => selectQuickAccess('images')}>▧ <b>图片</b></button>
+                <button type="button" data-current={quickAccess === 'documents' || undefined} onClick={() => selectQuickAccess('documents')}>▤ <b>文档</b></button>
+                <button type="button" data-current={quickAccess === 'datasets' || undefined} onClick={() => selectQuickAccess('datasets')}>▦ <b>数据集</b></button>
+                <button type="button" data-current={quickAccess === 'models' || undefined} onClick={() => selectQuickAccess('models')}>◇ <b>模型</b></button>
+              </div>
+              <div className="file-workbench-tree">
+                <span>文件夹</span>
+                <DirectoryTree
+                  nodes={allNodes}
+                  parentId={null}
+                  currentId={currentFolderId}
+                  dragTargetId={dragTargetId}
+                  invalidTargetId={dragInvalidTargetId}
+                  draggedIds={draggedIds}
+                  onOpen={openFolder}
+                  onContext={(node, event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setContextTarget({ kind: 'folder', node, x: event.clientX, y: event.clientY });
+                  }}
+                  onDropNodes={moveDrop}
+                  onDragTarget={(nodeId, invalid) => {
+                    setDragTargetId(nodeId);
+                    setDragInvalidTargetId(invalid ? nodeId : '');
+                  }}
+                />
+              </div>
+              <div className="file-workbench-capacity">
+                <strong>存储空间</strong>
+                <UsageMeter used={storage.usedGb} total={storage.capacityGb} label="存储容量使用率" variant="sidebar" />
+              </div>
+            </aside>
+          ) : (
+            <aside className="file-workbench-navigation-rail" aria-label="已收起的导航">
+              <IconButton aria-label="展开导航" icon="›" onClick={() => setTreeOpen(true)} />
+              <span aria-hidden="true">⌂</span>
+              <span aria-hidden="true">◷</span>
+              <span aria-hidden="true">▧</span>
+            </aside>
+          )}
 
-        <section
-          className="file-manager-content"
-          onClick={(event) => {
-            if (event.currentTarget === event.target) setSelectedIds([]);
-          }}
-          onContextMenu={(event) => {
-            if (event.currentTarget !== event.target) return;
-            event.preventDefault();
-            setContextTarget({ kind: 'blank', x: event.clientX, y: event.clientY });
-          }}
-        >
-          {dragging && <div className="file-manager-drop-zone">释放后将文件加入“{currentFolder.name}”</div>}
-          {!rows.length ? (
-            <div className="file-manager-empty">
-              <PageState title={search ? '没有找到文件' : '当前目录为空'} description={search ? '调整搜索词或返回当前目录。' : '可拖拽文件到此区域，或使用下方操作。'} actionLabel={search ? '清除搜索' : '上传文件'} onAction={() => search ? setSearch('') : inputRef.current?.click()} />
-              {!search && <div><Button onClick={() => setDialog({ type: 'folder' })}>新建文件夹</Button>{currentFolder.parentId && <Button variant="ghost" onClick={() => currentFolder.parentId && openFolder(currentFolder.parentId)}>返回上级</Button>}</div>}
-            </div>
-          ) : view === 'list' ? (
-            <div className="file-list" role="grid" aria-label="文件列表">
-              <div className="file-list-row file-list-head" role="row">
+          <section
+            className="file-workbench-content"
+            onClick={(event) => {
+              if (!(event.target as HTMLElement).closest('[data-file-node]')) setSelectedIds([]);
+            }}
+            onContextMenu={(event) => {
+              if ((event.target as HTMLElement).closest('[data-file-node]')) return;
+              event.preventDefault();
+              setContextTarget({ kind: 'blank', x: event.clientX, y: event.clientY });
+            }}
+          >
+            {dragging && <div className="file-workbench-drop-zone">释放后上传到“{currentFolder.name}”</div>}
+            {draggedIds.length > 0 && <div className="file-workbench-drag-count">正在移动 {draggedIds.length} 项</div>}
+            {!rows.length ? (
+              <div className="file-workbench-empty">
+                <PageState title={search ? '没有找到文件' : '当前目录为空'} description={search ? '调整搜索词或返回当前目录。' : '可拖拽文件到此区域，或使用下方操作。'} actionLabel={search ? '清除搜索' : '上传文件'} onAction={() => search ? setSearch('') : inputRef.current?.click()} />
+                {!search && <div><Button onClick={() => setDialog({ type: 'folder' })}>新建文件夹</Button>{currentFolder.parentId && <Button variant="ghost" onClick={() => currentFolder.parentId && openFolder(currentFolder.parentId)}>返回上级</Button>}</div>}
+              </div>
+            ) : view === 'list' ? (
+              <div className="file-workbench-list" role="grid" aria-label="文件列表">
+                <div className="file-workbench-list-row file-workbench-list-head" role="row">
                 <Checkbox
                   checked={rows.length > 0 && rows.every((node) => selectedIds.includes(node.nodeId))}
                   indeterminate={selectedIds.length > 0 && !rows.every((node) => selectedIds.includes(node.nodeId))}
@@ -440,13 +509,15 @@ export function FileManagerPage() {
                 >
                   {' '}
                 </Checkbox>
-                <span>名称</span><span>修改时间</span><span>类型</span><span>大小</span><span>所有者</span><span>操作</span>
-              </div>
-              {rows.map((node) => (
-                <div
-                  className="file-list-row"
+                  <span>名称</span><span>修改时间</span><span>类型</span><span>大小</span><span>所有者</span><span>操作</span>
+                </div>
+                {rows.map((node) => (
+                  <div
+                  className="file-workbench-list-row"
+                  data-file-node
                   data-selected={selectedIds.includes(node.nodeId) || undefined}
                   data-drag-target={dragTargetId === node.nodeId || undefined}
+                  data-drag-invalid={dragInvalidTargetId === node.nodeId || undefined}
                   key={node.nodeId}
                   role="row"
                   tabIndex={0}
@@ -466,14 +537,19 @@ export function FileManagerPage() {
                     const ids = selectedIds.includes(node.nodeId) ? selectedIds : [node.nodeId];
                     event.dataTransfer.setData('application/x-file-node-ids', JSON.stringify(ids));
                     event.dataTransfer.effectAllowed = 'move';
+                    setDraggedIds(ids);
                   }}
+                  onDragEnd={() => { setDraggedIds([]); setDragTargetId(''); }}
                   onDragOver={(event) => {
                     if (node.type !== 'folder' || !event.dataTransfer.types.includes('application/x-file-node-ids')) return;
                     event.preventDefault();
                     event.stopPropagation();
                     setDragTargetId(node.nodeId);
+                    const invalid = isInvalidDrop(draggedIds, node.nodeId);
+                    setDragInvalidTargetId(invalid ? node.nodeId : '');
+                    event.dataTransfer.dropEffect = invalid ? 'none' : 'move';
                   }}
-                  onDragLeave={() => setDragTargetId('')}
+                  onDragLeave={() => { setDragTargetId(''); setDragInvalidTargetId(''); }}
                   onDrop={(event) => {
                     if (node.type !== 'folder') return;
                     const data = event.dataTransfer.getData('application/x-file-node-ids');
@@ -495,24 +571,25 @@ export function FileManagerPage() {
                   >
                     {' '}
                   </Checkbox>
-                  <span className="file-name-cell"><i><FileTypeIcon node={node} /></i><strong>{node.name}</strong></span>
+                  <span className="file-workbench-name"><i data-type={node.type}><FileTypeIcon node={node} /></i><strong>{node.name}</strong></span>
                   <span>{new Date(node.updatedAt).toLocaleString('zh-CN', { hour12: false })}</span>
                   <span>{node.type === 'folder' ? '文件夹' : node.extension.toUpperCase() || node.mimeType}</span>
                   <span>{node.type === 'folder' ? '—' : formatBytes(node.sizeBytes)}</span>
                   <span>{node.owner}</span>
-                  <div className="file-row-actions">
+                  <div className="file-workbench-row-actions">
                     <TextButton onClick={(event) => { event.stopPropagation(); openNode(node); }}>{node.type === 'folder' ? '打开' : '预览'}</TextButton>
-                    {node.type === 'file' && <TextButton onClick={(event) => { event.stopPropagation(); downloadNode(node.nodeId); refresh('下载已在浏览器中发起。'); }}>下载</TextButton>}
-                    <NodeMenu node={node} onOpen={() => openNode(node)} onDetails={() => { setSelectedIds([node.nodeId]); setDetailsOpen(true); }} onAction={setDialog} onDownload={() => { downloadNode(node.nodeId); refresh('下载已在浏览器中发起。'); }} />
+                    {node.type === 'file' && <TextButton onClick={(event) => { event.stopPropagation(); void downloadNode(node.nodeId); refresh('下载已在浏览器中发起。'); }}>下载</TextButton>}
+                    <NodeMenu node={node} onOpen={() => openNode(node)} onDetails={() => { setSelectedIds([node.nodeId]); setDetailsOpen(true); }} onAction={setDialog} onDownload={() => { void downloadNode(node.nodeId); refresh('下载已在浏览器中发起。'); }} />
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="file-grid">
-              {rows.map((node) => (
-                <article
-                  className="file-card"
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="file-workbench-grid">
+                {rows.map((node) => (
+                  <article
+                  className="file-workbench-card"
+                  data-file-node
                   data-selected={selectedIds.includes(node.nodeId) || undefined}
                   key={node.nodeId}
                   tabIndex={0}
@@ -531,7 +608,9 @@ export function FileManagerPage() {
                   onDragStart={(event) => {
                     const ids = selectedIds.includes(node.nodeId) ? selectedIds : [node.nodeId];
                     event.dataTransfer.setData('application/x-file-node-ids', JSON.stringify(ids));
+                    setDraggedIds(ids);
                   }}
+                  onDragEnd={() => setDraggedIds([])}
                 >
                   <Checkbox
                     checked={selectedIds.includes(node.nodeId)}
@@ -541,24 +620,24 @@ export function FileManagerPage() {
                   >
                     {' '}
                   </Checkbox>
-                  <span className="file-card-icon"><FileTypeIcon node={node} /></span>
+                  <span className="file-workbench-card-icon" data-type={node.type}><FileTypeIcon node={node} /></span>
                   <strong>{node.name}</strong>
                   <small>{node.type === 'folder' ? `${directorySummary(node.nodeId).files} 个文件` : formatBytes(node.sizeBytes)}</small>
-                  <NodeMenu node={node} onOpen={() => openNode(node)} onDetails={() => { setSelectedIds([node.nodeId]); setDetailsOpen(true); }} onAction={setDialog} onDownload={() => { downloadNode(node.nodeId); refresh('下载已在浏览器中发起。'); }} />
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+                  <NodeMenu node={node} onOpen={() => openNode(node)} onDetails={() => { setSelectedIds([node.nodeId]); setDetailsOpen(true); }} onAction={setDialog} onDownload={() => { void downloadNode(node.nodeId); refresh('下载已在浏览器中发起。'); }} />
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
 
-        {detailsOpen ? (
-          <aside className="file-manager-details">
-            <div className="file-manager-pane-heading"><strong>详细信息</strong><button type="button" onClick={() => setDetailsOpen(false)} aria-label="收起详细信息">›</button></div>
+          {detailsOpen && (
+            <aside className="file-workbench-inspector">
+              <div className="file-workbench-pane-heading"><strong>详细信息</strong><IconButton aria-label="关闭详细信息" icon="×" onClick={() => setDetailsOpen(false)} /></div>
             {detailNode
               ? <FileDetails node={detailNode} storage={storage} onPreview={() => setDialog({ type: 'preview', node: detailNode })} />
               : selected.length > 1
                 ? (
-                  <div className="file-details-summary">
+                  <div className="file-workbench-details-summary">
                     <span>选择汇总</span>
                     <strong>{selected.length} 个对象</strong>
                     <dl>
@@ -569,10 +648,20 @@ export function FileManagerPage() {
                     <Button onClick={() => setDialog({ type: 'move', nodeIds: selectedIds })}>移动所选对象</Button>
                   </div>
                 )
-                : <FileDetails node={currentFolder} storage={storage} onPreview={() => undefined} />}
-          </aside>
-        ) : <button className="file-manager-pane-opener file-manager-pane-opener--details" type="button" onClick={() => setDetailsOpen(true)} aria-label="展开详细信息">‹</button>}
+                : <div className="file-workbench-inspector-empty"><span aria-hidden="true">ⓘ</span><strong>选择文件查看详情</strong><p>可查看预览、路径、大小、所有者和权限。</p></div>}
+            </aside>
+          )}
+        </div>
       </section>
+
+      {feedback && (
+        <Toast
+          title={feedback}
+          actionLabel={canUndoFileOperation(storageId) ? '撤销' : undefined}
+          onAction={canUndoFileOperation(storageId) ? undoLast : undefined}
+          onClose={() => setFeedback('')}
+        />
+      )}
 
       {contextTarget && (
         <ContextMenu
@@ -580,13 +669,18 @@ export function FileManagerPage() {
           canPaste={Boolean(clipboard?.nodeIds.length)}
           onClose={() => setContextTarget(undefined)}
           onOpen={(node) => openNode(node)}
-          onUpload={() => inputRef.current?.click()}
-          onCreateFolder={() => setDialog({ type: 'folder' })}
+          onUpload={() => {
+            uploadParentRef.current = contextTarget.kind === 'folder'
+              ? contextTarget.node.nodeId
+              : currentFolderId;
+            inputRef.current?.click();
+          }}
+          onCreateFolder={() => setDialog({ type: 'folder', parentId: contextTarget.kind === 'folder' ? contextTarget.node.nodeId : currentFolderId })}
           onPaste={() => pasteClipboard(contextTarget.kind === 'folder' ? contextTarget.node.nodeId : currentFolderId)}
           onRefresh={() => refresh('当前目录已刷新。')}
           onView={setView}
           onSort={setSort}
-          onDownload={(node) => { downloadNode(node.nodeId); refresh('下载已在浏览器中发起。'); }}
+          onDownload={(node) => { void downloadNode(node.nodeId); refresh('下载已在浏览器中发起。'); }}
           onDetails={(node) => { setSelectedIds([node.nodeId]); setDetailsOpen(true); }}
           onAction={setDialog}
         />
@@ -619,6 +713,8 @@ function DirectoryTree({
   parentId,
   currentId,
   dragTargetId,
+  invalidTargetId,
+  draggedIds,
   onOpen,
   onContext,
   onDropNodes,
@@ -628,10 +724,12 @@ function DirectoryTree({
   parentId: string | null;
   currentId: string;
   dragTargetId: string;
+  invalidTargetId: string;
+  draggedIds: readonly string[];
   onOpen: (nodeId: string) => void;
   onContext: (node: FileNode, event: MouseEvent<HTMLButtonElement>) => void;
   onDropNodes: (nodeIds: readonly string[], targetId: string) => void;
-  onDragTarget: (nodeId: string) => void;
+  onDragTarget: (nodeId: string, invalid: boolean) => void;
 }>) {
   const folders = nodes.filter((item) => item.type === 'folder' && item.parentId === parentId);
   if (!folders.length) return null;
@@ -643,15 +741,18 @@ function DirectoryTree({
             type="button"
             data-current={folder.nodeId === currentId || undefined}
             data-drag-target={folder.nodeId === dragTargetId || undefined}
+            data-drag-invalid={folder.nodeId === invalidTargetId || undefined}
             onClick={() => onOpen(folder.nodeId)}
             onContextMenu={(event) => onContext(folder, event)}
             onDragOver={(event) => {
               if (!event.dataTransfer.types.includes('application/x-file-node-ids')) return;
               event.preventDefault();
               event.stopPropagation();
-              onDragTarget(folder.nodeId);
+              const invalid = isInvalidDrop(draggedIds, folder.nodeId);
+              event.dataTransfer.dropEffect = invalid ? 'none' : 'move';
+              onDragTarget(folder.nodeId, invalid);
             }}
-            onDragLeave={() => onDragTarget('')}
+            onDragLeave={() => onDragTarget('', false)}
             onDrop={(event) => {
               const data = event.dataTransfer.getData('application/x-file-node-ids');
               if (!data) return;
@@ -660,15 +761,17 @@ function DirectoryTree({
               onDropNodes(JSON.parse(data) as string[], folder.nodeId);
             }}
           >
-            <span className="file-tree-chevron" aria-hidden="true">›</span>
-            <span className="file-tree-icon"><NavigationIcon name="storage" /></span>
-            <span>{folder.parentId === null ? '根目录' : folder.name}</span>
+            <span className="file-workbench-tree-chevron" aria-hidden="true">›</span>
+            <span className="file-workbench-tree-icon"><NavigationIcon name="storage" /></span>
+            <span>{folder.parentId === null ? '全部文件' : folder.name}</span>
           </button>
           <DirectoryTree
             nodes={nodes}
             parentId={folder.nodeId}
             currentId={currentId}
             dragTargetId={dragTargetId}
+            invalidTargetId={invalidTargetId}
+            draggedIds={draggedIds}
             onOpen={onOpen}
             onContext={onContext}
             onDropNodes={onDropNodes}
@@ -684,7 +787,7 @@ function NodeMenu({ node, onOpen, onDetails, onAction, onDownload }: Readonly<{ 
   return (
     <DropdownMenu trigger={<span>更多</span>} aria-label={`${node.name}更多操作`}>
       <DropdownMenuItem onSelect={onOpen}>{node.type === 'folder' ? '打开文件夹' : '预览文件'}</DropdownMenuItem>
-      {node.type === 'file' && <DropdownMenuItem onSelect={onDownload}>下载文件</DropdownMenuItem>}
+      <DropdownMenuItem onSelect={onDownload}>{node.type === 'folder' ? '下载文件夹' : '下载文件'}</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => onAction({ type: 'rename', node })}>重命名</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => onAction({ type: 'copy', nodeIds: [node.nodeId] })}>复制到</DropdownMenuItem>
       <DropdownMenuItem onSelect={() => onAction({ type: 'move', nodeIds: [node.nodeId] })}>移动到</DropdownMenuItem>
@@ -730,7 +833,7 @@ function ContextMenu({
   }
   return (
     <div
-      className="file-context-menu"
+      className="file-workbench-context-menu"
       role="menu"
       aria-label={node ? `${node.name}操作` : '目录操作'}
       style={{ left: Math.min(target.x, window.innerWidth - 220), top: Math.min(target.y, window.innerHeight - 360) }}
@@ -739,14 +842,20 @@ function ContextMenu({
       {node ? (
         <>
           <button role="menuitem" type="button" onClick={() => run(() => onOpen(node))}>{node.type === 'folder' ? '打开文件夹' : '打开预览'}</button>
-          {node.type === 'file' && <button role="menuitem" type="button" onClick={() => run(() => onDownload(node))}>下载文件</button>}
+          <button role="menuitem" type="button" onClick={() => run(() => onDownload(node))}>{node.type === 'folder' ? '下载文件夹' : '下载文件'}</button>
+          {target.kind === 'folder' && (
+            <>
+              <button role="menuitem" type="button" onClick={() => run(onCreateFolder)}>新建子文件夹</button>
+              <button role="menuitem" type="button" onClick={() => run(onUpload)}>上传到此处</button>
+            </>
+          )}
           <hr />
           <button role="menuitem" type="button" onClick={() => run(() => onAction({ type: 'rename', node }))}>重命名</button>
           <button role="menuitem" type="button" onClick={() => run(() => onAction({ type: 'copy', nodeIds: [node.nodeId] }))}>复制到</button>
           <button role="menuitem" type="button" onClick={() => run(() => onAction({ type: 'move', nodeIds: [node.nodeId] }))}>移动到</button>
           <button role="menuitem" type="button" onClick={() => run(() => onDetails(node))}>查看详细信息</button>
           <hr />
-          <button className="file-context-menu__danger" role="menuitem" type="button" onClick={() => run(() => onAction({ type: 'delete', nodeIds: [node.nodeId] }))}>删除</button>
+          <button className="file-workbench-context-menu__danger" role="menuitem" type="button" onClick={() => run(() => onAction({ type: 'delete', nodeIds: [node.nodeId] }))}>删除</button>
         </>
       ) : (
         <>
@@ -779,12 +888,12 @@ function TaskDrawer({
   if (!open) return null;
   const tasks = listFileTasks(storageId);
   return (
-    <aside className="file-task-drawer" role="dialog" aria-label="文件任务中心" aria-modal="false">
+    <aside className="file-workbench-task-popover" role="dialog" aria-label="文件任务中心" aria-modal="false">
       <header>
         <div><span>传输与操作</span><h2>任务中心</h2></div>
         <button type="button" onClick={onClose} aria-label="关闭任务中心">×</button>
       </header>
-      <div className="file-task-drawer__actions">
+      <div className="file-workbench-task-popover__actions">
         <span>{tasks.length} 个任务</span>
         <Button
           variant="ghost"
@@ -798,7 +907,7 @@ function TaskDrawer({
         </Button>
       </div>
       {tasks.length ? (
-        <ul className="file-task-list">
+        <ul className="file-workbench-task-list">
           {tasks.map((task) => (
             <li key={task.id}>
               <div><strong>{task.operation} · {task.subject}</strong><span>{task.targetPath ?? '当前目录'}</span></div>
@@ -818,8 +927,8 @@ function TaskDrawer({
 function FileDetails({ node, storage, onPreview }: Readonly<{ node: FileNode; storage: NonNullable<ReturnType<typeof getStorageSpace>>; onPreview: () => void }>) {
   const summary = node.type === 'folder' ? directorySummary(node.nodeId) : undefined;
   return (
-    <div className="file-details-card">
-      <span className="file-details-icon"><FileTypeIcon node={node} /></span>
+    <div className="file-workbench-details-card">
+      <span className="file-workbench-details-icon"><FileTypeIcon node={node} /></span>
       <h2>{node.name}</h2>
       {canPreview(node) && <Button onClick={onPreview}>预览文件</Button>}
       <dl>
@@ -845,7 +954,7 @@ function FileActionDialog({ storageId, currentFolderId, dialog, onClose, onDone 
 
   if (!dialog) return null;
   if (dialog.type === 'preview') {
-    return <PreviewModal node={dialog.node} onClose={onClose} onDownload={() => { downloadNode(dialog.node.nodeId); onDone('下载已发起。'); }} />;
+    return <PreviewModal node={dialog.node} onClose={onClose} onDownload={() => { void downloadNode(dialog.node.nodeId); onDone('下载已发起。'); }} />;
   }
   const activeDialog = dialog;
 
@@ -853,7 +962,7 @@ function FileActionDialog({ storageId, currentFolderId, dialog, onClose, onDone 
     setError('');
     try {
       if (activeDialog.type === 'folder') {
-        createFolder(storageId, currentFolderId, value);
+        createFolder(storageId, activeDialog.parentId ?? currentFolderId, value);
         onDone('文件夹已创建。');
       } else if (activeDialog.type === 'rename') {
         renameNode(activeDialog.node.nodeId, value);
@@ -876,7 +985,7 @@ function FileActionDialog({ storageId, currentFolderId, dialog, onClose, onDone 
   const title = dialog.type === 'folder' ? '新建文件夹' : dialog.type === 'rename' ? '重命名' : dialog.type === 'copy' ? '复制到' : dialog.type === 'move' ? '移动到' : '删除文件';
   return (
     <Modal open title={title} onClose={onClose} secondaryAction={{ label: '取消', onClick: onClose }} primaryAction={{ label: dialog.type === 'delete' ? '确认删除' : dialog.type === 'folder' ? '创建文件夹' : '确认', onClick: () => void submit(), variant: dialog.type === 'delete' ? 'danger' : 'primary' }}>
-      <div className="file-dialog">
+      <div className="file-workbench-dialog">
         {(dialog.type === 'folder' || dialog.type === 'rename') && <Input autoFocus value={value} placeholder={dialog.type === 'rename' ? dialog.node.name : '输入文件夹名称'} onChange={(event) => setValue(event.target.value)} />}
         {(dialog.type === 'copy' || dialog.type === 'move') && <>
           <p>选择目标目录；同名对象会被阻止，目录不能移动到自身子目录。</p>
@@ -892,17 +1001,17 @@ function FileActionDialog({ storageId, currentFolderId, dialog, onClose, onDone 
 
 function DirectoryPicker({ nodes, parentId, targetId, onSelect }: Readonly<{ nodes: readonly FileNode[]; parentId: string | null; targetId: string; onSelect: (nodeId: string) => void }>) {
   const folders = nodes.filter((item) => item.type === 'folder' && item.parentId === parentId);
-  return <ul className="file-directory-picker">{folders.map((folder) => <li key={folder.nodeId}><button type="button" data-selected={folder.nodeId === targetId || undefined} onClick={() => onSelect(folder.nodeId)}><NavigationIcon name="storage" /> {folder.parentId === null ? '根目录' : folder.name}</button><DirectoryPicker nodes={nodes} parentId={folder.nodeId} targetId={targetId} onSelect={onSelect} /></li>)}</ul>;
+  return <ul className="file-workbench-directory-picker">{folders.map((folder) => <li key={folder.nodeId}><button type="button" data-selected={folder.nodeId === targetId || undefined} onClick={() => onSelect(folder.nodeId)}><NavigationIcon name="storage" /> {folder.parentId === null ? '全部文件' : folder.name}</button><DirectoryPicker nodes={nodes} parentId={folder.nodeId} targetId={targetId} onSelect={onSelect} /></li>)}</ul>;
 }
 
 function PreviewModal({ node, onClose, onDownload }: Readonly<{ node: FileNode; onClose: () => void; onDownload: () => void }>) {
   const source = node.objectUrl;
   const text = node.content;
-  let content = <div className="file-preview-fallback"><span><FileTypeIcon node={node} /></span><h3>{node.name}</h3><p>{node.mimeType || node.extension || '未知文件类型'} · {formatBytes(node.sizeBytes)}</p></div>;
-  if (node.mimeType.startsWith('image/') && source) content = <img className="file-preview-media" src={source} alt={node.name} />;
-  else if ((node.mimeType.startsWith('text/') || node.mimeType === 'application/json' || ['md', 'json', 'txt'].includes(node.extension)) && text !== undefined) content = <pre className="file-preview-text">{text}</pre>;
-  else if (node.mimeType === 'application/pdf' && source) content = <iframe className="file-preview-frame" src={source} title={node.name} />;
+  let content = <div className="file-workbench-preview-fallback"><span><FileTypeIcon node={node} /></span><h3>{node.name}</h3><p>{node.mimeType || node.extension || '未知文件类型'} · {formatBytes(node.sizeBytes)}</p></div>;
+  if (node.mimeType.startsWith('image/') && source) content = <img className="file-workbench-preview-media" src={source} alt={node.name} />;
+  else if ((node.mimeType.startsWith('text/') || node.mimeType === 'application/json' || ['md', 'json', 'txt'].includes(node.extension)) && text !== undefined) content = <pre className="file-workbench-preview-text">{text}</pre>;
+  else if (node.mimeType === 'application/pdf' && source) content = <iframe className="file-workbench-preview-frame" src={source} title={node.name} />;
   else if (node.mimeType.startsWith('audio/') && source) content = <audio controls src={source}>当前浏览器不支持音频播放。</audio>;
-  else if (node.mimeType.startsWith('video/') && source) content = <video className="file-preview-media" controls src={source}>当前浏览器不支持视频播放。</video>;
-  return <Modal open title={`预览 · ${node.name}`} onClose={onClose} secondaryAction={{ label: '下载文件', onClick: onDownload }} primaryAction={{ label: '关闭', onClick: onClose }}><div className="file-preview">{content}</div></Modal>;
+  else if (node.mimeType.startsWith('video/') && source) content = <video className="file-workbench-preview-media" controls src={source}>当前浏览器不支持视频播放。</video>;
+  return <Modal open title={`预览 · ${node.name}`} onClose={onClose} secondaryAction={{ label: '下载文件', onClick: onDownload }} primaryAction={{ label: '关闭', onClick: onClose }}><div className="file-workbench-preview">{content}</div></Modal>;
 }

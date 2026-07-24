@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Button,
-  Container,
   DataTable,
   DropdownMenu,
   DropdownMenuItem,
@@ -17,8 +16,10 @@ import {
   StatusBadge,
   TextButton,
   Textarea,
+  Toast,
   type TableColumn,
 } from '../components/ui';
+import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
 import { APP_PATHS, resourceDetailPath } from '../app/routes';
 import {
   createNetworkRule,
@@ -126,11 +127,17 @@ export function NetworkAccessPage() {
     setSearchParams(next);
   }
 
-  function openCreate() {
+  const openCreate = useCallback(() => {
     setDraft(INITIAL_DRAFT);
     setError('');
     setEditing('create');
-  }
+  }, []);
+
+  const pageHeader = useMemo(() => ({
+    description: '核查资源地址、端口映射、允许来源和变更状态。',
+    actions: <Button variant="primary" onClick={openCreate}>新增规则</Button>,
+  }), [openCreate]);
+  useConsolePageHeader(pageHeader);
 
   function openEdit(rule: NetworkAccessRule) {
     setDraft({
@@ -225,14 +232,13 @@ export function NetworkAccessPage() {
 
   return (
     <div className="management-page">
-      {feedback && <Container className="management-feedback" role="status">{feedback}</Container>}
+      {feedback && <Toast title={feedback} onClose={() => setFeedback('')} />}
       <DataTable
         className="management-table"
         aria-label="网络访问规则列表"
         eyebrow="端口与访问控制"
         title="网络访问规则"
         description="按资源、地址和访问策略核查对外暴露范围。"
-        actions={<Button variant="primary" onClick={openCreate}>新增规则</Button>}
         toolbar={(
           <div className="management-filter-grid">
             <SearchInput aria-label="按资源搜索网络规则" value={query.search} placeholder="搜索资源、IP 或说明" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
@@ -257,10 +263,10 @@ export function NetworkAccessPage() {
         )}
         pagination={rules.length > 0 ? <Pagination page={safePage} totalPages={totalPages} totalItems={rules.length} onPageChange={(next) => setParam('page', String(next))} /> : undefined}
       />
-      <Container as="section" className="management-detail-section">
+      <section className="management-activity-strip">
         <div className="management-results__header"><div><span>最近变更</span><h2>操作记录</h2></div><Link to={`${APP_PATHS.operationRecords}?module=network`}>查看全部</Link></div>
         {recentOperations.length ? <ul className="management-record-list">{recentOperations.map((record) => <li key={record.id}><span>{record.action} · {record.targetName}</span><StatusBadge tone="info">处理中</StatusBadge><p>{record.message}</p></li>)}</ul> : <PageState title="暂无网络操作记录" />}
-      </Container>
+      </section>
 
       <Modal open={Boolean(editing)} title={editing === 'create' ? '新增网络访问规则' : '编辑网络访问规则'} onClose={() => setEditing(undefined)} primaryAction={{ label: '提交变更请求', onClick: () => void submitRule() }} secondaryAction={{ label: '取消', onClick: () => setEditing(undefined) }}>
         <Form>

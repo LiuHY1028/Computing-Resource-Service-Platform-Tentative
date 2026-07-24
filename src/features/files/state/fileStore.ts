@@ -363,16 +363,142 @@ export function deleteNodes(nodeIds: readonly string[]) {
   log(storageId, '删除文件', '/', `已删除 ${sources.length} 个对象及其子项。`);
 }
 
-export function downloadNode(nodeId: string) {
-  const item = nodes.find((candidate) => candidate.nodeId === nodeId && candidate.type === 'file');
-  if (!item) throw new Error('未找到可下载文件。');
-  const file = uploadedFiles.get(nodeId);
-  const url = file
-    ? URL.createObjectURL(file)
-    : URL.createObjectURL(new Blob([item.content ?? ''], { type: item.mimeType || 'application/octet-stream' }));
+function zipCrc32(bytes: Uint8Array) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function zipDateTime(value: string) {
+  const date = new Date(value);
+  const year = Math.max(1980, date.getFullYear());
+  return {
+    date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
+    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
+  };
+}
+
+function zipLocalHeader(
+  nameLength: number,
+  crc: number,
+  size: number,
+  date: number,
+  time: number,
+) {
+  const bytes = new Uint8Array(30);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x04034b50, true);
+  view.setUint16(4, 20, true);
+  view.setUint16(6, 0x0800, true);
+  view.setUint16(8, 0, true);
+  view.setUint16(10, time, true);
+  view.setUint16(12, date, true);
+  view.setUint32(14, crc, true);
+  view.setUint32(18, size, true);
+  view.setUint32(22, size, true);
+  view.setUint16(26, nameLength, true);
+  return bytes;
+}
+
+function zipCentralHeader(
+  nameLength: number,
+  crc: number,
+  size: number,
+  date: number,
+  time: number,
+  offset: number,
+  folder: boolean,
+) {
+  const bytes = new Uint8Array(46);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x02014b50, true);
+  view.setUint16(4, 20, true);
+  view.setUint16(6, 20, true);
+  view.setUint16(8, 0x0800, true);
+  view.setUint16(10, 0, true);
+  view.setUint16(12, time, true);
+  view.setUint16(14, date, true);
+  view.setUint32(16, crc, true);
+  view.setUint32(20, size, true);
+  view.setUint32(24, size, true);
+  view.setUint16(28, nameLength, true);
+  view.setUint32(38, folder ? 0x10 : 0, true);
+  view.setUint32(42, offset, true);
+  return bytes;
+}
+
+function zipEndRecord(entryCount: number, centralSize: number, centralOffset: number) {
+  const bytes = new Uint8Array(22);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x06054b50, true);
+  view.setUint16(8, entryCount, true);
+  view.setUint16(10, entryCount, true);
+  view.setUint32(12, centralSize, true);
+  view.setUint32(16, centralOffset, true);
+  return bytes;
+}
+
+async function createFolderArchive(folder: FileNode) {
+  const encoder = new TextEncoder();
+  const scoped = [folder, ...nodes.filter((item) => descendants(folder.nodeId).includes(item.nodeId))];
+  const localParts: BlobPart[] = [];
+  const centralParts: BlobPart[] = [];
+  let localOffset = 0;
+  let centralSize = 0;
+
+  for (const item of scoped) {
+    const segments = getPathNodes(item.nodeId)
+      .slice(getPathNodes(folder.nodeId).length)
+      .map((pathNode) => pathNode.name);
+    const path = [folder.name, ...segments].join('/') + (item.type === 'folder' ? '/' : '');
+    const name = encoder.encode(path);
+    const uploaded = item.type === 'file' ? uploadedFiles.get(item.nodeId) : undefined;
+    const data = item.type === 'folder'
+      ? new Uint8Array()
+      : uploaded
+        ? new Uint8Array(await uploaded.arrayBuffer())
+        : encoder.encode(item.content ?? '');
+    const crc = zipCrc32(data);
+    const { date, time } = zipDateTime(item.updatedAt);
+    const localHeader = zipLocalHeader(name.byteLength, crc, data.byteLength, date, time);
+    const centralHeader = zipCentralHeader(
+      name.byteLength,
+      crc,
+      data.byteLength,
+      date,
+      time,
+      localOffset,
+      item.type === 'folder',
+    );
+    localParts.push(localHeader, name, data);
+    centralParts.push(centralHeader, name);
+    localOffset += localHeader.byteLength + name.byteLength + data.byteLength;
+    centralSize += centralHeader.byteLength + name.byteLength;
+  }
+
+  return new Blob(
+    [...localParts, ...centralParts, zipEndRecord(scoped.length, centralSize, localOffset)],
+    { type: 'application/zip' },
+  );
+}
+
+export async function downloadNode(nodeId: string) {
+  const item = nodes.find((candidate) => candidate.nodeId === nodeId);
+  if (!item) throw new Error('未找到可下载对象。');
+  const file = item.type === 'file' ? uploadedFiles.get(nodeId) : undefined;
+  const blob = file
+    ?? (item.type === 'folder'
+      ? await createFolderArchive(item)
+      : new Blob([item.content ?? ''], { type: item.mimeType || 'application/octet-stream' }));
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = item.name;
+  anchor.download = item.type === 'folder' ? `${item.name}.zip` : item.name;
   anchor.style.display = 'none';
   document.body.append(anchor);
   anchor.click();

@@ -1,12 +1,13 @@
+import type { ReactNode } from 'react';
 import {
   Button,
+  DataTable,
   DropdownMenu,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   EmptyTable,
   StatusBadge,
-  Table,
   TextButton,
   Tooltip,
   type TableColumn,
@@ -62,6 +63,12 @@ type ResourceTableProps = Readonly<{
   onGoMarketplace: () => void;
   onConnection: (resource: Resource) => void;
   onAction: (resource: Resource, action: ResourceMenuAction) => void;
+  toolbar?: ReactNode;
+  utilityActions?: ReactNode;
+  selectionActions?: ReactNode;
+  pagination?: ReactNode;
+  resultLabel?: ReactNode;
+  onDensityChange?: (density: 'compact' | 'standard' | 'comfortable') => void;
 }>;
 
 const HEALTH: Readonly<Record<HealthStatus, { label: string; tone: 'success' | 'warning' | 'info' }>> = {
@@ -218,10 +225,17 @@ export function ResourceTable(props: ResourceTableProps) {
   const hasExtensions = extensions.length > 0;
   const columns = [...core, ...extensions];
   return (
-    <Table
+    <DataTable
+      title={props.resourceType === 'cloud-server' ? '云服务器列表' : '物理机列表'}
       aria-label={props.resourceType === 'cloud-server' ? '云服务器列表' : '物理机列表'}
       className="resource-table"
+      toolbar={props.toolbar}
+      utilityActions={props.utilityActions}
+      selectionActions={props.selectionActions}
+      pagination={props.pagination}
+      resultLabel={props.resultLabel}
       columns={columns}
+      enableColumnSettings={false}
       layout="fixed"
       minWidth={hasExtensions ? `${1000 + extensions.length * 170}px` : '0'}
       overflow={hasExtensions ? 'auto' : 'clip'}
@@ -233,6 +247,7 @@ export function ResourceTable(props: ResourceTableProps) {
       selectable
       selectedKeys={props.selectedKeys}
       density={props.density}
+      onDensityChange={props.onDensityChange}
       onSelectionChange={props.onSelectionChange}
       getRowKey={(resource) => resource.id}
       getRowLabel={(resource) => resource.name}

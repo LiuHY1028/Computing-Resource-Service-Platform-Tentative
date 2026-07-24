@@ -113,7 +113,7 @@ export function StoragePurchasePage() {
         <Container className="storage-purchase-result">
           <StatusBadge tone="warning">准备中</StatusBadge>
           <h2>{result.spaces.map((space) => space.name).join('、')}</h2>
-          <p>当前页面没有执行真实支付、远程存储创建或挂载。</p>
+          <p>申请已进入受理流程，存储将在准备完成后按所选配置挂载。</p>
           <div>
             <Button variant="primary" onClick={() => navigate(orderDetailPath(result.order.id))}>查看订单</Button>
             <Button onClick={() => navigate(storageDetailPath(result.spaces[0].id))}>查看存储</Button>
@@ -194,7 +194,7 @@ export function StoragePurchasePage() {
             <div className="storage-price-total"><span>总费用</span><strong>{formatMoney(quote.total)}</strong></div>
             {error && <p className="storage-dialog-error" role="alert">{error}</p>}
             <Button variant="primary" onClick={() => void submit()}>提交购买申请</Button>
-            <small>提交不会执行真实支付、远程创建或远程挂载。</small>
+            <small>提交后将生成待处理订单，存储与挂载状态可在控制台持续查看。</small>
           </Container>
         </aside>
       </div>

@@ -1,4 +1,8 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import {
+  PageHeaderContext,
+  type PageHeaderConfig,
+} from './PageHeaderContext';
 import { PageTitleBar } from './PageTitleBar';
 
 type MainContentProps = Readonly<{
@@ -14,10 +18,23 @@ export function MainContent({
   titleActions,
   floatingAction,
 }: MainContentProps) {
+  const [pageHeader, setPageHeader] = useState<PageHeaderConfig>({});
+
   return (
-    <main className="main-content" data-testid="main-content">
-      <PageTitleBar title={pageTitle} actions={titleActions} />
-      <div className="main-content__scroll-region">{children}</div>
+    <main
+      className="main-content"
+      data-testid="main-content"
+      data-workspace={pageHeader.workspace ? 'true' : undefined}
+    >
+      <PageTitleBar
+        title={pageTitle}
+        description={pageHeader.description}
+        context={pageHeader.context}
+        actions={pageHeader.actions ?? titleActions}
+      />
+      <PageHeaderContext.Provider value={setPageHeader}>
+        <div className="main-content__scroll-region">{children}</div>
+      </PageHeaderContext.Provider>
       {floatingAction && (
         <div className="main-content__floating-slot">{floatingAction}</div>
       )}

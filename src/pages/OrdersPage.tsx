@@ -10,10 +10,10 @@ import {
   SearchInput,
   Select,
   StatusBadge,
-  Table,
   TextButton,
   type TableColumn,
 } from '../components/ui';
+import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
 import {
   APP_PATHS,
   orderDetailPath,
@@ -76,6 +76,16 @@ function billingModeLabel(mode: string) {
 export function OrderListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const pageHeader = useMemo(() => ({
+    description: '追踪资源与存储的购买、扩容、续期和挂载申请。',
+    actions: (
+      <>
+        <Button variant="primary" onClick={() => navigate(APP_PATHS.marketplace)}>购买资源</Button>
+        <Button onClick={() => navigate(APP_PATHS.storagePurchase)}>购买存储</Button>
+      </>
+    ),
+  }), [navigate]);
+  useConsolePageHeader(pageHeader);
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const query = useMemo(
     () => ({
@@ -128,7 +138,6 @@ export function OrderListPage() {
         eyebrow="资源配置申请"
         title="申请记录"
         description="追踪资源与存储的购买、扩容、续期和挂载申请。"
-        actions={<><Button variant="primary" onClick={() => navigate(APP_PATHS.marketplace)}>购买资源</Button><Button onClick={() => navigate(APP_PATHS.storagePurchase)}>购买存储</Button></>}
         toolbar={(
           <div className="management-filter-grid management-filter-grid--orders">
             <SearchInput aria-label="搜索申请" value={query.search} placeholder="搜索申请编号或关联资源" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
@@ -232,7 +241,7 @@ export function OrderDetailPage() {
         </Container>
         <Container as="section" className="management-detail-section management-detail-section--wide">
           <h3>操作记录</h3>
-          <Table aria-label="申请操作记录" columns={operationColumns} rows={operations} getRowKey={(record) => record.id} />
+          <DataTable title="申请操作记录" embedded enableDensity={false} enableColumnSettings={false} aria-label="申请操作记录" columns={operationColumns} rows={operations} getRowKey={(record) => record.id} />
         </Container>
       </div>
     </div>
@@ -257,6 +266,10 @@ const OPERATION_LABELS: Readonly<Record<OperationStatus, string>> = {
 
 export function OperationRecordsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const pageHeader = useMemo(() => ({
+    description: '跨模块追踪提交、处理、完成和失败的操作。',
+  }), []);
+  useConsolePageHeader(pageHeader);
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const search = searchParams.get('q')?.toLocaleLowerCase() ?? '';
   const module = (searchParams.get('module') ?? 'all') as 'all' | OperationModule;

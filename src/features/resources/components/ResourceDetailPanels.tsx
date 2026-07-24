@@ -9,11 +9,11 @@ import {
 import {
   Button,
   Container,
+  DataTable,
   EmptyTable,
   getUsageState,
   Modal,
   StatusBadge,
-  Table,
   UsageMeter,
   type TableColumn,
 } from '../../../components/ui';
@@ -235,11 +235,11 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
     <div className="resource-detail-stack">
       <Container as="section" className="resource-section">
         <div className="resource-section__heading"><div><span>系统盘与数据盘</span><h3>云服务器磁盘</h3></div></div>
-        <Table aria-label="云服务器磁盘" columns={diskColumns} rows={resource.dataDisks} getRowKey={(disk) => disk.id} />
+        <DataTable title="云服务器磁盘" embedded enableDensity={false} enableColumnSettings={false} aria-label="云服务器磁盘" columns={diskColumns} rows={resource.dataDisks} getRowKey={(disk) => disk.id} />
       </Container>
       <Container as="section" className="resource-section">
         <div className="resource-section__heading"><div><span>独立购买与挂载</span><h3>外挂存储</h3></div><div className="management-row-actions"><Link to={`${APP_PATHS.storagePurchase}?mount=${resource.id}&site=${encodeURIComponent(resource.site)}`}>购买并挂载存储</Link><Link to={`${APP_PATHS.storage}?mounted=no&site=${encodeURIComponent(resource.site)}`}>挂载已有存储</Link></div></div>
-        <Table aria-label="关联存储空间" columns={sharedColumns} rows={relations} getRowKey={({ mount }) => mount.id} empty={<EmptyTable title="尚未挂载独立存储，可购买或选择已有存储" />} />
+        <DataTable title="关联存储空间" embedded enableDensity={false} enableColumnSettings={false} aria-label="关联存储空间" columns={sharedColumns} rows={relations} getRowKey={({ mount }) => mount.id} empty={<EmptyTable title="尚未挂载独立存储，可购买或选择已有存储" />} />
       </Container>
     </div>
   );
@@ -251,7 +251,7 @@ export function ResourceHealth({ resource }: Readonly<{ resource: Resource }>) {
     { key: 'status', title: '状态', render: (item) => <StatusBadge tone={item.status === 'normal' ? 'success' : item.status === 'warning' ? 'warning' : 'info'}>{item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '检查中'}</StatusBadge> },
     { key: 'message', title: '说明', render: (item) => item.message },
   ];
-  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>{resource.resourceType === 'cloud-server' ? '实例检查' : 'CPU、内存、GPU、磁盘、电源与温度'}</span><h3>{resource.resourceType === 'cloud-server' ? '实例健康' : '硬件与健康'}</h3></div></div><Table aria-label="健康检查项" columns={columns} rows={resource.health.items} getRowKey={(item) => item.name} /></Container>;
+  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>{resource.resourceType === 'cloud-server' ? '实例检查' : 'CPU、内存、GPU、磁盘、电源与温度'}</span><h3>{resource.resourceType === 'cloud-server' ? '实例健康' : '硬件与健康'}</h3></div></div><DataTable title="健康检查项" embedded enableDensity={false} enableColumnSettings={false} aria-label="健康检查项" columns={columns} rows={resource.health.items} getRowKey={(item) => item.name} /></Container>;
 }
 
 export function ResourceImageSystem({ resource }: Readonly<{ resource: Resource }>) {
@@ -293,7 +293,7 @@ export function ResourceNetwork({ resource, connectionContent }: Readonly<{ reso
       {connectionContent}
       <Container as="section" className="resource-section">
         <div className="resource-section__heading"><div><span>端口与来源</span><h3>访问规则</h3></div><Link to={`${APP_PATHS.networkAccess}?resource=${resource.id}`}>进入网络管理</Link></div>
-        <Table aria-label="网络访问规则" columns={columns} rows={rules} getRowKey={(rule) => rule.id} renderRowActions={(rule) => <Button variant="ghost" onClick={() => setSelectedRule(rule)}>查看</Button>} empty={<EmptyTable title="暂无访问规则" />} />
+        <DataTable title="网络访问规则" embedded enableDensity={false} enableColumnSettings={false} aria-label="网络访问规则" columns={columns} rows={rules} getRowKey={(rule) => rule.id} renderRowActions={(rule) => <Button variant="ghost" onClick={() => setSelectedRule(rule)}>查看</Button>} empty={<EmptyTable title="暂无访问规则" />} />
       </Container>
       <Modal open={Boolean(selectedRule)} title="访问规则详情" onClose={() => setSelectedRule(undefined)} primaryAction={{ label: '关闭', onClick: () => setSelectedRule(undefined) }}>
         {selectedRule && <dl className="resource-modal-definition"><div><dt>规则名称</dt><dd>{selectedRule.description}</dd></div><div><dt>协议</dt><dd>{selectedRule.protocol}</dd></div><div><dt>服务端口</dt><dd>{selectedRule.servicePort}</dd></div><div><dt>映射端口</dt><dd>{selectedRule.mappedPort}</dd></div><div><dt>允许来源</dt><dd>{selectedRule.source}</dd></div></dl>}
@@ -310,7 +310,7 @@ export function ResourceSoftware({ resourceId, onOpenSoftwareCenter }: Readonly<
     { key: 'status', title: '状态', render: (item) => item.status === 'installed' ? '已安装' : item.status === 'failed' ? '失败' : '处理中' },
     { key: 'installedAt', title: '安装时间', render: (item) => formatDateTime(item.submittedAt) },
   ];
-  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>软件与运行环境</span><h3>已安装软件</h3></div><Button onClick={onOpenSoftwareCenter}>前往软件中心</Button></div><Table aria-label="已安装软件列表" columns={columns} rows={software} getRowKey={(item) => item.id} /></Container>;
+  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>软件与运行环境</span><h3>已安装软件</h3></div><Button onClick={onOpenSoftwareCenter}>前往软件中心</Button></div><DataTable title="已安装软件列表" embedded enableDensity={false} enableColumnSettings={false} aria-label="已安装软件列表" columns={columns} rows={software} getRowKey={(item) => item.id} /></Container>;
 }
 
 export function ResourceOperations({ resourceId }: Readonly<{ resourceId: string }>) {
@@ -322,7 +322,7 @@ export function ResourceOperations({ resourceId }: Readonly<{ resourceId: string
     { key: 'status', title: '执行状态', render: (record) => OPERATION_STATUS_LABELS[record.status] },
     { key: 'message', title: '结果说明', render: (record) => record.message },
   ];
-  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>资源变更追踪</span><h3>操作记录</h3></div><Link to={`${APP_PATHS.operationRecords}?q=${resourceId}`}>查看全部记录</Link></div><Table aria-label="资源操作记录" columns={columns} rows={records} getRowKey={(record) => record.id} /></Container>;
+  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>资源变更追踪</span><h3>操作记录</h3></div><Link to={`${APP_PATHS.operationRecords}?q=${resourceId}`}>查看全部记录</Link></div><DataTable title="资源操作记录" embedded enableDensity={false} enableColumnSettings={false} aria-label="资源操作记录" columns={columns} rows={records} getRowKey={(record) => record.id} /></Container>;
 }
 
 export function ResourceDetailHeader({ resource, onBack, onConnection, onPurchaseSimilar, onAction }: Readonly<{

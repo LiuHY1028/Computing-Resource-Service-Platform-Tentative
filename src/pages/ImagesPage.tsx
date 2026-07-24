@@ -1,8 +1,7 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Button,
-  Container,
   DataTable,
   DropdownMenu,
   DropdownMenuItem,
@@ -18,8 +17,10 @@ import {
   TextButton,
   Textarea,
   TitleBarTabs,
+  Toast,
   type TableColumn,
 } from '../components/ui';
+import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
 import { resourceDetailPath } from '../app/routes';
 import {
   createCustomImage,
@@ -155,18 +156,29 @@ export function ImagesPage() {
     { key: 'created', title: '创建时间', sortable: true, sortValue: (image) => image.createdAt, render: (image) => formatDate(image.createdAt) },
   ];
 
-  function openCreate(mode: 'create' | 'import') {
+  const openCreate = useCallback((mode: 'create' | 'import') => {
     setDraft(INITIAL_DRAFT);
     setEditTarget(undefined);
     setError('');
     setFormMode(mode);
-  }
+  }, []);
 
   function closeForm() {
     setFormMode(undefined);
     setEditTarget(undefined);
     setError('');
   }
+
+  const pageHeader = useMemo(() => ({
+    description: '统一管理可用镜像、环境兼容性、处理状态和资源关联。',
+    actions: (
+      <>
+        <Button onClick={() => openCreate('create')}>创建镜像记录</Button>
+        <Button variant="primary" onClick={() => openCreate('import')}>导入镜像</Button>
+      </>
+    ),
+  }), [openCreate]);
+  useConsolePageHeader(pageHeader);
 
   function openEdit(image: PlatformImage) {
     setDraft({
@@ -230,14 +242,13 @@ export function ImagesPage() {
 
   const list = (
     <div className="management-list-stack">
-      {feedback && <Container className="management-feedback" role="status">{feedback}</Container>}
+      {feedback && <Toast title={feedback} onClose={() => setFeedback('')} />}
       <DataTable
         className="management-table"
         aria-label={`${typeLabel(type)}列表`}
         eyebrow={typeLabel(type)}
         title="镜像列表"
         description="按操作系统、计算类型和状态快速定位可用镜像。"
-        actions={<><Button onClick={() => openCreate('create')}>创建镜像记录</Button><Button variant="primary" onClick={() => openCreate('import')}>导入镜像</Button></>}
         toolbar={(
           <div className="management-filter-grid management-filter-grid--four">
             <SearchInput aria-label="搜索镜像" value={query.search} placeholder="搜索镜像名称、ID 或环境" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
@@ -269,7 +280,7 @@ export function ImagesPage() {
 
   return (
     <div className="management-page">
-      <Container>
+      <div className="management-tabs">
         <TitleBarTabs
           aria-label="镜像类型"
           value={type}
@@ -280,7 +291,7 @@ export function ImagesPage() {
             { value: 'custom', label: '自定义镜像', panel: list },
           ]}
         />
-      </Container>
+      </div>
 
       <Modal open={Boolean(selected)} title="镜像详情" onClose={() => setSelected(undefined)} footer={selected?.type === 'custom' ? <div className="management-row-actions"><Button variant="secondary" onClick={() => selected && openEdit(selected)}>编辑信息</Button><Button variant="danger" disabled={Boolean(selected.resourceIds.length)} title={selected.resourceIds.length ? '有关联资源时不能删除' : undefined} onClick={() => { setDeleteTarget(selected); setSelected(undefined); }}>删除镜像</Button></div> : undefined}>
         {selected && (

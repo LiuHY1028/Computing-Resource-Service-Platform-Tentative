@@ -16,7 +16,7 @@
   width: 100%;
   min-width: var(--engineering-table-min-width);
   border-collapse: collapse;
-  color: var(--color-text-body);
+  color: var(--workspace-text-primary);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-light);
   line-height: var(--line-height-body);
@@ -48,8 +48,8 @@
 
 .ui-table th {
   position: relative;
-  background: var(--table-header-background);
-  color: var(--color-text-title);
+  background: var(--workspace-header-background);
+  color: var(--workspace-text-secondary);
   font-weight: var(--font-weight-table-header);
   font-size: var(--font-size-caption);
   letter-spacing: 0.02em;
@@ -60,7 +60,7 @@
 }
 
 .ui-table tr[data-selected] td {
-  background: var(--table-row-selected-background);
+  background: var(--workspace-row-selected);
 }
 
 .ui-table tbody tr {
@@ -72,7 +72,7 @@
 }
 
 .ui-table tbody tr[data-selected] td:first-child {
-  box-shadow: inset var(--data-table-selected-edge-width) 0 0 var(--color-primary);
+  box-shadow: inset var(--data-table-selected-edge-width) 0 0 var(--workspace-selected-edge);
 }
 
 .ui-table tbody tr[data-interactive] {
@@ -159,8 +159,8 @@
   position: sticky;
   z-index: 1;
   right: 0;
-  border-left: var(--border-width-control-temporary) solid var(--table-row-divider);
-  background: var(--color-surface-default);
+  border-left: var(--border-width-control-temporary) solid var(--workspace-row-border);
+  background: var(--workspace-surface);
   white-space: nowrap;
   text-align: right;
 }
@@ -173,7 +173,7 @@
 }
 
 .ui-table tr[data-selected] .ui-table__actions {
-  background: var(--table-row-selected-background);
+  background: var(--workspace-row-selected);
 }
 
 .ui-table tbody tr:hover .ui-table__actions {

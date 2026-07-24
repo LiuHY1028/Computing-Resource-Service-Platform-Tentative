@@ -1,13 +1,22 @@
+import { StatusBadge, type StatusBadgeTone } from '../../../components/ui';
 import { RESOURCE_STATUS_LABELS } from '../formatters';
 import type { ResourceStatus } from '../types';
+
+const TONES: Readonly<Record<ResourceStatus, StatusBadgeTone>> = {
+  running: 'success',
+  stopped: 'neutral',
+  preparing: 'info',
+  operating: 'info',
+  abnormal: 'error',
+  expired: 'error',
+};
 
 export function ResourceStatusBadge({
   status,
 }: Readonly<{ status: ResourceStatus }>) {
   return (
-    <span className="resource-status-badge" data-status={status}>
-      <span className="resource-status-badge__mark" aria-hidden="true" />
+    <StatusBadge tone={TONES[status]} data-status={status}>
       {RESOURCE_STATUS_LABELS[status]}
-    </span>
+    </StatusBadge>
   );
 }

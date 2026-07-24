@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   APP_PATHS,
@@ -16,14 +16,17 @@ import {
   FormField,
   Input,
   Modal,
+  Pagination,
   PageState,
   SearchInput,
   Select,
   StatusBadge,
   TextButton,
+  Toast,
   UsageMeter,
   type TableColumn,
 } from '../components/ui';
+import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
 import { queryOrders } from '../features/orders';
 import { formatMoney } from '../features/pricing';
 import { listResources } from '../features/resources/state/resourceStore';
@@ -85,6 +88,9 @@ export function StorageListPage() {
   const [revision, setRevision] = useState(0);
   const [dialog, setDialog] = useState<Dialog>();
   const [feedback, setFeedback] = useState('');
+  const [selectedKeys, setSelectedKeys] = useState<readonly string[]>([]);
+  const [page, setPage] = useState(1);
+  const [viewOpenedAt] = useState(() => Date.now());
   const query = {
     search: searchParams.get('q') ?? '',
     type: (searchParams.get('type') ?? 'all') as 'all' | StorageType,
@@ -95,13 +101,37 @@ export function StorageListPage() {
   const spaces = queryStorageSpaces(query);
   const totalCapacity = spaces.reduce((total, space) => total + space.capacityGb, 0);
   const totalUsed = spaces.reduce((total, space) => total + space.usedGb, 0);
-  const mountedCount = spaces.filter((space) => space.mounts.length > 0).length;
+  const currentMonthFee = spaces.reduce(
+    (total, space) => total + Math.round(
+      space.priceSnapshot.total.amountFen / (space.priceSnapshot.duration ?? 1),
+    ),
+    0,
+  );
+  const expiringSoon = spaces.filter((space) => {
+    const remaining = new Date(space.expiresAt).getTime() - viewOpenedAt;
+    return remaining > 0 && remaining <= 30 * 24 * 60 * 60 * 1000;
+  }).length;
+  const pageHeader = useMemo(() => ({
+    description: '统一查看容量、挂载关系、费用与到期风险。',
+    actions: (
+      <Button variant="primary" onClick={() => navigate(APP_PATHS.storagePurchase)}>
+        购买存储
+      </Button>
+    ),
+  }), [navigate]);
+  useConsolePageHeader(pageHeader);
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key);
     else next.set(key, value);
     setSearchParams(next);
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setSearchParams({});
+    setPage(1);
   }
 
   const columns: readonly TableColumn<StorageSpace>[] = [
@@ -112,10 +142,15 @@ export function StorageListPage() {
       sortValue: (space) => space.name,
       hideable: false,
       render: (space) => (
-        <div className="management-primary-cell">
-          <Link to={storageDetailPath(space.id)}>{space.name}</Link>
-          <span>{space.id} · {space.site}</span>
-          <span className="storage-table-compact-spec">{typeLabel(space.type)} · {tierLabel(space)} · {space.fileSystem}</span>
+        <div className="storage-workbench__identity">
+          <span className="storage-workbench__type-icon" data-type={space.type} aria-hidden="true">
+            {space.type === 'cloud-disk' ? '▣' : '⌘'}
+          </span>
+          <div className="management-primary-cell">
+            <Link to={storageDetailPath(space.id)}>{space.name}</Link>
+            <span>{space.id}</span>
+            <span>{space.site}</span>
+          </div>
         </div>
       ),
     },
@@ -128,6 +163,7 @@ export function StorageListPage() {
         <div className="management-primary-cell">
           <strong>{typeLabel(space.type)}</strong>
           <span>{tierLabel(space)} · {space.fileSystem}</span>
+          <span>{space.protocol ?? '块设备'}</span>
         </div>
       ),
     },
@@ -141,24 +177,29 @@ export function StorageListPage() {
           used={space.usedGb}
           total={space.capacityGb}
           label={`${space.name}容量使用率`}
-          size="mini"
+          variant="table"
         />
       ),
     },
     {
       key: 'mounts',
       title: '挂载关系',
-      render: (space) => space.mounts.length
-        ? `${space.mounts.length} 个资源 · ${space.mounts[0]?.mountPath}`
-        : '暂未挂载',
+      render: (space) => space.mounts.length ? (
+        <div className="management-primary-cell">
+          <strong>{space.mounts.length} 个资源</strong>
+          <span>{space.mounts[0]?.mountPath}</span>
+          {space.mounts.length > 1 && <span>另有 {space.mounts.length - 1} 个挂载点</span>}
+        </div>
+      ) : <span className="storage-workbench__unmounted">暂未挂载</span>,
     },
     {
       key: 'billing',
       title: '费用和到期',
       render: (space) => (
         <div className="management-primary-cell">
-          <strong>{monthlyCost(space)} / {space.priceSnapshot.duration ?? 1} 个月</strong>
-          <span>{formatDate(space.expiresAt)} · {space.autoRenew ? '自动续费' : '手动续费'}</span>
+          <strong className="storage-workbench__price">{monthlyCost(space)}</strong>
+          <span>到期 {formatDate(space.expiresAt)}</span>
+          <span>{space.autoRenew ? '自动续费已开启' : '手动续费'}</span>
         </div>
       ),
     },
@@ -181,21 +222,18 @@ export function StorageListPage() {
   }
 
   return (
-    <main className="management-page">
-      <div className="management-capacity-summary" aria-label="存储概览">
-        <div><span>存储空间</span><strong>{spaces.length}</strong></div>
-        <div><span>总容量</span><strong>{totalCapacity.toLocaleString('zh-CN')} GB</strong></div>
-        <div><span>已使用</span><strong>{totalUsed.toLocaleString('zh-CN')} GB</strong></div>
-        <div><span>已挂载</span><strong>{mountedCount}</strong></div>
-      </div>
-      {feedback && <div className="management-feedback" role="status">{feedback}</div>}
+    <main className="storage-workbench">
+      <section className="storage-overview-band" aria-label="存储资源概览">
+        <div><span>存储总数</span><strong>{spaces.length}</strong><small>个独立存储</small></div>
+        <div><span>总容量</span><strong>{totalCapacity.toLocaleString('zh-CN')} GB</strong><small>当前筛选范围</small></div>
+        <div><span>已使用容量</span><strong>{totalUsed.toLocaleString('zh-CN')} GB</strong><small>{totalCapacity ? Math.round(totalUsed / totalCapacity * 100) : 0}% 已使用</small></div>
+        <div><span>本月费用</span><strong>{formatMoney({ amountFen: currentMonthFee, currency: 'CNY' })}</strong><small>按现有价格快照</small></div>
+        <div><span>即将到期</span><strong>{expiringSoon}</strong><small>未来 30 天</small></div>
+      </section>
       <DataTable<StorageSpace>
         aria-label="存储列表"
-        className="storage-table"
-        eyebrow="容量、挂载与费用"
+        className="storage-workbench-table"
         title="存储空间"
-        description="集中查看独立存储的使用率、挂载关系与到期信息。"
-        actions={<Button variant="primary" onClick={() => navigate(APP_PATHS.storagePurchase)}>购买存储</Button>}
         toolbar={(
           <div className="management-filter-grid management-filter-grid--four">
             <SearchInput value={query.search} placeholder="搜索名称、ID或站点" onChange={(event) => setParam('q', event.target.value)} />
@@ -204,19 +242,52 @@ export function StorageListPage() {
             <Select aria-label="挂载状态" value={query.mounted} onValueChange={(value) => setParam('mounted', value)} options={[{ value: 'all', label: '全部挂载状态' }, { value: 'yes', label: '已挂载' }, { value: 'no', label: '未挂载' }]} />
           </div>
         )}
+        filterSummary={(query.search || query.type !== 'all' || query.status !== 'all' || query.mounted !== 'all') && (
+          <>
+            <span className="storage-filter-summary__label">已选条件</span>
+            {query.search && <button type="button" className="storage-filter-tag" onClick={() => setParam('q', '')}>关键词：{query.search} ×</button>}
+            {query.type !== 'all' && <button type="button" className="storage-filter-tag" onClick={() => setParam('type', 'all')}>类型：{typeLabel(query.type)} ×</button>}
+            {query.status !== 'all' && <button type="button" className="storage-filter-tag" onClick={() => setParam('status', 'all')}>状态：{statusView(query.status).label} ×</button>}
+            {query.mounted !== 'all' && <button type="button" className="storage-filter-tag" onClick={() => setParam('mounted', 'all')}>挂载：{query.mounted === 'yes' ? '已挂载' : '未挂载'} ×</button>}
+            <TextButton onClick={clearFilters}>清除全部</TextButton>
+          </>
+        )}
+        utilityActions={<Button variant="ghost" onClick={() => { setRevision((value) => value + 1); setFeedback('存储列表已刷新。'); }}>刷新</Button>}
         columns={columns}
         rows={spaces}
         getRowKey={(space) => space.id}
-        actionsWidth="132px"
+        getRowLabel={(space) => space.name}
+        selectable
+        selectedKeys={selectedKeys}
+        onSelectionChange={(keys) => setSelectedKeys(keys.map(String))}
+        selectionActions={(
+          <>
+            <Button onClick={() => setFeedback(`已为 ${selectedKeys.length} 个存储准备批量续期申请。`)}>批量续期</Button>
+            <Button onClick={() => setFeedback(`已选择 ${selectedKeys.length} 个存储，可继续导出清单。`)}>导出清单</Button>
+          </>
+        )}
+        actionsWidth="216px"
+        minWidth="1180px"
+        pagination={(
+          <Pagination
+            page={page}
+            totalPages={1}
+            totalItems={spaces.length}
+            pageSize={10}
+            onPageChange={setPage}
+            onPageSizeChange={() => setPage(1)}
+          />
+        )}
         empty={<PageState title="暂无符合条件的存储" description="调整筛选条件，或购买新的独立存储。" actionLabel="购买存储" onAction={() => navigate(APP_PATHS.storagePurchase)} />}
         renderRowActions={(space) => (
           <div className="management-row-actions">
-            <TextButton onClick={() => canManageStorageFiles(space) ? navigate(storageFilesPath(space.id)) : navigate(storageDetailPath(space.id))}>
-              {canManageStorageFiles(space) ? '文件管理' : '查看详情'}
-            </TextButton>
+            {canManageStorageFiles(space)
+              ? <TextButton onClick={() => navigate(storageFilesPath(space.id))}>文件管理</TextButton>
+              : !space.mounts.length
+                ? <TextButton onClick={() => setDialog({ type: 'mount', space })}>挂载</TextButton>
+                : null}
+            <TextButton onClick={() => navigate(storageDetailPath(space.id))}>查看详情</TextButton>
             <DropdownMenu trigger={<span>更多</span>}>
-              {canManageStorageFiles(space) && <DropdownMenuItem onSelect={() => navigate(storageDetailPath(space.id))}>查看详情</DropdownMenuItem>}
-              {!space.mounts.length && <DropdownMenuItem onSelect={() => setDialog({ type: 'mount', space })}>挂载</DropdownMenuItem>}
               <DropdownMenuItem onSelect={() => setDialog({ type: 'expand', space })}>扩容</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setDialog({ type: 'renew', space })}>续期</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void toggleAutoRenew(space)}>设置自动续费</DropdownMenuItem>
@@ -227,6 +298,7 @@ export function StorageListPage() {
           </div>
         )}
       />
+      {feedback && <Toast title={feedback} onClose={() => setFeedback('')} />}
       <StorageActionDialog key={dialog ? `${dialog.type}-${dialog.space.id}` : 'closed'} dialog={dialog} onClose={() => setDialog(undefined)} onDone={(message) => { setDialog(undefined); setFeedback(message); setRevision((value) => value + 1); }} />
     </main>
   );
