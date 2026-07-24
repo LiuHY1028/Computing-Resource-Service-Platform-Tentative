@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { Button, Modal, PromptModal } from '../index';
+import { Button, Modal, MultiSelect, PromptModal, Select } from '../index';
 
 function ModalHarness({ closeOnOverlayClick = false }: Readonly<{ closeOnOverlayClick?: boolean }>) {
   const [open, setOpen] = useState(false);
@@ -22,6 +22,21 @@ function ModalHarness({ closeOnOverlayClick = false }: Readonly<{ closeOnOverlay
         <input aria-label="弹窗输入" />
       </Modal>
     </>
+  );
+}
+
+function ModalSelectionHarness() {
+  const [value, setValue] = useState('');
+  const [values, setValues] = useState<readonly string[]>([]);
+  const options = [
+    { value: 'alpha', label: 'Alpha' },
+    { value: 'beta', label: 'Beta' },
+  ];
+  return (
+    <Modal open title="弹窗选择器" onClose={() => undefined}>
+      <Select aria-label="弹窗单选" value={value} onValueChange={setValue} options={options} />
+      <MultiSelect aria-label="弹窗多选" value={values} onValueChange={setValues} options={options} />
+    </Modal>
   );
 }
 
@@ -73,6 +88,24 @@ describe('Modal', () => {
     expect(screen.getByRole('button', { name: '关闭弹窗' })).toBeDisabled();
     await user.keyboard('{Escape}');
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('supports pointer selection through portaled controls inside a modal', async () => {
+    const user = userEvent.setup();
+    render(<ModalSelectionHarness />);
+    const dialog = screen.getByRole('dialog', { name: '弹窗选择器' });
+
+    const select = screen.getByRole('combobox', { name: '弹窗单选' });
+    await user.click(select);
+    expect(dialog).not.toContainElement(screen.getByRole('listbox'));
+    await user.click(screen.getByRole('option', { name: 'Beta' }));
+    expect(select).toHaveTextContent('Beta');
+
+    const multiSelect = screen.getByRole('combobox', { name: '弹窗多选' });
+    await user.click(multiSelect);
+    expect(dialog).not.toContainElement(screen.getByRole('listbox'));
+    await user.click(screen.getByRole('option', { name: 'Alpha' }));
+    expect(multiSelect).toHaveTextContent('Alpha');
   });
 
   it('uses alertdialog for warning prompts and cleans the portal on unmount', () => {

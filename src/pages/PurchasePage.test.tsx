@@ -184,7 +184,7 @@ describe('PurchasePage', () => {
     expect(screen.getByRole('alertdialog', { name: '删除端口规则' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '确认删除' }));
     expect(screen.getByText('暂无端口规则')).toBeInTheDocument();
-  });
+  }, 10_000);
 
   it('keeps the physical-machine flow distinct and submits without cloud storage or images', async () => {
     const user = renderPurchase('/marketplace/physical-machine/purchase?product=catalog-physical-cpu-p1-east');

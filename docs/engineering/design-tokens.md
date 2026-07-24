@@ -77,7 +77,7 @@ CSS 入口加载顺序为 `reset.css` → `fonts.css` → `tokens.css` → `them
 | `--engineering-select-listbox-max-height`、`--engineering-select-tag-max-width` | p.12 未定义视口边界和长标签上限 | 后续选择器规范确认后替换 |
 | `--engineering-overlay-viewport-padding`、`--engineering-overlay-offset` | Select/Tooltip Portal 必须避免视口裁切 | 后续浮层规范统一确认 |
 | `--engineering-tooltip-open-delay`、`--engineering-tooltip-close-delay` | p.15 未定义触发时序，交互内容需要可移入 | 后续 Tooltip 规范确认后替换 |
-| `--engineering-modal-overlay-background`、`--engineering-modal-width`、`--engineering-prompt-modal-width`、`--engineering-modal-max-height`、`--engineering-z-index-modal` | p.13 未定义遮罩、宽度、最大高度和浮层层级 | 设计确认正式 Modal 规格后替换 |
+| `--engineering-modal-overlay-background`、`--engineering-modal-width`、`--engineering-prompt-modal-width`、`--engineering-modal-max-height`、`--engineering-z-index-modal`、`--engineering-z-index-floating` | p.13 未定义遮罩、宽度、最大高度和嵌套浮层层级；Select、MultiSelect、Tooltip 与 DropdownMenu 的 Portal 必须高于 Modal 遮罩 | 设计确认正式 Modal 与嵌套浮层规格后替换 |
 | `--engineering-table-min-width`、`--engineering-table-row-min-height`、`--engineering-table-compact-row-min-height` | p.17 未定义精确行高、列宽和窄容器保护 | 业务表格接入前由设计确认 |
 | `--engineering-form-control-max-width`、`--engineering-form-anchor-top` | p.18 未定义普通字段宽度和滚动锚点顶部 | 长表单接入前由设计确认 |
 

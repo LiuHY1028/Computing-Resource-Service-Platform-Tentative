@@ -172,6 +172,8 @@
   --engineering-shell-motion-duration: 160ms;
   --engineering-z-index-shell: 10;
   --engineering-z-index-overlay: 30;
+  --engineering-z-index-modal: 40;
+  --engineering-z-index-floating: 50;
   --engineering-select-listbox-max-height: 240px;
   --engineering-select-tag-max-width: 120px;
   --engineering-overlay-viewport-padding: 8px;
@@ -182,7 +184,6 @@
   --engineering-modal-width: 560px;
   --engineering-prompt-modal-width: 420px;
   --engineering-modal-max-height: 80vh;
-  --engineering-z-index-modal: 40;
   --engineering-table-min-width: 720px;
   --engineering-table-row-min-height: 48px;
   --engineering-table-compact-row-min-height: 36px;

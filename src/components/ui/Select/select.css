@@ -76,7 +76,7 @@ button.ui-select-trigger {
 
 .ui-select-listbox {
   position: fixed;
-  z-index: var(--engineering-z-index-overlay);
+  z-index: var(--engineering-z-index-floating);
   overflow-y: auto;
   padding: var(--space-4);
   border: var(--border-default);

@@ -78,7 +78,7 @@ import { FormField, Input, Modal, Table } from '../components/ui';
 
 | 补充 | 当前实现 | 后续确认 |
 |---|---|---|
-| Modal 遮罩、宽度、最大高度与层级 | 由 `engineering-modal-*` 和 `engineering-z-index-modal` Token 集中维护 | 设计确认正式宽度和遮罩透明度 |
+| Modal 遮罩、宽度、最大高度与层级 | 由 `engineering-modal-*`、`engineering-z-index-modal` 和 `engineering-z-index-floating` Token 集中维护；弹窗内 Portal 控件保持在遮罩上方 | 设计确认正式宽度、遮罩透明度和嵌套浮层层级 |
 | Modal 焦点与滚动 | Focus Trap、焦点进入/返回、Escape、滚动锁和卸载清理 | 作为可访问性基线保留 |
 | Tabs 激活方式和溢出 | 手动激活；标签列表横向滚动 | 设计确认路由同步和正式溢出形式 |
 | Table 行高与最小宽度 | `engineering-table-*` Token；容器内横向滚动 | 设计确认各业务表格列宽 |

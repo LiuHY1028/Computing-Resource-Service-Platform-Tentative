@@ -33,7 +33,7 @@
 
 .ui-dropdown-menu__content {
   position: fixed;
-  z-index: 1300;
+  z-index: var(--engineering-z-index-floating);
   box-sizing: border-box;
   width: 14.75rem;
   max-height: min(30rem, calc(100vh - var(--space-16)));
