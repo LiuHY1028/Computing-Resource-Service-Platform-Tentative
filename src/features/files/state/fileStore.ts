@@ -1,0 +1,382 @@
+import { storageFilesPath } from '../../../app/routes';
+import { recordOperation } from '../../operations';
+import { getStorageSpace, updateStorageUsage } from '../../storage';
+import type { DirectorySummary, FileNode, FileSort, FileTask } from '../types';
+
+const ROOT_NAMES = new Map<string, string>([
+  ['storage-shared-east-001', '研发共享存储'],
+  ['storage-cloud-east-001', '数据库数据盘'],
+  ['storage-shared-west-001', '西部共享空间'],
+]);
+
+function initialNodes(): FileNode[] {
+  const now = '2026-07-21T09:30:00.000Z';
+  return [
+    node('root-east', 'storage-shared-east-001', null, 'folder', ROOT_NAMES.get('storage-shared-east-001')!, 0, '', now),
+    node('folder-projects', 'storage-shared-east-001', 'root-east', 'folder', '项目', 0, '', now),
+    node('folder-datasets', 'storage-shared-east-001', 'root-east', 'folder', '数据集', 0, '', now),
+    node('folder-models', 'storage-shared-east-001', 'root-east', 'folder', '模型', 0, '', now),
+    node('folder-reports', 'storage-shared-east-001', 'root-east', 'folder', '报告', 0, '', now),
+    node('file-readme', 'storage-shared-east-001', 'folder-projects', 'file', 'README.md', 1804, 'text/markdown', now, '# 研发共享目录\n\n此目录用于团队项目文件协作。'),
+    node('file-config', 'storage-shared-east-001', 'folder-projects', 'file', 'pipeline.json', 942, 'application/json', now, '{\n  "name": "training-pipeline",\n  "status": "ready"\n}'),
+    node('file-report', 'storage-shared-east-001', 'folder-reports', 'file', '容量报告.txt', 624, 'text/plain', now, '当前存储容量与使用情况由存储管理统一统计。'),
+    node('root-cloud', 'storage-cloud-east-001', null, 'folder', ROOT_NAMES.get('storage-cloud-east-001')!, 0, '', now),
+    node('folder-db', 'storage-cloud-east-001', 'root-cloud', 'folder', 'database', 0, '', now),
+    node('file-db-info', 'storage-cloud-east-001', 'folder-db', 'file', 'maintenance.txt', 386, 'text/plain', now, '数据库维护窗口记录。'),
+    node('root-west', 'storage-shared-west-001', null, 'folder', ROOT_NAMES.get('storage-shared-west-001')!, 0, '', now),
+    node('folder-team', 'storage-shared-west-001', 'root-west', 'folder', '团队目录', 0, '', now),
+  ];
+}
+
+function node(
+  nodeId: string,
+  storageId: string,
+  parentId: string | null,
+  type: FileNode['type'],
+  name: string,
+  sizeBytes: number,
+  mimeType: string,
+  timestamp: string,
+  content?: string,
+): FileNode {
+  const extension = type === 'file' && name.includes('.') ? name.split('.').pop()?.toLocaleLowerCase() ?? '' : '';
+  return {
+    nodeId,
+    storageId,
+    parentId,
+    type,
+    name,
+    extension,
+    sizeBytes,
+    mimeType,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    owner: '当前用户',
+    permissions: type === 'folder' ? 'rwxr-xr-x' : 'rw-r--r--',
+    content,
+  };
+}
+
+let nodes = initialNodes();
+let tasks: FileTask[] = [];
+let sequence = 100;
+const uploadedFiles = new Map<string, File>();
+
+function now() {
+  return new Date().toISOString();
+}
+
+function nextId(prefix: string) {
+  sequence += 1;
+  return `${prefix}-${Date.now()}-${sequence}`;
+}
+
+function storageNodes(storageId: string) {
+  return nodes.filter((item) => item.storageId === storageId);
+}
+
+function assertStorage(storageId: string) {
+  if (!getStorageSpace(storageId)) throw new Error('未找到有效存储。');
+}
+
+function root(storageId: string) {
+  return storageNodes(storageId).find((item) => item.parentId === null && item.type === 'folder');
+}
+
+function assertFolder(storageId: string, nodeId: string) {
+  const folder = nodes.find((item) => item.storageId === storageId && item.nodeId === nodeId && item.type === 'folder');
+  if (!folder) throw new Error('未找到目标目录。');
+  return folder;
+}
+
+function ensureUnique(storageId: string, parentId: string, name: string, excludedId?: string) {
+  const normalized = name.trim().toLocaleLowerCase();
+  if (!normalized) throw new Error('名称不能为空。');
+  if (name.includes('/')) throw new Error('名称不能包含“/”。');
+  if (nodes.some((item) => item.storageId === storageId && item.parentId === parentId && item.nodeId !== excludedId && item.name.toLocaleLowerCase() === normalized)) {
+    throw new Error(`“${name}”已存在于当前目录。`);
+  }
+}
+
+function descendants(nodeId: string): string[] {
+  const children = nodes.filter((item) => item.parentId === nodeId);
+  return children.flatMap((child) => [child.nodeId, ...descendants(child.nodeId)]);
+}
+
+function syncUsage(storageId: string) {
+  const scoped = storageNodes(storageId);
+  const size = scoped.filter((item) => item.type === 'file').reduce((total, item) => total + item.sizeBytes, 0);
+  updateStorageUsage(
+    storageId,
+    size,
+    scoped.filter((item) => item.type === 'file').length,
+    scoped.filter((item) => item.type === 'folder').length,
+  );
+}
+
+function pathForNode(nodeId: string): string {
+  const item = nodes.find((candidate) => candidate.nodeId === nodeId);
+  if (!item) return '/';
+  if (item.parentId === null) return '/';
+  const parentPath = pathForNode(item.parentId);
+  return `${parentPath === '/' ? '' : parentPath}/${item.name}`;
+}
+
+function task(
+  storageId: string,
+  operation: FileTask['operation'],
+  subject: string,
+  targetPath?: string,
+  error?: string,
+) {
+  const created: FileTask = {
+    id: nextId('task'),
+    storageId,
+    operation,
+    subject,
+    targetPath,
+    progress: error ? 0 : 100,
+    status: error ? 'failed' : 'completed',
+    completedAt: now(),
+    error,
+  };
+  tasks = [created, ...tasks];
+  return created;
+}
+
+function log(storageId: string, action: string, objectPath: string, message: string) {
+  recordOperation({
+    module: 'storage',
+    action,
+    targetId: storageId,
+    targetName: objectPath,
+    status: 'completed',
+    message,
+    targetPath: storageFilesPath(storageId),
+  });
+}
+
+export function listFileNodes(storageId: string) {
+  return structuredClone(storageNodes(storageId));
+}
+
+export function getRootFolder(storageId: string) {
+  assertStorage(storageId);
+  return structuredClone(root(storageId));
+}
+
+export function getFileNode(nodeId: string) {
+  const item = nodes.find((candidate) => candidate.nodeId === nodeId);
+  return item ? structuredClone(item) : undefined;
+}
+
+export function getNodePath(nodeId: string) {
+  return pathForNode(nodeId);
+}
+
+export function getPathNodes(nodeId: string) {
+  const result: FileNode[] = [];
+  let current = nodes.find((item) => item.nodeId === nodeId);
+  while (current) {
+    result.unshift(current);
+    current = current.parentId ? nodes.find((item) => item.nodeId === current?.parentId) : undefined;
+  }
+  return structuredClone(result);
+}
+
+export function listDirectory(storageId: string, parentId: string, search = '', sort: FileSort = 'name-asc') {
+  const term = search.trim().toLocaleLowerCase();
+  let result = storageNodes(storageId).filter((item) => item.parentId === parentId);
+  if (term) result = storageNodes(storageId).filter((item) => item.parentId !== null && item.name.toLocaleLowerCase().includes(term));
+  return structuredClone([...result].sort((left, right) => {
+    if (left.type !== right.type) return left.type === 'folder' ? -1 : 1;
+    if (sort === 'name-desc') return right.name.localeCompare(left.name, 'zh-CN');
+    if (sort === 'updated-desc') return right.updatedAt.localeCompare(left.updatedAt);
+    if (sort === 'size-desc') return right.sizeBytes - left.sizeBytes;
+    return left.name.localeCompare(right.name, 'zh-CN');
+  }));
+}
+
+export function directorySummary(nodeId: string): DirectorySummary {
+  const ids = descendants(nodeId);
+  const scoped = nodes.filter((item) => ids.includes(item.nodeId));
+  return {
+    files: scoped.filter((item) => item.type === 'file').length,
+    folders: scoped.filter((item) => item.type === 'folder').length,
+    sizeBytes: scoped.filter((item) => item.type === 'file').reduce((total, item) => total + item.sizeBytes, 0),
+  };
+}
+
+export function createFolder(storageId: string, parentId: string, folderName: string) {
+  assertFolder(storageId, parentId);
+  const name = folderName.trim();
+  ensureUnique(storageId, parentId, name);
+  const timestamp = now();
+  const created = node(nextId('folder'), storageId, parentId, 'folder', name, 0, '', timestamp);
+  nodes = [...nodes, created];
+  syncUsage(storageId);
+  log(storageId, '新建文件夹', pathForNode(created.nodeId), '文件夹已在当前本地状态中创建。');
+  return structuredClone(created);
+}
+
+function readTextFile(file: File) {
+  if (typeof file.text === 'function') return file.text();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener('load', () => resolve(typeof reader.result === 'string' ? reader.result : ''));
+    reader.addEventListener('error', () => reject(reader.error ?? new Error('无法读取文件内容。')));
+    reader.readAsText(file);
+  });
+}
+
+export async function uploadFiles(storageId: string, parentId: string, files: readonly File[]) {
+  assertFolder(storageId, parentId);
+  if (!files.length) throw new Error('请选择要上传的文件。');
+  const created: FileNode[] = [];
+  try {
+    const incomingNames = new Set<string>();
+    files.forEach((file) => {
+      ensureUnique(storageId, parentId, file.name);
+      const normalized = file.name.trim().toLocaleLowerCase();
+      if (incomingNames.has(normalized)) throw new Error(`所选文件中存在同名项：“${file.name}”。`);
+      incomingNames.add(normalized);
+    });
+    for (const file of files) {
+      const timestamp = now();
+      const extension = file.name.includes('.') ? file.name.split('.').pop()?.toLocaleLowerCase() ?? '' : '';
+      const content = file.type.startsWith('text/')
+        || file.type === 'application/json'
+        || ['md', 'json', 'txt'].includes(extension)
+        ? await readTextFile(file)
+        : undefined;
+      const item: FileNode = {
+        ...node(nextId('file'), storageId, parentId, 'file', file.name, file.size, file.type || 'application/octet-stream', timestamp),
+        objectUrl: URL.createObjectURL(file),
+        content,
+      };
+      nodes = [...nodes, item];
+      uploadedFiles.set(item.nodeId, file);
+      created.push(item);
+    }
+    syncUsage(storageId);
+    task(storageId, '上传', created.map((item) => item.name).join('、'), pathForNode(parentId));
+    created.forEach((item) => log(storageId, '上传文件', pathForNode(item.nodeId), '文件已加入当前本地文件树。'));
+    return structuredClone(created);
+  } catch (error) {
+    task(storageId, '上传', files.map((file) => file.name).join('、'), pathForNode(parentId), error instanceof Error ? error.message : '上传失败');
+    throw error;
+  }
+}
+
+export function renameNode(nodeId: string, nextName: string) {
+  const current = nodes.find((item) => item.nodeId === nodeId);
+  if (!current || current.parentId === null) throw new Error('根目录不能重命名。');
+  const name = nextName.trim();
+  ensureUnique(current.storageId, current.parentId, name, current.nodeId);
+  nodes = nodes.map((item) => item.nodeId === nodeId ? {
+    ...item,
+    name,
+    extension: item.type === 'file' && name.includes('.') ? name.split('.').pop()?.toLocaleLowerCase() ?? '' : '',
+    updatedAt: now(),
+  } : item);
+  log(current.storageId, '重命名', pathForNode(nodeId), '名称已更新。');
+  return getFileNode(nodeId)!;
+}
+
+export function copyNodes(nodeIds: readonly string[], targetFolderId: string) {
+  const target = nodes.find((item) => item.nodeId === targetFolderId && item.type === 'folder');
+  if (!target) throw new Error('未找到目标目录。');
+  const sources = nodeIds.map((id) => nodes.find((item) => item.nodeId === id)).filter((item): item is FileNode => Boolean(item));
+  sources.forEach((source) => ensureUnique(target.storageId, target.nodeId, source.name));
+  const cloneBranch = (source: FileNode, parentId: string): FileNode => {
+    const copiedFile = uploadedFiles.get(source.nodeId);
+    const copy: FileNode = {
+      ...source,
+      nodeId: nextId(source.type),
+      parentId,
+      createdAt: now(),
+      updatedAt: now(),
+      objectUrl: copiedFile ? URL.createObjectURL(copiedFile) : source.objectUrl,
+    };
+    nodes = [...nodes, copy];
+    if (copiedFile) uploadedFiles.set(copy.nodeId, copiedFile);
+    nodes.filter((item) => item.parentId === source.nodeId).forEach((child) => cloneBranch(child, copy.nodeId));
+    return copy;
+  };
+  sources.forEach((source) => cloneBranch(source, target.nodeId));
+  syncUsage(target.storageId);
+  task(target.storageId, '复制', sources.map((item) => item.name).join('、'), pathForNode(target.nodeId));
+  log(target.storageId, '复制文件', pathForNode(target.nodeId), `已复制 ${sources.length} 个对象。`);
+}
+
+export function moveNodes(nodeIds: readonly string[], targetFolderId: string) {
+  const target = nodes.find((item) => item.nodeId === targetFolderId && item.type === 'folder');
+  if (!target) throw new Error('未找到目标目录。');
+  const sources = nodeIds.map((id) => nodes.find((item) => item.nodeId === id)).filter((item): item is FileNode => Boolean(item));
+  sources.forEach((source) => {
+    if (source.storageId !== target.storageId) throw new Error('不能跨存储移动文件。');
+    if (source.nodeId === target.nodeId || descendants(source.nodeId).includes(target.nodeId)) throw new Error('不能将目录移动到自身或其子目录。');
+    ensureUnique(target.storageId, target.nodeId, source.name, source.nodeId);
+  });
+  nodes = nodes.map((item) => nodeIds.includes(item.nodeId) ? { ...item, parentId: target.nodeId, updatedAt: now() } : item);
+  task(target.storageId, '移动', sources.map((item) => item.name).join('、'), pathForNode(target.nodeId));
+  log(target.storageId, '移动文件', pathForNode(target.nodeId), `已移动 ${sources.length} 个对象。`);
+}
+
+export function deleteNodes(nodeIds: readonly string[]) {
+  const sources = nodeIds.map((id) => nodes.find((item) => item.nodeId === id)).filter((item): item is FileNode => Boolean(item));
+  if (!sources.length) throw new Error('请选择要删除的对象。');
+  if (sources.some((item) => item.parentId === null)) throw new Error('根目录不能删除。');
+  const storageId = sources[0].storageId;
+  const allIds = new Set(sources.flatMap((item) => [item.nodeId, ...descendants(item.nodeId)]));
+  allIds.forEach((id) => {
+    const item = nodes.find((candidate) => candidate.nodeId === id);
+    if (item?.objectUrl) URL.revokeObjectURL(item.objectUrl);
+    uploadedFiles.delete(id);
+  });
+  nodes = nodes.filter((item) => !allIds.has(item.nodeId));
+  syncUsage(storageId);
+  task(storageId, '删除', sources.map((item) => item.name).join('、'));
+  log(storageId, '删除文件', '/', `已删除 ${sources.length} 个对象及其子项。`);
+}
+
+export function downloadNode(nodeId: string) {
+  const item = nodes.find((candidate) => candidate.nodeId === nodeId && candidate.type === 'file');
+  if (!item) throw new Error('未找到可下载文件。');
+  const file = uploadedFiles.get(nodeId);
+  const url = file
+    ? URL.createObjectURL(file)
+    : URL.createObjectURL(new Blob([item.content ?? ''], { type: item.mimeType || 'application/octet-stream' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = item.name;
+  anchor.style.display = 'none';
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  task(item.storageId, '下载', item.name, pathForNode(item.nodeId));
+  log(item.storageId, '下载文件', pathForNode(item.nodeId), '下载已在当前浏览器中发起。');
+}
+
+export function listFileTasks(storageId: string) {
+  return structuredClone(tasks.filter((item) => item.storageId === storageId));
+}
+
+export function clearCompletedTasks(storageId: string) {
+  tasks = tasks.filter((item) => item.storageId !== storageId || item.status !== 'completed');
+}
+
+export function retryFileTask(taskId: string) {
+  tasks = tasks.map((item) => item.id === taskId ? { ...item, status: 'completed', progress: 100, error: undefined, completedAt: now() } : item);
+}
+
+export function resetFileStore() {
+  nodes.forEach((item) => {
+    if (item.objectUrl) URL.revokeObjectURL(item.objectUrl);
+  });
+  nodes = initialNodes();
+  tasks = [];
+  uploadedFiles.clear();
+  sequence = 100;
+}

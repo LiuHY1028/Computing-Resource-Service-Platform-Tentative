@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
+  Button,
   Container,
   Input,
   PageState,
@@ -47,7 +48,7 @@ function formatDate(value: string) {
 }
 
 function resourcePath(order: PurchaseOrder) {
-  if (order.applicationType === 'storage-expansion' && order.storageId) {
+  if (order.storageId) {
     return storageDetailPath(order.storageId);
   }
   if (!order.resourceId) return undefined;
@@ -72,6 +73,7 @@ function billingModeLabel(mode: string) {
 }
 
 export function OrderListPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const query = useMemo(
@@ -120,6 +122,10 @@ export function OrderListPage() {
   return (
     <div className="management-page">
       <Container className="management-toolbar">
+        <div className="management-results__header">
+          <div><h1>订单</h1><p>查看资源与存储购买、扩容、续期和挂载申请。</p></div>
+          <div className="management-row-actions"><Button variant="primary" onClick={() => navigate(APP_PATHS.marketplace)}>购买资源</Button><Button onClick={() => navigate(APP_PATHS.storagePurchase)}>购买存储</Button></div>
+        </div>
         <div className="management-filter-grid management-filter-grid--orders">
           <SearchInput aria-label="搜索申请" value={query.search} placeholder="搜索申请编号或关联资源" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
           <Select aria-label="申请类型" value={query.applicationType} onValueChange={(value) => setParam('applicationType', value)} options={[{ value: 'all', label: '全部申请类型' }, ...Object.entries(APPLICATION_TYPE_LABELS).map(([value, label]) => ({ value, label }))]} />

@@ -8,7 +8,12 @@ export type ApplicationType =
   | 'auto-renewal'
   | 'physical-extension'
   | 'configuration-change'
+  | 'storage-purchase'
   | 'storage-expansion'
+  | 'storage-renewal'
+  | 'storage-mount'
+  | 'storage-unmount'
+  | 'storage-release'
   | 'os-reinstall'
   | 'resource-release';
 

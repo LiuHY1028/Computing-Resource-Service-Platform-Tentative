@@ -15,6 +15,8 @@ import { PurchasePage } from '../pages/PurchasePage';
 import { ResourceListPage } from '../pages/ResourceListPage';
 import { ResourceDetailPage } from '../pages/ResourceDetailPage';
 import { StorageDetailPage, StorageListPage } from '../pages/StoragePage';
+import { StoragePurchasePage } from '../pages/StoragePurchasePage';
+import { FileManagerPage } from '../pages/FileManagerPage';
 import { ImagesPage } from '../pages/ImagesPage';
 import { SoftwarePage } from '../pages/SoftwarePage';
 import { NetworkAccessPage } from '../pages/NetworkAccessPage';
@@ -69,6 +71,10 @@ function appPageElement(route: AppPageRoute) {
       return <StorageListPage />;
     case 'STO-02':
       return <StorageDetailPage />;
+    case 'STO-03':
+      return <StoragePurchasePage />;
+    case 'STO-04':
+      return <FileManagerPage />;
     case 'IMG-01':
       return <ImagesPage />;
     case 'SW-01':

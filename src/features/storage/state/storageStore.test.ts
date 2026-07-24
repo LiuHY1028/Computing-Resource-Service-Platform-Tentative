@@ -7,26 +7,26 @@ import {
   storageUsagePercent,
 } from '../types';
 import {
-  createStorageSpace,
-  deleteStorageSpace,
   getStorageMountsForResource,
+  purchaseStorage,
   queryStorageSpaces,
   requestStorageExpansion,
   requestStorageMount,
+  requestStorageRelease,
   resetStorageStore,
 } from './storageStore';
 
-const storage = new Map<string, string>();
+const memory = new Map<string, string>();
 
 describe('storageStore', () => {
   beforeEach(() => {
-    storage.clear();
+    memory.clear();
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
       value: {
-        getItem: (key: string) => storage.get(key) ?? null,
-        removeItem: (key: string) => storage.delete(key),
-        setItem: (key: string, value: string) => storage.set(key, value),
+        getItem: (key: string) => memory.get(key) ?? null,
+        removeItem: (key: string) => memory.delete(key),
+        setItem: (key: string, value: string) => memory.set(key, value),
       },
     });
     resetStorageStore();
@@ -34,8 +34,8 @@ describe('storageStore', () => {
     resetOrderStore();
   });
 
-  it('filters storage spaces and exposes canonical resource mounts', async () => {
-    const shared = await queryStorageSpaces({ type: 'shared', mounted: 'yes' });
+  it('filters independent storage and exposes canonical resource mounts', () => {
+    const shared = queryStorageSpaces({ type: 'shared', mounted: 'yes' });
     expect(shared).toHaveLength(1);
     expect(getStorageMountsForResource('cs-east-001')).toHaveLength(2);
     const space = shared[0]!;
@@ -44,42 +44,46 @@ describe('storageStore', () => {
     expect(storageCapacityState(space)).toBe('normal');
     expect(storageCapacityState({ capacityGb: 100, usedGb: 80 })).toBe('high');
     expect(storageCapacityState({ capacityGb: 100, usedGb: 92 })).toBe('critical');
-    expect(space.performance.readIops).toBeGreaterThan(0);
+    expect(space.iops).toBeGreaterThan(0);
   });
 
-  it('persists a submitted storage request and keeps capacity unchanged on expansion', async () => {
-    const created = await createStorageSpace({
+  it('creates purchase and expansion orders while keeping remote state pending', async () => {
+    const result = await purchaseStorage({
       name: '项目共享空间',
       type: 'shared',
+      skuId: 'storage-shared-standard-gb-month',
+      performanceTier: 'standard',
       site: '东部算力中心',
       capacityGb: 800,
+      quantity: 1,
+      durationMonths: 1,
+      autoRenew: false,
+      protocol: 'NFS',
+      mounts: [],
     });
-    expect(created.status).toBe('processing');
+    const created = result.spaces[0]!;
+    expect(created.status).toBe('preparing');
     expect(created.priceSnapshot.total.amountFen).toBe(64000);
-    expect((await queryStorageSpaces({ search: created.id }))[0]?.name).toBe('项目共享空间');
+    expect(queryOrders({ applicationType: 'storage-purchase' })[0]?.storageId).toBe(created.id);
 
     await requestStorageExpansion(created.id, 1000);
-    expect((await queryStorageSpaces({ search: created.id }))[0]?.capacityGb).toBe(800);
+    expect(queryStorageSpaces({ search: created.id })[0]?.capacityGb).toBe(800);
     expect(queryOrders({ applicationType: 'storage-expansion' })[0]).toMatchObject({
       resourceType: 'storage',
       storageId: created.id,
       status: 'pending',
-      priceSnapshot: {
-        total: { amountFen: 16000, currency: 'CNY' },
-      },
+      priceSnapshot: { total: { amountFen: 16000, currency: 'CNY' } },
     });
   });
 
-  it('blocks deletion while a mount relation exists', async () => {
-    await requestStorageMount('storage-shared-west-001', {
+  it('enforces cloud disk single-resource mounting and release safety', async () => {
+    await expect(requestStorageMount('storage-cloud-east-001', {
       resourceId: 'cs-west-003',
       resourceName: '西部计算节点',
       resourceType: 'cloud-server',
-      mountPath: '/data/shared',
+      mountPath: '/data/disk',
       readOnly: false,
-    });
-    await expect(deleteStorageSpace('storage-shared-west-001')).rejects.toThrow(
-      '存在挂载关系',
-    );
+    })).rejects.toThrow();
+    await expect(requestStorageRelease('storage-cloud-east-001')).rejects.toThrow('先卸载');
   });
 });

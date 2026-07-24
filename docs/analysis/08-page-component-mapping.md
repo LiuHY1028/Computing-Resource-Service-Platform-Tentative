@@ -44,13 +44,15 @@
 | 页面 ID / 页面 | 布局模板 | 公共组件 | 业务组件 | 核心交互 | 必须覆盖的状态 | 规范外组件与依据 |
 |---|---|---|---|---|---|---|
 | `MKT-01` 资源商城 | `TPL-CATALOG`；云服务器/物理机标题栏 Tab | TitleBarTabs、SearchInput、Select、MultiSelect、FilterTag、Button、Container、Grid、Pagination、Tooltip | `MarketplaceFilters`、`MarketplaceResults`、`MarketplaceStatePanel`、`ResourceProductCard` | 切换商品类型；搜索/组合筛选/清空；查看规格；进入 `BUY-01/02` | `L/E/N/F/D`；规格不可用时禁用配置并说明；筛选切换有反馈；错误可重试 | **需要**：资源规格卡和页面状态组合。依据：两类商品及带卡信息 `REQ-002/003/016`、列表状态 `INF-001/002`；PDF 无资源卡与页面状态 |
-| `BUY-01` 云服务器购买配置 | `TPL-FORM`；分段表单 + 右侧锚点 + 底部确认 | Form、Select、Radio/Card Radio、Checkbox、Input、Textarea、Tooltip、Container、Button、Modal、Grid、Table、FormAnchorNav | `PurchasePageLayout`、`SelectedProductSummary`、`CloudStorageSection`、`CloudImageSection`、`NetworkRulesEditor`、`ConfigurationSummary`、`PurchaseSuccessState` | 读取商城规格；选择镜像；区分内存/系统盘/数据盘；配置 HostPath/NFS 与网络；校验、确认、演示提交、返回恢复上下文 | `L/F/D/P/S`；商品缺失/类型不匹配；字段 Error；离开确认；保留会话草稿 | **需要**：存储选择、网络规则、Sticky 配置摘要和演示结果。依据：`REQ-013/015/021-027`；PDF 无领域组合与异步反馈 |
+| `BUY-01` 云服务器购买配置 | `TPL-FORM`；分段表单 + 右侧锚点 + 底部确认 | Form、Select、Radio/Card Radio、Checkbox、Input、Textarea、Tooltip、Container、Button、Modal、Grid、Table、FormAnchorNav | `PurchasePageLayout`、`SelectedProductSummary`、`CloudStorageSection`、`CloudImageSection`、`NetworkRulesEditor`、`ConfigurationSummary`、`PurchaseSuccessState` | 读取商城规格；选择镜像；区分内存/系统盘/外挂存储；选择新购存储、已有存储或暂不挂载；配置网络；校验、确认、提交、返回恢复上下文 | `L/F/D/P/S`；商品缺失/类型不匹配；字段 Error；离开确认；保留会话草稿 | **需要**：存储选择、网络规则、Sticky 配置摘要和正式结果。依据：`REQ-013/015/021-027` 与当前存储领域定义 |
 | `BUY-02` 物理机购买配置 | `TPL-FORM`；整机规格为主，待确认项不固化 | Form、Checkbox、Input、Textarea、Tooltip、Container、Button、Modal、Grid、Table、FormAnchorNav | `PurchasePageLayout`、`SelectedProductSummary`、`PhysicalPurchaseForm`、`PendingDecisionNotice`、`NetworkRulesEditor`、`ConfigurationSummary`、`PurchaseSuccessState` | 读取商城整机规格；填写用途；记录网络访问意向；校验、确认、演示提交、返回恢复上下文；不提供镜像/系统选择 | `L/F/D/P/S`；商品缺失/类型不匹配；待确认说明；字段 Error；离开确认；保留会话草稿 | **需要**：整机摘要、待确认提示、网络规则、Sticky 配置摘要和演示结果。依据：`REQ-016` 与物理机 OS/镜像冲突 `CON-006`；防止把假设做成规则 |
 | `RES-01` 云服务器列表 | `TPL-LIST`；“我的资源”云服务器 Tab | Tabs、Search Input、Select、Button、Table、Pagination、Tooltip、Checkbox（若批量能力确认） | `ResourceStatusBadge`、`ResourceSpecCell`、`QuickActionMenu` | 搜索/筛选；进入 `RES-02`；发起适用的开机/关机；复制基础连接信息（若列表提供） | 首次 `L`、`E`、`N`、`F`；操作 `P/S/F/D`；分页加载；状态不明时不展示推断操作 | **需要**：状态标识、行操作菜单、异步操作反馈、骨架/错误。依据：`REQ-007/009`；PDF 无状态标识与 Loading |
 | `RES-02` 云服务器详情 | `TPL-DETAIL`；摘要 + 详情分区/下划线 Tabs | Container、Tabs、Button、Tooltip、Table、Modal、Form | `ResourceSummary`、`ConnectionInfo`、`MonitoringPanel`、`MetricChart`、`StorageMountSummary`、`NetworkRuleSummary`、`SoftwareInstallSummary`、`RelatedOrderLink` | 查看规格/站点/系统盘/存储；复制 IP/SSH 信息；查看监控；发起开关机；跳转存储/网络/软件/订单 | 页面 `L/F`；监控 `L/E/F`；复制 `S`；各异步操作 `P/S/F/D`；关联对象缺失；无监控数据不等于加载失败 | **需要**：资源摘要、连接信息、监控图表、状态标识、复制反馈、异步结果。依据：`REQ-009-014/017/018/021-027`；PDF 无图表、复制与业务状态组件 |
 | `RES-03` 物理机列表 | `TPL-LIST`；“我的资源”物理机 Tab | Tabs、Search Input、Select、Button、Table、Pagination、Tooltip | `ResourceStatusBadge`、`PhysicalSpecCell`、`QuickActionMenu` | 搜索/筛选；进入 `RES-04`；发起已确认适用操作；不得假设物理机与云服务器操作完全相同 | `L/E/N/F/P/S/D`；不可用操作说明；交付状态名称保持可替换 | **需要**：状态标识、整机规格单元格、异步反馈。依据：物理机需管理与监控 `REQ-008/010`，具体动作集合待确认 |
 | `RES-04` 物理机详情 | `TPL-DETAIL`；摘要 + 分区/下划线 Tabs | Container、Tabs、Button、Tooltip、Table、Modal、Form | `PhysicalResourceSummary`、`ConnectionInfo`、`MonitoringPanel`、`MetricChart`、`NetworkRuleSummary`、`SoftwareInstallSummary`、`PendingDecisionNotice` | 查看整机规格、IP/连接、CPU/内存/加速卡监控；进入网络/软件/订单；只显示已确认适用操作 | 页面 `L/F`；监控 `L/E/F`；复制 `S`；操作 `P/S/F/D`；OS/镜像/存储适用性待确认提示 | **需要**：物理机摘要、监控图表、连接信息、待确认提示。依据：`REQ-008/010/011/016/017`；PDF 无领域详情与图表 |
-| `STO-01` 存储空间列表 | `TPL-LIST`；主操作“创建存储空间”打开任务弹窗 | Search Input、Select、Button、Table、Pagination、Modal、Form、Tooltip | `StorageTypeBadge`、`MountCountCell`、`CreateStorageForm`、`StorageCompatibilityHint` | 搜索/筛选；区分本地数据存储与高性能共享存储；创建；进入 `STO-02` | `L/E/N/F`；创建表单 Error/D；提交 `P/S/F`；站点/类型不兼容 D 并说明 | **需要**：存储类型标识、创建表单、结果反馈。依据：`REQ-012/021-027`；PDF 无存储语义组件 |
+| `STO-01` 存储列表 | `TPL-LIST`；主操作“购买存储”进入正式购买页 | Search Input、Select、Button、Table、DropdownMenu、Progress | `StorageTypeBadge`、`MountCountCell`、`CapacityProgress`、`StorageCompatibilityHint` | 搜索/筛选；区分云硬盘与高性能共享存储；文件、挂载、详情和更多操作 | `L/E/N/F`；状态与站点不兼容 D 并说明 | **需要**：存储类型标识、容量、操作反馈。依据：独立外挂存储管理 |
+| `STO-03` 存储购买 | `TPL-FORM`；一页式类型、规格、挂载和价格摘要 | Form、CardRadio、Select、Checkbox、Input、PricingSummary、Button | `StorageTypeSelector`、`MountTargetSelector`、`StoragePriceSummary` | 云硬盘/共享存储；性能、容量、数量、周期；立即挂载或暂不挂载；提交 | 校验 Error、价格更新、提交 Processing/Success/Failure | **需要**：存储购买组合。依据：独立购买与统一价格目录 |
+| `STO-04` 文件管理 | 三段式桌面文件管理器 | Button、SearchInput、Select、Checkbox、DropdownMenu、Modal、Progress、PageState | `FileManagerShell`、`DirectoryTree`、`FileGrid`、`FileDetails`、`DirectoryPicker`、`FilePreview`、`FileTaskCenter` | 导航、上传下载、新建、重命名、复制、移动、删除、搜索、排序、预览和任务 | 空目录、拖放、选择、同名冲突、循环阻止、任务成功/失败 | **需要**：PDF 无文件管理器；基于存储文件管理需求 |
 | `STO-02` 存储空间详情 | `TPL-DETAIL`；摘要 + 挂载关系列表 | Container、Tabs/锚点、Button、Table、Pagination、Modal、Tooltip | `StorageSummary`、`MountRelationTable`、`StorageTypeBadge`、`CompatibilityNotice` | 查看类型、站点和挂载关系；从关联资源返回；购后挂载/解绑仅在规则确认后开放 | 页面 `L/F`；挂载关系 `L/E/F`；关联资源缺失；操作若未确认则 D/不展示 | **需要**：存储摘要、挂载关系、兼容提示。依据：存储独立管理 `REQ-012/026/027`；文件浏览器不在当前确认范围 |
 | `IMG-01` 镜像管理 | `TPL-LIST`；上传入口使用任务弹窗/抽屉 | Search Input、Select、Button、Table、Pagination、Modal、Form、Tooltip | `ImageCompatibilityBadge`、`UploadImageForm`、`UploadProgress`、`ImageSourceLabel` | 搜索/筛选；打开上传；校验表单；上传并查看结果；作为 `BUY-01` 的关联入口 | `L/E/N/F`；上传校验 Error/D；上传 `P/S/F`；兼容性未知或不兼容提示 | **需要**：Drawer（如采用）、上传进度、兼容性标识、结果反馈。依据：镜像上传与创建选择 `REQ-015`；PDF 仅给上传区域，无进度/兼容性 |
 | `SW-01` 软件中心 | `TPL-CATALOG`；软件卡片 + 安装任务弹窗 | Search Input、Select、筛选标签、Button、Container、Pagination、Modal、Form、Tooltip | `SoftwareCard`、`CompatibilityBadge`、`TargetResourceSelector`、`InstallTaskSummary` | 搜索/筛选；查看软件信息；选择目标资源；发起安装；跳转资源/操作记录 | `L/E/N/F`；目标资源加载 `L/E/F`；不兼容 D；安装 `P/S/F`；版本/卸载规则不擅自出现 | **需要**：软件卡、兼容性标识、安装任务反馈。依据：软件安装 `REQ-017`；PDF 无软件目录与安装进度 |
@@ -72,7 +74,7 @@
 | `CloudSpecSelector` | 选择云服务器规格 | CPU、内存、加速卡信息、站点可用性 | 把系统盘写成内存；暗含库存/锁定规则 | `BUY-01` |
 | `PhysicalSpecSelector` | 选择整机规格 | CPU、内存、加速卡型号/卡数、站点 | 默认镜像、系统盘或自动开机规则 | `BUY-02` |
 | `SystemDiskField` | 显示系统盘配置 | 标签“系统盘”、暂定默认 `30 GB`、是否可编辑的待确认说明 | K8S Pod 底层术语；将 30 GB 表达为内存 | `BUY-01` |
-| `StorageMountSelector` | 选择已有数据存储 | 本地数据存储/高性能共享存储、名称、站点兼容性 | 将 HostPath/NFS 默认作为主标签；擅自定义多挂载/解绑规则 | `BUY-01`，物理机适用性确认后可复用 |
+| `StorageMountSelector` | 选择已有独立存储 | 云硬盘/高性能共享存储、名称、站点兼容性与可挂载状态 | 不显示已单独挂载的云硬盘；物理机本地盘不进入选择器 | `BUY-01`、`STO-02/03` |
 | `PurchaseSummary` | 提交前复述用户选择 | 已选择的可确认字段 | 金额、支付、续费、审批、正式订单状态 | `BUY-01/02` |
 | `NetworkRulesEditor` | 复用 SSH/来源与端口规则意向编辑 | TCP/UDP、服务/映射端口、IPv4/CIDR、说明 | 真实地址/凭据、安全组、网络资源或审批 | `BUY-01/02` |
 | `PurchaseSuccessState` | 显示 DEMO 配置编号、摘要与原型边界 | 商品、资源类型、已确认演示字段 | 正式订单编号、资源生命周期或写入“我的资源” | `BUY-01/02` |
@@ -105,8 +107,11 @@
 
 | 组件 | 最小职责 | 关键状态 | 边界 | 页面 |
 |---|---|---|---|---|
-| `StorageTypeBadge` | 区分本地数据存储与高性能共享存储 | 两类明确视觉；未知类型兜底 | 技术术语是否显示待确认 | `STO-01/02`、购买/资源详情 |
-| `MountRelationTable` | 展示存储与资源关联 | Loading、Empty、Error、关联对象缺失 | 购后挂载/解绑规则未确认，不据此提供按钮 | `STO-02` |
+| `StorageTypeBadge` | 区分独立云硬盘与高性能共享存储 | 两类明确视觉；未知类型兜底 | 物理机本地存储仍只属于整机详情 | `STO-01/02/03`、购买/资源详情 |
+| `MountRelationTable` | 展示存储与资源关联 | Loading、Empty、Error、Processing、Removing | 云硬盘单资源挂载；共享存储多资源挂载；均校验站点 | `STO-02/03` |
+| `FileManagerShell` | 组合工具栏、目录树、列表/网格、详情面板和任务中心 | Empty、Search no result、Selected、Dragging、Task success/failure | 仅使用浏览器 File/Blob，不依赖远程文件服务 | `STO-04` |
+| `DirectoryPicker` | 为复制和移动选择正式目标目录 | Current、Selected、Conflict、Cycle blocked | 禁止跨存储移动和移动到自身子目录 | `STO-04` |
+| `FilePreview` | 本地预览图片、文本、JSON、Markdown、PDF 和音视频信息 | Previewable、Metadata only、Unavailable | 不调用外部预览服务 | `STO-04` |
 | `UploadImageForm` | 收集镜像上传所需已确认信息 | Normal、Error、Disabled、Uploading、Success、Failure | 格式、大小、审核、版本未确认时仅放可替换占位字段 | `IMG-01` |
 | `CompatibilityBadge` | 表达站点/资源兼容结果 | Compatible、Incompatible、Unknown | 兼容矩阵必须来自数据，不由前端推断 | `IMG-01`、`SW-01` |
 | `SoftwareCard` | 展示可安装软件/环境并进入安装 | Loading、Disabled reason、Selected | 不自动增加版本、升级、卸载、预装规则 | `SW-01` |
@@ -191,11 +196,11 @@ flowchart TD
 
 ## 10. 页面级验收要点
 
-- 15 个稳定页面 ID 都有且仅有一个主布局模板，没有孤岛页面。
+- 17 个稳定页面 ID 都有且仅有一个主布局模板，没有孤岛页面。
 - `MKT-01 → BUY-01/02 → RES-02/04` 的主路径复用同一套提交和结果反馈。
 - 云服务器和物理机共享布局与基础组件，但不强迫共享未经确认的镜像、系统盘、存储和操作字段。
 - `30 GB` 只出现在 `SystemDiskField`/相关快照的系统盘语义中，绝不作为内存值。
-- 本地数据存储与高性能共享存储在购买、存储列表、详情和资源详情中使用同一类型标识和文案。
+- 独立云硬盘与高性能共享存储在购买、存储列表、详情和资源详情中使用同一类型标识和文案；物理机本地存储不进入独立存储管理。
 - 所有列表页都覆盖 Loading、Empty、NoResult、Error；所有提交都覆盖 Processing、Success、Failure、Disabled。
 - 规范外组件有统一 Token、状态和复用范围；不以截图、绝对定位或无反馈按钮补齐页面。
 - OneAiNexus Logo/名称只作为 UI 来源说明，不进入任何业务组件默认内容。
@@ -207,7 +212,7 @@ flowchart TD
 | 组件 / 模板 | 结构与适用范围 | 需求依据 | 状态覆盖与边界 |
 |---|---|---|---|
 | `MarketplaceLayout` | 独立产品顶栏 → 商城 Hero / 商品目录或购买配置 → 产品页页脚；仅用于 `/marketplace/*` | Task 11 的商城与控制台拆分、`REQ-002/003/016` | 顶栏当前区、跨区入口、消息反馈、响应式导航；不引入控制台侧栏 |
-| `SoftwareCenterLayout` | 独立产品顶栏 → 编辑式精选区 → 分类轨道与软件目录 → 软件中心页脚；仅用于 `/software/*` | Task 11 的软件发现与安装目标、`REQ-017` | 搜索无结果、兼容禁用、安装处理/失败/提交反馈；不复刻商城商品模板 |
+| `SoftwareCenterLayout` | 共用产品品牌顶栏 → 浅色导视与局部精选卡 → 横向分类与软件目录 → 产品页脚；仅用于 `/software/*` | 软件发现与安装目标、`REQ-017` | 搜索无结果、兼容禁用、安装处理/失败/提交反馈；与商城共用品牌基础但不复刻商品模板 |
 | `ConsoleLayout` | 控制台顶栏 → 左侧后台菜单 → `MainContent`；仅用于 `/console/*` | Task 11 的控制台边界、`REQ-007-018` | 侧栏展开/收起、高亮、顶栏跨区入口；商城和软件中心不进入侧栏 |
 | `ProductAreaNavigation` | 商城和软件中心共享品牌、区域切换、控制台入口与轻量反馈，按区域使用独立视觉变量 | Task 11 的三区域互达要求 | 当前区、Hover、Focus、消息展开和窄屏；品牌名称继续读取集中配置 |
 | `MarketplaceHero` | 资源价值、CPU/GPU/资源形态概览和进入目录操作 | 商城购买转化与 `REQ-002/003/016` | 云服务器/物理机切换、响应式和减少动效；不承载库存或促销规则 |

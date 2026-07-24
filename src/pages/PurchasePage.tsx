@@ -168,8 +168,8 @@ function PurchasePageContent({
     if (product?.resourceType !== 'cloud-server' || !cloudConfiguration) {
       return undefined;
     }
-    const sharedSpace =
-      cloudConfiguration.storageType === 'shared'
+    const existingSpace =
+      cloudConfiguration.storageType === 'existing'
         ? findStorageSpace(cloudConfiguration.storageSpaceId)
         : undefined;
     return calculateCloudPrice({
@@ -182,18 +182,18 @@ function PurchasePageContent({
           : undefined,
       systemDiskGb: cloudConfiguration.systemDiskGb,
       storage:
-        cloudConfiguration.storageType === 'host-path'
+        cloudConfiguration.storageType === 'new'
           ? {
-              skuId: 'storage-local-100gb-month',
-              capacityGb: 100,
-              label: '本地数据存储（随当前规格包含）',
-              included: true,
+              skuId: cloudConfiguration.newStorageSkuId,
+              capacityGb: cloudConfiguration.newStorageCapacityGb,
+              label: `${cloudConfiguration.newStorageType === 'cloud-disk' ? '新购云硬盘' : '新购高性能共享存储'} · ${cloudConfiguration.newStorageCapacityGb} GB`,
             }
-          : sharedSpace
+          : existingSpace
             ? {
-                skuId: 'storage-shared-gb-month',
-                capacityGb: sharedSpace.capacityGb,
-                label: `${sharedSpace.name} · ${sharedSpace.capacityGb} GB`,
+                skuId: existingSpace.skuId,
+                capacityGb: existingSpace.capacityGb,
+                label: `${existingSpace.name} · ${existingSpace.capacityGb} GB`,
+                included: true,
               }
             : undefined,
       imageId: cloudConfiguration.imageId,

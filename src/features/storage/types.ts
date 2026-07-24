@@ -1,5 +1,8 @@
-export type StorageType = 'local' | 'shared';
-export type StorageStatus = 'available' | 'processing' | 'error';
+import type { PriceSnapshot } from '../pricing';
+
+export type StorageType = 'cloud-disk' | 'shared';
+export type StoragePerformanceTier = 'standard' | 'performance';
+export type StorageStatus = 'available' | 'preparing' | 'processing' | 'error';
 export type MountStatus = 'effective' | 'processing' | 'removing';
 
 export type StorageMount = Readonly<{
@@ -8,6 +11,7 @@ export type StorageMount = Readonly<{
   resourceName: string;
   resourceType: 'cloud-server' | 'physical-machine';
   mountPath: string;
+  deviceName?: string;
   readOnly: boolean;
   status: MountStatus;
 }>;
@@ -17,24 +21,28 @@ export type StorageSpace = Readonly<{
   skuId: string;
   name: string;
   type: StorageType;
+  performanceTier: StoragePerformanceTier;
   site: string;
-  technology: 'HostPath' | 'NFS';
   capacityGb: number;
   usedGb: number;
-  protocol: 'NFS' | 'HostPath';
-  mountPath: string;
-  readWriteStatus: 'read-write' | 'read-only';
-  expiresAt: string;
-  performance: Readonly<{
-    readThroughputMbs: number;
-    writeThroughputMbs: number;
-    readIops: number;
-    writeIops: number;
-    averageLatencyMs: number;
-  }>;
+  systemReservedGb: number;
   status: StorageStatus;
+  billingMode: 'subscription';
+  expiresAt: string;
+  autoRenew: boolean;
+  fileSystem: 'ext4' | 'xfs' | 'NFS' | 'SMB' | 'uninitialized';
+  protocol?: 'NFS' | 'SMB';
+  mountPath: string;
+  initialized: boolean;
+  diskType?: 'standard' | 'performance';
+  deviceName?: string;
+  iops: number;
+  throughputMbs: number;
+  fileCount: number;
+  directoryCount: number;
   createdAt: string;
   updatedAt: string;
+  lastOperatedAt: string;
   mounts: readonly StorageMount[];
   priceSnapshot: PriceSnapshot;
 }>;
@@ -52,6 +60,13 @@ export function storageCapacityState(space: Pick<StorageSpace, 'capacityGb' | 'u
   return usage >= 90 ? 'critical' as const : usage >= 75 ? 'high' as const : 'normal' as const;
 }
 
+export function canManageStorageFiles(
+  space: Pick<StorageSpace, 'type' | 'status' | 'mounts' | 'initialized'>,
+) {
+  if (space.status !== 'available') return false;
+  return space.type === 'shared' || (space.initialized && space.mounts.length > 0);
+}
+
 export type StorageQuery = Readonly<{
   search?: string;
   type?: 'all' | StorageType;
@@ -60,10 +75,16 @@ export type StorageQuery = Readonly<{
   mounted?: 'all' | 'yes' | 'no';
 }>;
 
-export type CreateStorageInput = Readonly<{
+export type PurchaseStorageInput = Readonly<{
   name: string;
   type: StorageType;
+  skuId: string;
+  performanceTier: StoragePerformanceTier;
   site: string;
   capacityGb: number;
+  quantity: number;
+  durationMonths: 1 | 3 | 6 | 12;
+  autoRenew: boolean;
+  protocol?: 'NFS' | 'SMB';
+  mounts: readonly Omit<StorageMount, 'id' | 'resourceName' | 'status'>[];
 }>;
-import type { PriceSnapshot } from '../pricing';

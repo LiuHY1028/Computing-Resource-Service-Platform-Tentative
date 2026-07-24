@@ -1,0 +1,21 @@
+export {
+  clearCompletedTasks,
+  copyNodes,
+  createFolder,
+  deleteNodes,
+  directorySummary,
+  downloadNode,
+  getFileNode,
+  getNodePath,
+  getPathNodes,
+  getRootFolder,
+  listDirectory,
+  listFileNodes,
+  listFileTasks,
+  moveNodes,
+  renameNode,
+  resetFileStore,
+  retryFileTask,
+  uploadFiles,
+} from './state/fileStore';
+export type * from './types';

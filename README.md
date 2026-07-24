@@ -1,6 +1,6 @@
 # 算力资源服务平台
 
-企业算力资源服务平台纯前端应用。资源商城、软件中心和控制台使用独立布局，复用统一字体、公共 UI 组件和领域数据，全部业务数据随前端代码打包。
+企业算力资源服务平台纯前端应用。资源商城与软件中心共用品牌基础，控制台提供计算资源、独立存储、文件管理、镜像、网络、订单和操作记录，全部数据随前端代码打包。
 
 ## 直接查看
 
@@ -29,6 +29,7 @@ npm run build:offline
 npm run verify:offline
 npm run verify:pricing
 npm run verify:relations
+npm run verify:storage
 ```
 
 ## 应用结构
@@ -38,6 +39,7 @@ npm run verify:relations
 - `src/features/*/data/`：随应用打包的目录与配置数据。
 - `src/features/*/state/`：领域状态、操作和跨模块关联。
 - `src/features/pricing/`：SKU 价目、整数分报价、统一格式化和价格快照。
+- `src/features/files/`：离线文件树、文件操作和任务中心。
 - `src/features/platform/`：可选浏览器存储与兼容能力。
 - `src/pages/`：正式页面及只在开发环境注册的组件检查页。
 - `release/算力资源服务平台.html`：可直接打开的交付文件。
@@ -48,7 +50,7 @@ npm run verify:relations
 
 - 资源商城：`#/marketplace` 及 `#/marketplace/*` 购买配置。
 - 软件中心：`#/software`。
-- 控制台：`#/console/resources/*`、`#/console/storage/*`、`#/console/images`、`#/console/network-access`、`#/console/orders/*`、`#/console/operation-records`。
+- 控制台：`#/console/resources/*`、`#/console/storage`、`#/console/storage/purchase`、`#/console/storage/:storageId/files`、镜像、网络、订单和操作记录。
 
 根路径进入资源商城；旧的资源、存储、镜像、网络、订单和操作记录路径会保留查询参数并重定向到 `/console/*`。未知 Hash 显示 404，开发检查路由不会进入正式构建。
 
@@ -62,6 +64,7 @@ npm run lint
 npm run test:run
 npm run verify:pricing
 npm run verify:relations
+npm run verify:storage
 npm run build
 npm run build:offline
 npm run verify:offline

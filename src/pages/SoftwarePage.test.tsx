@@ -28,8 +28,10 @@ describe('SoftwarePage', () => {
     expect(screen.getByTestId('software-center-layout')).toBeInTheDocument();
     expect(screen.queryByTestId('side-navigation')).not.toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 1, name: '把合适的软件，装到合适的算力上' }),
+      screen.getByRole('heading', { level: 1, name: '软件中心' }),
     ).toBeInTheDocument();
+    expect(screen.getByTestId('software-navigation')).toHaveAttribute('data-variant', 'software');
+    expect(document.querySelector('.software-featured__spotlight')).toBeInTheDocument();
 
     await user.click(screen.getByRole('combobox', { name: '费用策略' }));
     await user.click(screen.getByRole('option', { name: '服务已包含' }));

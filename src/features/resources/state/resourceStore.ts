@@ -185,18 +185,15 @@ export function createRenewalQuote(
     storage: dataDisk
       ? {
           skuId: dataDisk.displayType === '高性能共享存储'
-            ? 'storage-shared-gb-month'
-            : 'storage-local-100gb-month',
+            ? 'storage-shared-standard-gb-month'
+            : 'storage-cloud-performance-gb-month',
           capacityGb: dataDisk.capacityGb,
           label: dataDisk.displayType,
-          included: dataDisk.displayType === '本地数据存储',
         }
       : snapshotStorage && snapshotStorageSku
         ? {
             skuId: snapshotStorageSku,
-            capacityGb: snapshotStorageSku === 'storage-local-100gb-month'
-              ? snapshotStorage.quantity * 100
-              : snapshotStorage.quantity,
+            capacityGb: snapshotStorage.quantity,
             label: snapshotStorage.label,
             included: snapshotStorage.included,
           }

@@ -27,8 +27,8 @@
 
 | SKU/对象 | 价格策略 |
 | --- | --- |
-| `storage-local-100gb-month` | ¥49/100 GB/月 |
-| `storage-shared-gb-month` | ¥0.80/GB/月 |
+| `storage-shared-standard-gb-month` | ¥0.80/GB/月 |
+| `storage-shared-performance-gb-month` | ¥1.20/GB/月 |
 | `storage-cloud-standard-gb-month` | ¥0.35/GB/月 |
 | `storage-cloud-performance-gb-month` | ¥0.75/GB/月 |
 | 基础 Linux 运行镜像 | 免费 |
@@ -41,13 +41,14 @@
 
 ## 报价与快照
 
-`PriceQuote` 包含计费模式、数量、周期、费用明细、小计和总额；总额等于非包含项明细之和。`PriceSnapshot` 额外保存 SKU、单价与生成时间。购买、续费、延期和扩容在提交时生成快照，历史订单只读快照。
+云硬盘和高性能共享存储均按“性能等级 × GB × 月数”计价。物理机本地存储属于整机自身配置，不在独立存储价格目录中。`PriceQuote` 包含计费模式、数量、周期、费用明细、小计和总额；总额等于非包含项明细之和。`PriceSnapshot` 额外保存 SKU、单价与生成时间。购买、续费、延期和扩容在提交时生成快照，历史订单只读快照。
 
 验证命令：
 
 ```bash
 npm run verify:pricing
 npm run verify:relations
+npm run verify:storage
 ```
 
 ## 尚待正式确认

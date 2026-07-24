@@ -32,6 +32,20 @@ function renderResource(path = '/console/resources/cloud-servers') {
 beforeEach(resetResourceStore);
 
 describe('ResourceListPage', () => {
+  it('provides a direct cloud-server purchase entry', async () => {
+    const { user, location } = renderResource();
+    await screen.findByRole('table', { name: '云服务器列表' });
+    await user.click(screen.getByRole('button', { name: '购买云服务器' }));
+    expect(location()).toBe('/marketplace?type=cloud');
+  });
+
+  it('provides a direct physical-machine purchase entry', async () => {
+    const { user, location } = renderResource('/console/resources/physical-machines');
+    await screen.findByRole('table', { name: '物理机列表' });
+    await user.click(screen.getByRole('button', { name: '购买物理机' }));
+    expect(location()).toBe('/marketplace?type=physical');
+  });
+
   it('renders and paginates the cloud server list', async () => {
     const { user, location } = renderResource();
 

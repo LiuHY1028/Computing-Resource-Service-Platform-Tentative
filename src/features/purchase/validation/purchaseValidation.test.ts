@@ -15,12 +15,12 @@ const baseCloud: CloudPurchaseConfiguration = {
   purpose: '',
   systemDiskGb: 30,
   storageType: 'none',
-  hostPath: '',
-  hostMountPath: '',
-  hostReadOnly: false,
+  newStorageType: 'cloud-disk',
+  newStorageSkuId: 'storage-cloud-standard-gb-month',
+  newStorageCapacityGb: 100,
   storageSpaceId: '',
-  sharedMountPath: '',
-  sharedReadOnly: false,
+  storageMountPath: '/data/storage',
+  storageReadOnly: false,
   imageId: null,
   billingMode: 'subscription',
   periodMonths: '1',
@@ -69,27 +69,25 @@ describe('purchase prototype validation', () => {
   });
 
   it('only validates fields belonging to the active data-storage choice', () => {
-    const hostResult = validateCloudConfiguration({
+    const newStorageResult = validateCloudConfiguration({
       ...baseCloud,
-      storageType: 'host-path',
-      hostPath: 'relative',
-      hostMountPath: '',
+      storageType: 'new',
+      newStorageCapacityGb: 0,
+      storageMountPath: '',
     });
-    expect(hostResult.errors['cloud-host-path']).toBeDefined();
-    expect(hostResult.errors['cloud-host-mount-path']).toBeDefined();
-    expect(hostResult.errors['cloud-storage-space']).toBeUndefined();
+    expect(newStorageResult.errors['cloud-new-storage-capacity']).toBeDefined();
+    expect(newStorageResult.errors['cloud-storage-mount-path']).toBeDefined();
+    expect(newStorageResult.errors['cloud-storage-space']).toBeUndefined();
 
-    const sharedResult = validateCloudConfiguration({
+    const existingResult = validateCloudConfiguration({
       ...baseCloud,
-      storageType: 'shared',
-      hostPath: 'ignored',
-      hostMountPath: 'ignored',
+      storageType: 'existing',
       storageSpaceId: '',
-      sharedMountPath: 'relative',
+      storageMountPath: 'relative',
     });
-    expect(sharedResult.errors['cloud-host-path']).toBeUndefined();
-    expect(sharedResult.errors['cloud-storage-space']).toBeDefined();
-    expect(sharedResult.errors['cloud-shared-mount-path']).toBeDefined();
+    expect(existingResult.errors['cloud-new-storage-capacity']).toBeUndefined();
+    expect(existingResult.errors['cloud-storage-space']).toBeDefined();
+    expect(existingResult.errors['cloud-storage-mount-path']).toBeDefined();
   });
 
   it('validates SSH source intent for both resource types', () => {

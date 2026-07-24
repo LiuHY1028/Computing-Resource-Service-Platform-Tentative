@@ -10,6 +10,8 @@ export type PageId =
   | 'RES-04'
   | 'STO-01'
   | 'STO-02'
+  | 'STO-03'
+  | 'STO-04'
   | 'IMG-01'
   | 'SW-01'
   | 'NET-01'
@@ -125,13 +127,13 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
     pageId: 'STO-01',
     area: 'console',
     path: '/console/storage',
-    pageTitle: '存储空间列表',
+    pageTitle: '存储管理',
     navigationLabel: '存储管理',
     moduleLabel: '存储管理',
-    purpose: '独立查看和管理本地数据存储与高性能共享存储空间。',
+    purpose: '独立查看和管理云硬盘与高性能共享存储。',
     implementationPhase: '阶段 9：存储、镜像、软件和网络',
     navigationItemId: 'storage',
-    relatedPageIds: ['MKT-01', 'RES-01'],
+    relatedPageIds: ['STO-02', 'STO-03', 'RES-01'],
   },
   {
     pageId: 'STO-02',
@@ -144,6 +146,30 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
     implementationPhase: '阶段 9：存储、镜像、软件和网络',
     navigationItemId: 'storage',
     relatedPageIds: ['STO-01', 'RES-01'],
+  },
+  {
+    pageId: 'STO-03',
+    area: 'console',
+    path: '/console/storage/purchase',
+    pageTitle: '购买存储',
+    navigationLabel: '购买存储',
+    moduleLabel: '存储管理',
+    purpose: '选择云硬盘或高性能共享存储、规格、挂载目标与使用周期。',
+    implementationPhase: '存储购买与管理',
+    navigationItemId: 'storage',
+    relatedPageIds: ['STO-01', 'RES-01', 'ORD-01'],
+  },
+  {
+    pageId: 'STO-04',
+    area: 'console',
+    path: '/console/storage/:storageId/files',
+    pageTitle: '文件管理',
+    navigationLabel: '文件管理',
+    moduleLabel: '存储管理',
+    purpose: '浏览和管理适用存储内的文件与目录，并查看本地任务状态。',
+    implementationPhase: '存储购买与管理',
+    navigationItemId: 'storage',
+    relatedPageIds: ['STO-01', 'STO-02', 'OPS-01'],
   },
   {
     pageId: 'IMG-01',
@@ -243,6 +269,7 @@ export const APP_PATHS = Object.freeze({
   cloudResources: '/console/resources/cloud-servers',
   physicalResources: '/console/resources/physical-machines',
   storage: '/console/storage',
+  storagePurchase: '/console/storage/purchase',
   images: '/console/images',
   networkAccess: '/console/network-access',
   orders: '/console/orders',
@@ -266,6 +293,10 @@ export function resourceDetailPath(
 
 export function storageDetailPath(storageId: string) {
   return `${APP_PATHS.storage}/${encodeURIComponent(storageId)}`;
+}
+
+export function storageFilesPath(storageId: string) {
+  return `${storageDetailPath(storageId)}/files`;
 }
 
 export function orderDetailPath(orderId: string) {
@@ -299,8 +330,15 @@ export function getAppPageRoute(pageId: PageId) {
 }
 
 export function findAppPageRoute(pathname: string) {
-  return APP_PAGE_ROUTES.find((route) =>
-    matchPath({ path: route.path, end: true }, pathname),
+  return (
+    APP_PAGE_ROUTES.find(
+      (route) =>
+        !route.path.includes(':') &&
+        matchPath({ path: route.path, end: true }, pathname),
+    ) ??
+    APP_PAGE_ROUTES.find((route) =>
+      matchPath({ path: route.path, end: true }, pathname),
+    )
   );
 }
 

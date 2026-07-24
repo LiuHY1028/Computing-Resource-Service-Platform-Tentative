@@ -37,9 +37,9 @@ describe('application routes', () => {
   it.each([
     ['/marketplace', '让每一份算力都匹配真实工作负载'],
     ['/console/resources/cloud-servers', '云服务器列表'],
-    ['/console/storage', '存储空间列表'],
+    ['/console/storage', '存储管理'],
     ['/console/images', '镜像管理'],
-    ['/software', '把合适的软件，装到合适的算力上'],
+    ['/software', '软件中心'],
     ['/console/network-access', '网络与访问'],
     ['/console/orders', '订单列表'],
     ['/console/operation-records', '操作记录'],
@@ -54,12 +54,12 @@ describe('application routes', () => {
   it('renders the storage management page instead of a service placeholder', async () => {
     renderRoute('/console/storage');
 
-    expect(await screen.findByRole('table', { name: '存储空间列表' })).toBeInTheDocument();
+    expect(await screen.findByRole('table', { name: '存储列表' })).toBeInTheDocument();
     expect(screen.queryByText(/服务状态|暂未开放/)).not.toBeInTheDocument();
   });
 
   it('registers every stable page route', () => {
-    expect(APP_PAGE_ROUTES).toHaveLength(15);
+    expect(APP_PAGE_ROUTES).toHaveLength(17);
   });
 
   it.each([

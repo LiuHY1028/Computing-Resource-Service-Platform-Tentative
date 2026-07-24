@@ -38,6 +38,20 @@ beforeEach(() => {
 });
 
 describe('ResourceDetailPage', () => {
+  it('carries cloud resource context into a same-spec purchase', async () => {
+    const { user, location } = renderDetail('/console/resources/cloud-servers/cs-east-002');
+    await screen.findByRole('heading', { name: '视觉训练节点-02' });
+    await user.click(screen.getByRole('button', { name: '购买同规格' }));
+    expect(location()).toContain('/marketplace/cloud-server/purchase?product=');
+  });
+
+  it('carries physical resource context into a same-type purchase', async () => {
+    const { user, location } = renderDetail('/console/resources/physical-machines/pm-east-002');
+    await screen.findByRole('heading', { name: '训练物理节点-02' });
+    await user.click(screen.getByRole('button', { name: '购买同类整机' }));
+    expect(location()).toContain('/marketplace/physical-machine/purchase?product=');
+  });
+
   it('renders cloud overview and keeps cloud fields distinct', async () => {
     renderDetail('/console/resources/cloud-servers/cs-east-001');
 

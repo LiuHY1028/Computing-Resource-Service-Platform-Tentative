@@ -398,3 +398,17 @@
     scroll-behavior: auto;
   }
 }
+.marketplace-return-context {
+  display: flex;
+  width: min(1480px, calc(100% - 48px));
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+  margin: 16px auto 0;
+  padding: 12px 16px;
+  border: 1px solid rgb(36 89 255 / 16%);
+  border-radius: 14px;
+  color: #435171;
+  background: rgb(255 255 255 / 82%);
+}

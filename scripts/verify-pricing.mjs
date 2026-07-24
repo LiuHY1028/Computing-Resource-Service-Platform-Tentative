@@ -164,6 +164,11 @@ require(
     source.storage.includes('priceSnapshot'),
   '存储扩容订单必须包含价格快照。',
 );
+require(
+  source.storage.includes("applicationType: 'storage-purchase'") &&
+    source.storage.includes("applicationType: 'storage-renewal'"),
+  '存储购买和续期订单必须由统一价格目录生成快照。',
+);
 
 if (errors.length) {
   console.error('价格完整性验证失败：');

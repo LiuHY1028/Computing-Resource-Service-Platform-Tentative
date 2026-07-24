@@ -28,7 +28,7 @@ describe('unified pricing', () => {
       durationMonths: 3,
       systemDiskGb: 30,
       storage: {
-        skuId: 'storage-shared-gb-month',
+        skuId: 'storage-shared-standard-gb-month',
         capacityGb: 100,
         label: '共享存储',
       },
@@ -83,16 +83,16 @@ describe('unified pricing', () => {
     ).toBe(208320000);
     expect(
       calculateStoragePrice({
-        skuId: 'storage-shared-gb-month',
+        skuId: 'storage-shared-standard-gb-month',
         capacityGb: 2048,
       }).total.amountFen,
     ).toBe(163840);
     expect(
       calculateStoragePrice({
-        skuId: 'storage-local-100gb-month',
+        skuId: 'storage-cloud-standard-gb-month',
         capacityGb: 250,
       }).total.amountFen,
-    ).toBe(14700);
+    ).toBe(8750);
   });
 
   it('creates an immutable historical snapshot independent of catalog clones', () => {

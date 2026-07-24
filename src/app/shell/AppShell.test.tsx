@@ -41,7 +41,7 @@ describe('AppShell', () => {
       'true',
     );
     expect(
-      screen.getByRole('heading', { level: 1, name: '存储空间列表' }),
+      screen.getByRole('heading', { level: 1, name: '存储管理' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '存储管理' })).toHaveAttribute(
       'aria-current',
@@ -67,7 +67,7 @@ describe('AppShell', () => {
       'page',
     );
     expect(
-      screen.getByRole('heading', { level: 1, name: '存储空间列表' }),
+      screen.getByRole('heading', { level: 1, name: '存储管理' }),
     ).toBeInTheDocument();
   });
 

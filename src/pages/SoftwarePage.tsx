@@ -174,11 +174,27 @@ export function SoftwarePage() {
     <div className="software-center-page">
       <section className="software-featured" aria-labelledby="software-center-title">
         <div className="software-featured__intro">
-          <span className="software-featured__eyebrow">SOFTWARE COLLECTION · 软件中心</span>
-          <h1 id="software-center-title">把合适的软件，装到合适的算力上</h1>
+          <span className="software-featured__eyebrow">应用与环境目录</span>
+          <h1 id="software-center-title">软件中心</h1>
           <p>
-            从运行环境、开发工具到运维组件，按资源兼容性完成版本选择与安装提交。
+            发现适配当前算力资源的软件、运行环境和工具，完成版本与兼容性确认后提交安装任务。
           </p>
+          <SearchInput
+            className="software-guide-search"
+            aria-label="全局搜索软件"
+            value={query.search}
+            placeholder="搜索软件、能力或发布方"
+            onChange={(event) => setParam('q', event.target.value)}
+            clearable
+            onClear={() => setParam('q', '')}
+          />
+          <div className="software-guide-categories" aria-label="热门分类">
+            {CATEGORIES.slice(1).map((category) => (
+              <button type="button" key={category} onClick={() => setParam('category', category)}>
+                {category}
+              </button>
+            ))}
+          </div>
           <div className="software-featured__stats" aria-label="软件中心概览">
             <div><strong>{catalog.length}</strong><span>收录软件</span></div>
             <div><strong>{new Set(catalog.flatMap((item) => item.versions)).size}</strong><span>可选版本</span></div>
@@ -189,8 +205,8 @@ export function SoftwarePage() {
         {featured && (
           <article className="software-featured__spotlight">
             <div className="software-featured__label">
-              <span>EDITOR’S PICK</span>
-              <span>GPU READY</span>
+              <span>精选软件</span>
+              <span>适配加速资源</span>
             </div>
             <div className="software-featured__glyph" aria-hidden="true">
               {softwareGlyph(featured)}
@@ -212,9 +228,8 @@ export function SoftwarePage() {
       </section>
 
       <section className="software-collection" aria-labelledby="software-catalog-title">
-        <aside className="software-category-rail" aria-label="软件分类">
-          <span className="software-category-rail__label">COLLECTIONS</span>
-          <h2>按用途浏览</h2>
+        <div className="software-category-rail" aria-label="软件分类">
+          <div><span className="software-category-rail__label">软件分类</span><h2>按用途浏览</h2></div>
           <nav>
             {CATEGORIES.map((category) => {
               const value = category === '全部软件' ? 'all' : category;
@@ -236,12 +251,12 @@ export function SoftwarePage() {
             <span aria-hidden="true">↗</span>
             <p>安装请求会关联目标资源，并同步记录到控制台操作记录。</p>
           </div>
-        </aside>
+        </div>
 
         <div className="software-catalog">
           <div className="software-catalog__heading">
             <div>
-              <span>DISCOVER</span>
+              <span>应用目录</span>
               <h2 id="software-catalog-title">软件目录</h2>
             </div>
             <p>{software.length} 个匹配结果</p>
@@ -338,6 +353,7 @@ export function SoftwarePage() {
                     </div>
                     <dl className="software-card__facts">
                       <div><dt>最新版本</dt><dd>{item.versions[0]}</dd></div>
+                      <div><dt>操作系统</dt><dd>{item.compatibleOperatingSystems.join(' / ')}</dd></div>
                       <div><dt>费用</dt><dd>{softwarePriceLabel(item.id)}</dd></div>
                       <div><dt>安装数量</dt><dd>{getSoftwareInstallCount(item.id)} 个</dd></div>
                     </dl>

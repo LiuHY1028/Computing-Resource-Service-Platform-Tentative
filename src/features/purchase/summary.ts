@@ -26,10 +26,10 @@ export function buildCloudSummary(
     : undefined;
   const storageSpace = getPresetStorageSpaceById(configuration.storageSpaceId);
   let storage = '未挂载';
-  if (configuration.storageType === 'host-path') {
-    storage = `本地数据存储 · ${configuration.hostMountPath || '挂载路径待填写'}`;
-  } else if (configuration.storageType === 'shared') {
-    storage = `高性能共享存储${storageSpace ? ` · ${storageSpace.name}` : ''} · ${configuration.sharedMountPath || '挂载路径待填写'}`;
+  if (configuration.storageType === 'new') {
+    storage = `${configuration.newStorageType === 'cloud-disk' ? '新购云硬盘' : '新购高性能共享存储'} · ${configuration.newStorageCapacityGb} GB · ${configuration.storageMountPath || '挂载路径待填写'}`;
+  } else if (configuration.storageType === 'existing') {
+    storage = `已有存储${storageSpace ? ` · ${storageSpace.name}` : ''} · ${configuration.storageMountPath || '挂载路径待填写'}`;
   }
   return [
     { label: '资源类型', value: '云服务器' },

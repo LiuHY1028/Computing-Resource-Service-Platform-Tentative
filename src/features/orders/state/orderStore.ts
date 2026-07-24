@@ -32,7 +32,7 @@ const INITIAL_CLOUD_PRICE = createPriceSnapshot(
     durationMonths: 1,
     systemDiskGb: 30,
     storage: {
-      skuId: 'storage-shared-gb-month',
+      skuId: 'storage-shared-performance-gb-month',
       capacityGb: 2048,
       label: '研发共享存储 · 2048 GB',
     },

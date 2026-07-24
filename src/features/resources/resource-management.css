@@ -4,6 +4,18 @@
   background: var(--color-background-page);
 }
 
+.resource-list-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-20);
+  padding: var(--space-20);
+}
+.resource-list-titlebar h1,
+.resource-list-titlebar p { margin: var(--space-4) 0 0; }
+.resource-list-titlebar span,
+.resource-list-titlebar p { color: var(--color-text-secondary); }
+
 .resource-type-tabs,
 .resource-filters,
 .resource-results {

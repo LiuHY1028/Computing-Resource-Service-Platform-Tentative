@@ -10,7 +10,7 @@ export type PurchaseProduct = MarketplaceProduct;
 export type CloudPurchaseProduct = MarketplaceCloudServerProduct;
 export type PhysicalPurchaseProduct = MarketplacePhysicalMachineProduct;
 
-export type DataStorageType = 'none' | 'host-path' | 'shared';
+export type DataStorageType = 'none' | 'new' | 'existing';
 export type NetworkProtocol = 'TCP' | 'UDP';
 
 export type PortRule = Readonly<{
@@ -34,12 +34,12 @@ export type CloudPurchaseConfiguration = Readonly<{
   purpose: string;
   systemDiskGb: number;
   storageType: DataStorageType;
-  hostPath: string;
-  hostMountPath: string;
-  hostReadOnly: boolean;
+  newStorageType: 'cloud-disk' | 'shared';
+  newStorageSkuId: string;
+  newStorageCapacityGb: number;
   storageSpaceId: string;
-  sharedMountPath: string;
-  sharedReadOnly: boolean;
+  storageMountPath: string;
+  storageReadOnly: boolean;
   imageId: string | null;
   billingMode: 'subscription' | 'pay-as-you-go';
   periodMonths: '1' | '3' | '6' | '12';

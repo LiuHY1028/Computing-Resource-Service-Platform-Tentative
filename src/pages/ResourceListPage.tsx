@@ -142,6 +142,38 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
     }
   }, [page, safePage, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    const key = `resource-list-context:${resourceType}`;
+    try {
+      const raw = window.sessionStorage.getItem(key);
+      if (!raw) return;
+      const context = JSON.parse(raw) as { path?: string; scrollY?: number };
+      const current = `${location.pathname}${location.search}`;
+      if (context.path === current) {
+        window.requestAnimationFrame(() => window.scrollTo({ top: context.scrollY ?? 0 }));
+        window.sessionStorage.removeItem(key);
+      }
+    } catch {
+      // URL 查询参数仍会保留筛选上下文。
+    }
+  }, [location.pathname, location.search, resourceType]);
+
+  function goPurchase() {
+    const path = `${location.pathname}${location.search}`;
+    try {
+      window.sessionStorage.setItem(
+        `resource-list-context:${resourceType}`,
+        JSON.stringify({ path, scrollY: window.scrollY }),
+      );
+    } catch {
+      // 浏览器后退仍可恢复 URL 查询参数。
+    }
+    navigate(
+      `${APP_PATHS.marketplace}?type=${resourceType === 'cloud-server' ? 'cloud' : 'physical'}`,
+      { state: { fromResourceList: path } },
+    );
+  }
+
   function setParam(key: string, value: string, resetPage = true) {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key); else next.set(key, value);
@@ -272,7 +304,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
           onSelectionChange={setSelectedKeys}
           onRetry={() => undefined}
           onResetFilters={() => setSearchParams({})}
-          onGoMarketplace={() => navigate(resourceType === 'cloud-server' ? `${APP_PATHS.marketplace}?type=cloud` : `${APP_PATHS.marketplace}?type=physical`)}
+          onGoMarketplace={goPurchase}
           onConnection={(resource) => detailPath(resource, 'network')}
           onAction={handleAction}
         />
@@ -287,6 +319,16 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
 
   return (
     <div className="resource-page" data-resource-type={resourceType}>
+      <Container className="resource-list-titlebar">
+        <div>
+          <span>我的资源</span>
+          <h1>{resourceType === 'cloud-server' ? '云服务器' : '物理机'}</h1>
+          <p>查看已购资源，并直接进入购买、连接与关联能力。</p>
+        </div>
+        <Button variant="primary" onClick={goPurchase}>
+          {resourceType === 'cloud-server' ? '购买云服务器' : '购买物理机'}
+        </Button>
+      </Container>
       <Container className="resource-type-tabs">
         <TitleBarTabs
           aria-label="我的资源类型"

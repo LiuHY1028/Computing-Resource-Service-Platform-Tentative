@@ -125,28 +125,25 @@ describe('PurchasePage', () => {
     expect(getComputedStyle(rail as HTMLElement).maxHeight).not.toMatch(/\d/);
   });
 
-  it('switches cloud data-storage types and clears hidden values', async () => {
+  it('switches between new, existing and no independent storage', async () => {
     const user = renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east');
     await waitForCloud();
 
-    await user.click(screen.getByRole('radio', { name: /本地数据存储/ }));
-    await user.type(screen.getByLabelText(/主机路径/), '/data/project');
-    await user.type(screen.getByLabelText(/容器挂载路径/), '/workspace/data');
-    expect(screen.getByText(/底层挂载方式：HostPath/)).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: /购买新存储/ }));
+    expect(screen.getByRole('combobox', { name: /存储类型/ })).toHaveTextContent('云硬盘');
+    expect(screen.getByLabelText(/容量/)).toHaveValue(100);
+    await user.clear(screen.getByLabelText(/挂载路径/));
+    await user.type(screen.getByLabelText(/挂载路径/), '/workspace/data');
+    expect(screen.getByText('统一 GB/月价格')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('radio', { name: /高性能共享存储/ }));
-    expect(screen.queryByLabelText(/主机路径/)).not.toBeInTheDocument();
-    expect(screen.getByText(/底层挂载方式：NFS/)).toBeInTheDocument();
-    await user.click(screen.getByRole('combobox', { name: /共享存储空间/ }));
+    await user.click(screen.getByRole('radio', { name: /选择已有存储/ }));
+    expect(screen.queryByLabelText(/容量/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: /^存储/ }));
     await user.click(screen.getByRole('option', { name: /研发共享存储/ }));
-    await user.type(screen.getByLabelText(/^挂载路径/), '/workspace/shared');
-    expect(screen.getAllByText(/高性能共享存储/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('combobox', { name: /^存储/ })).toHaveTextContent('研发共享存储');
 
-    await user.click(screen.getByRole('radio', { name: /本地数据存储/ }));
-    expect(screen.getByLabelText(/主机路径/)).toHaveValue('');
-    expect(screen.getByLabelText(/容器挂载路径/)).toHaveValue('');
-    await user.click(screen.getByRole('radio', { name: /不挂载数据盘/ }));
-    expect(screen.queryByLabelText(/主机路径/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: /暂不挂载/ }));
+    expect(screen.queryByRole('combobox', { name: /^存储/ })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/^挂载路径/)).not.toBeInTheDocument();
   });
 
@@ -249,7 +246,9 @@ describe('PurchasePage', () => {
   it('shows a leave confirmation for modified drafts and keeps the form when cancelled', async () => {
     const user = renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east');
     await waitForCloud();
-    await user.type(screen.getByLabelText(/实例名称/), 'draft-name');
+    const instanceName = screen.getByLabelText(/实例名称/);
+    await user.clear(instanceName);
+    await user.type(instanceName, 'draft-name');
     await user.click(screen.getAllByRole('button', { name: '返回资源商城' })[0]!);
     expect(screen.getByRole('alertdialog', { name: '离开当前配置？' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '继续配置' }));

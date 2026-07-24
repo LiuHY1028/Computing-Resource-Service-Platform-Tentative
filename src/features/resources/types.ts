@@ -124,7 +124,7 @@ export interface CloudDataDisk {
   readonly id: string;
   readonly name: string;
   readonly role: 'system' | 'data';
-  readonly displayType: '系统盘' | '本地数据存储' | '高性能共享存储';
+  readonly displayType: '系统盘' | '云硬盘' | '高性能共享存储';
   readonly diskType: '高性能云盘' | '共享存储';
   readonly mountPath: string;
   readonly deviceName: string;

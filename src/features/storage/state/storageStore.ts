@@ -1,156 +1,184 @@
-import { recordOperation } from '../../operations';
-import { storageDetailPath } from '../../../app/routes';
+import { storageDetailPath, storageFilesPath } from '../../../app/routes';
 import { createApplicationOrder } from '../../orders';
+import { recordOperation } from '../../operations';
+import {
+  calculateStoragePrice,
+  combinePriceQuotes,
+  createPriceSnapshot,
+  createZeroPriceSnapshot,
+  type PriceQuote,
+} from '../../pricing';
 import {
   readVersionedState,
   removeVersionedState,
   writeVersionedState,
 } from '../../platform/persistence';
+import { getResourceByAnyId } from '../../resources/state/resourceStore';
 import type {
-  CreateStorageInput,
+  PurchaseStorageInput,
   StorageMount,
   StorageQuery,
   StorageSpace,
 } from '../types';
-import { getResourceByAnyId } from '../../resources/state/resourceStore';
-import {
-  calculateStoragePrice,
-  createPriceSnapshot,
-  type PriceQuote,
-} from '../../pricing';
 
 const STORAGE_KEY = 'computing-platform:storage';
-const VERSION = 3;
+const VERSION = 4;
 
-function quoteForStorage(
+function storageQuote(
   skuId: string,
   capacityGb: number,
   name: string,
+  durationMonths = 1,
 ): PriceQuote {
-  return calculateStoragePrice({ skuId, capacityGb, label: name });
+  return calculateStoragePrice({ skuId, capacityGb, label: name, durationMonths });
 }
 
-function storagePriceSnapshot(
+function priceSnapshot(
   skuId: string,
   capacityGb: number,
   name: string,
   generatedAt: string,
 ) {
-  return createPriceSnapshot(
-    skuId,
-    quoteForStorage(skuId, capacityGb, name),
-    generatedAt,
-  );
+  return createPriceSnapshot(skuId, storageQuote(skuId, capacityGb, name), generatedAt);
 }
 
 const INITIAL_SPACES: readonly StorageSpace[] = [
   {
     id: 'storage-shared-east-001',
-    skuId: 'storage-shared-gb-month',
+    skuId: 'storage-shared-performance-gb-month',
     name: '研发共享存储',
     type: 'shared',
+    performanceTier: 'performance',
     site: '东部算力中心',
-    technology: 'NFS',
     capacityGb: 2048,
     usedGb: 780,
+    systemReservedGb: 780,
+    status: 'available',
+    billingMode: 'subscription',
+    expiresAt: '2027-06-30T23:59:59+08:00',
+    autoRenew: true,
+    fileSystem: 'NFS',
     protocol: 'NFS',
     mountPath: '/data/shared',
-    readWriteStatus: 'read-write',
-    expiresAt: '2027-06-30T23:59:59+08:00',
-    performance: { readThroughputMbs: 620, writeThroughputMbs: 480, readIops: 18500, writeIops: 14200, averageLatencyMs: 1.8 },
-    status: 'available',
+    initialized: true,
+    iops: 18500,
+    throughputMbs: 620,
+    fileCount: 3,
+    directoryCount: 5,
     createdAt: '2026-06-18T02:20:00.000Z',
     updatedAt: '2026-07-21T09:30:00.000Z',
-    mounts: [
-      {
-        id: 'mount-shared-east-001',
-        resourceId: 'cs-east-001',
-        resourceName: '研发计算节点-01',
-        resourceType: 'cloud-server',
-        mountPath: '/data/shared',
-        readOnly: false,
-        status: 'effective',
-      },
-    ],
-    priceSnapshot: storagePriceSnapshot('storage-shared-gb-month', 2048, '研发共享存储', '2026-06-18T02:20:00.000Z'),
+    lastOperatedAt: '2026-07-21T09:30:00.000Z',
+    mounts: [{
+      id: 'mount-shared-east-001',
+      resourceId: 'cs-east-001',
+      resourceName: '研发计算节点-01',
+      resourceType: 'cloud-server',
+      mountPath: '/data/shared',
+      readOnly: false,
+      status: 'effective',
+    }],
+    priceSnapshot: priceSnapshot(
+      'storage-shared-performance-gb-month',
+      2048,
+      '研发共享存储',
+      '2026-06-18T02:20:00.000Z',
+    ),
   },
   {
-    id: 'storage-local-east-001',
-    skuId: 'storage-local-100gb-month',
-    name: '本地工作数据',
-    type: 'local',
+    id: 'storage-cloud-east-001',
+    skuId: 'storage-cloud-performance-gb-month',
+    name: '数据库数据盘',
+    type: 'cloud-disk',
+    performanceTier: 'performance',
     site: '东部算力中心',
-    technology: 'HostPath',
     capacityGb: 500,
     usedGb: 342,
-    protocol: 'HostPath',
-    mountPath: '/data/local',
-    readWriteStatus: 'read-write',
-    expiresAt: '2027-06-30T23:59:59+08:00',
-    performance: { readThroughputMbs: 410, writeThroughputMbs: 365, readIops: 12400, writeIops: 10800, averageLatencyMs: 1.3 },
+    systemReservedGb: 342,
     status: 'available',
+    billingMode: 'subscription',
+    expiresAt: '2027-06-30T23:59:59+08:00',
+    autoRenew: false,
+    fileSystem: 'xfs',
+    mountPath: '/data/database',
+    initialized: true,
+    diskType: 'performance',
+    deviceName: '/dev/vdb',
+    iops: 16000,
+    throughputMbs: 480,
+    fileCount: 1,
+    directoryCount: 2,
     createdAt: '2026-07-02T06:10:00.000Z',
     updatedAt: '2026-07-20T11:00:00.000Z',
-    mounts: [
-      {
-        id: 'mount-local-east-001',
-        resourceId: 'cs-east-001',
-        resourceName: '研发计算节点-01',
-        resourceType: 'cloud-server',
-        mountPath: '/data/local',
-        readOnly: false,
-        status: 'effective',
-      },
-    ],
-    priceSnapshot: storagePriceSnapshot('storage-local-100gb-month', 500, '本地工作数据', '2026-07-02T06:10:00.000Z'),
+    lastOperatedAt: '2026-07-20T11:00:00.000Z',
+    mounts: [{
+      id: 'mount-cloud-east-001',
+      resourceId: 'cs-east-001',
+      resourceName: '研发计算节点-01',
+      resourceType: 'cloud-server',
+      mountPath: '/data/database',
+      deviceName: '/dev/vdb',
+      readOnly: false,
+      status: 'effective',
+    }],
+    priceSnapshot: priceSnapshot(
+      'storage-cloud-performance-gb-month',
+      500,
+      '数据库数据盘',
+      '2026-07-02T06:10:00.000Z',
+    ),
   },
   {
     id: 'storage-shared-west-001',
-    skuId: 'storage-shared-gb-month',
+    skuId: 'storage-shared-standard-gb-month',
     name: '西部共享空间',
     type: 'shared',
+    performanceTier: 'standard',
     site: '西部算力中心',
-    technology: 'NFS',
     capacityGb: 4096,
     usedGb: 860,
+    systemReservedGb: 860,
+    status: 'available',
+    billingMode: 'subscription',
+    expiresAt: '2027-09-30T23:59:59+08:00',
+    autoRenew: false,
+    fileSystem: 'NFS',
     protocol: 'NFS',
     mountPath: '/data/shared',
-    readWriteStatus: 'read-write',
-    expiresAt: '2027-09-30T23:59:59+08:00',
-    performance: { readThroughputMbs: 720, writeThroughputMbs: 560, readIops: 21600, writeIops: 16800, averageLatencyMs: 2.1 },
-    status: 'available',
+    initialized: true,
+    iops: 12000,
+    throughputMbs: 420,
+    fileCount: 0,
+    directoryCount: 2,
     createdAt: '2026-06-25T03:40:00.000Z',
     updatedAt: '2026-07-19T05:20:00.000Z',
+    lastOperatedAt: '2026-07-19T05:20:00.000Z',
     mounts: [],
-    priceSnapshot: storagePriceSnapshot('storage-shared-gb-month', 4096, '西部共享空间', '2026-06-25T03:40:00.000Z'),
+    priceSnapshot: priceSnapshot(
+      'storage-shared-standard-gb-month',
+      4096,
+      '西部共享空间',
+      '2026-06-25T03:40:00.000Z',
+    ),
   },
 ];
 
 function isSpace(value: unknown): value is StorageSpace {
   if (!value || typeof value !== 'object') return false;
   const space = value as Partial<StorageSpace>;
-  return (
-    typeof space.id === 'string' &&
-    typeof space.name === 'string' &&
-    typeof space.skuId === 'string' &&
-    (space.type === 'local' || space.type === 'shared') &&
-    typeof space.site === 'string' &&
-    typeof space.capacityGb === 'number' &&
-    typeof space.usedGb === 'number' &&
-    typeof space.expiresAt === 'string' &&
-    typeof space.performance === 'object' &&
-    Array.isArray(space.mounts) &&
-    typeof space.priceSnapshot === 'object' &&
-    Number.isSafeInteger(space.priceSnapshot?.total?.amountFen)
-  );
+  return typeof space.id === 'string'
+    && typeof space.skuId === 'string'
+    && (space.type === 'cloud-disk' || space.type === 'shared')
+    && typeof space.capacityGb === 'number'
+    && typeof space.usedGb === 'number'
+    && Array.isArray(space.mounts)
+    && typeof space.priceSnapshot === 'object';
 }
 
 function readSpaces() {
   return readVersionedState(
     STORAGE_KEY,
     VERSION,
-    (value): value is StorageSpace[] =>
-      Array.isArray(value) && value.every(isSpace),
+    (value): value is StorageSpace[] => Array.isArray(value) && value.every(isSpace),
     () => structuredClone(INITIAL_SPACES) as StorageSpace[],
   );
 }
@@ -159,7 +187,16 @@ function writeSpaces(spaces: readonly StorageSpace[]) {
   writeVersionedState(STORAGE_KEY, VERSION, spaces);
 }
 
-function withCurrentResourceNames(space: StorageSpace) {
+function updateSpace(storageId: string, update: (space: StorageSpace) => StorageSpace) {
+  const spaces = readSpaces();
+  const index = spaces.findIndex((space) => space.id === storageId);
+  if (index < 0) throw new Error('未找到存储。');
+  const next = update(spaces[index]);
+  writeSpaces([...spaces.slice(0, index), next, ...spaces.slice(index + 1)]);
+  return next;
+}
+
+function withResourceNames(space: StorageSpace): StorageSpace {
   return {
     ...space,
     mounts: space.mounts.map((mount) => {
@@ -169,168 +206,165 @@ function withCurrentResourceNames(space: StorageSpace) {
   };
 }
 
-function updateSpace(
-  storageId: string,
-  update: (space: StorageSpace) => StorageSpace,
-) {
-  const spaces = readSpaces();
-  const index = spaces.findIndex((space) => space.id === storageId);
-  if (index < 0) throw new Error('未找到存储空间。');
-  const next = update(spaces[index]);
-  writeSpaces([...spaces.slice(0, index), next, ...spaces.slice(index + 1)]);
-  return next;
-}
-
 export function queryStorageSpaces(query: StorageQuery = {}) {
   const search = query.search?.trim().toLocaleLowerCase() ?? '';
   return readSpaces().filter((space) => {
     const usage = space.capacityGb ? space.usedGb / space.capacityGb : 0;
-    if (
-      search &&
-      ![space.id, space.name, space.site]
-        .join(' ')
-        .toLocaleLowerCase()
-        .includes(search)
-    ) return false;
+    if (search && ![space.id, space.name, space.site].join(' ').toLocaleLowerCase().includes(search)) return false;
     if (query.type && query.type !== 'all' && space.type !== query.type) return false;
     if (query.status && query.status !== 'all' && space.status !== query.status) return false;
-    if (query.mounted === 'yes' && space.mounts.length === 0) return false;
-    if (query.mounted === 'no' && space.mounts.length > 0) return false;
+    if (query.mounted === 'yes' && !space.mounts.length) return false;
+    if (query.mounted === 'no' && space.mounts.length) return false;
     if (query.usage === 'low' && usage >= 0.5) return false;
     if (query.usage === 'medium' && (usage < 0.5 || usage >= 0.8)) return false;
     if (query.usage === 'high' && usage < 0.8) return false;
     return true;
-  });
+  }).map(withResourceNames);
 }
 
 export function getStorageSpace(storageId: string) {
-  const space = readSpaces().find((item) => item.id === storageId);
-  return space ? withCurrentResourceNames(space) : undefined;
+  const space = readSpaces().find((candidate) => candidate.id === storageId);
+  return space ? withResourceNames(space) : undefined;
 }
 
 export function findStorageSpace(storageId: string) {
-  return readSpaces().find((space) => space.id === storageId);
+  return readSpaces().find((candidate) => candidate.id === storageId);
 }
 
 export function getStorageSpacesForSite(site: string) {
   return readSpaces().filter(
     (space) =>
-      space.site === site &&
-      space.type === 'shared' &&
-      space.status === 'available',
+      space.site === site
+      && space.status === 'available'
+      && (space.type === 'shared' || space.mounts.length === 0),
   );
 }
 
 export function getStorageMountsForResource(resourceId: string) {
-  return readSpaces().flatMap((space) =>
-    space.mounts
-      .filter((mount) => mount.resourceId === resourceId)
-      .map((mount) => {
-        const resource = getResourceByAnyId(mount.resourceId);
-        return { space, mount: resource ? { ...mount, resourceName: resource.name } : mount };
-      }),
-  );
+  return readSpaces().flatMap((space) => space.mounts
+    .filter((mount) => mount.resourceId === resourceId)
+    .map((mount) => ({ space, mount })));
 }
 
-export async function createStorageSpace(input: CreateStorageInput) {
+function storageSku(input: Pick<PurchaseStorageInput, 'type' | 'performanceTier'>) {
+  return input.type === 'cloud-disk'
+    ? `storage-cloud-${input.performanceTier}-gb-month`
+    : `storage-shared-${input.performanceTier}-gb-month`;
+}
+
+export async function purchaseStorage(input: PurchaseStorageInput) {
   const name = input.name.trim();
   if (!name) throw new Error('请输入存储名称。');
-  if (!Number.isFinite(input.capacityGb) || input.capacityGb <= 0) {
-    throw new Error('请输入有效容量。');
+  if (input.capacityGb < 10 || !Number.isSafeInteger(input.capacityGb)) throw new Error('容量必须为不小于 10 GB 的整数。');
+  if (input.quantity < 1 || input.quantity > 10) throw new Error('购买数量必须为 1 至 10。');
+  const skuId = storageSku(input);
+  if (input.skuId !== skuId) throw new Error('存储规格与价格目录不一致。');
+  if (input.type === 'cloud-disk' && input.mounts.length > 1) throw new Error('云硬盘一次只能挂载到一台云服务器。');
+
+  const now = new Date().toISOString();
+  const created: StorageSpace[] = [];
+  for (let index = 0; index < input.quantity; index += 1) {
+    const id = `storage-${input.type === 'cloud-disk' ? 'cloud' : 'shared'}-${now.replace(/\D/g, '').slice(0, 14)}-${index + 1}`;
+    const mounts = input.mounts.map((mount, mountIndex) => {
+      const resource = getResourceByAnyId(mount.resourceId);
+      if (!resource || resource.site !== input.site) throw new Error('挂载目标必须是同站点的有效计算资源。');
+      if (input.type === 'cloud-disk' && resource.resourceType !== 'cloud-server') throw new Error('云硬盘只能挂载到云服务器。');
+      return {
+        ...mount,
+        id: `mount-${id}-${mountIndex + 1}`,
+        resourceName: resource.name,
+        status: 'processing' as const,
+      };
+    });
+    const quote = storageQuote(skuId, input.capacityGb, name, input.durationMonths);
+    created.push({
+      id,
+      skuId,
+      name: input.quantity > 1 ? `${name}-${index + 1}` : name,
+      type: input.type,
+      performanceTier: input.performanceTier,
+      site: input.site,
+      capacityGb: input.capacityGb,
+      usedGb: input.type === 'shared' ? 2 : 0,
+      systemReservedGb: input.type === 'shared' ? 2 : 0,
+      status: 'preparing',
+      billingMode: 'subscription',
+      expiresAt: new Date(new Date(now).setUTCMonth(new Date(now).getUTCMonth() + input.durationMonths)).toISOString(),
+      autoRenew: input.autoRenew,
+      fileSystem: input.type === 'shared' ? (input.protocol ?? 'NFS') : 'uninitialized',
+      protocol: input.type === 'shared' ? (input.protocol ?? 'NFS') : undefined,
+      mountPath: mounts[0]?.mountPath ?? (input.type === 'shared' ? '/data/shared' : '/data/disk'),
+      initialized: input.type === 'shared',
+      diskType: input.type === 'cloud-disk' ? input.performanceTier : undefined,
+      deviceName: input.type === 'cloud-disk' ? (mounts[0]?.deviceName ?? '/dev/vdb') : undefined,
+      iops: input.performanceTier === 'performance' ? 16000 : 8000,
+      throughputMbs: input.performanceTier === 'performance' ? 480 : 260,
+      fileCount: 0,
+      directoryCount: 1,
+      createdAt: now,
+      updatedAt: now,
+      lastOperatedAt: now,
+      mounts,
+      priceSnapshot: createPriceSnapshot(skuId, quote, now),
+    });
   }
-  const createdAt = new Date().toISOString();
-  const space: StorageSpace = {
-    id: `storage-local-${createdAt.replace(/\D/g, '').slice(0, 14)}`,
-    skuId: input.type === 'shared' ? 'storage-shared-gb-month' : 'storage-local-100gb-month',
-    name,
-    type: input.type,
+  writeSpaces([...created, ...readSpaces()]);
+  const combined = combinePriceQuotes(
+    created.map((space) => storageQuote(space.skuId, space.capacityGb, space.name, input.durationMonths)),
+    'monthly-capacity',
+    input.durationMonths,
+  );
+  const order = createApplicationOrder({
+    applicationType: 'storage-purchase',
+    resourceType: 'storage',
+    storageId: created[0].id,
+    resourceIds: created.map((space) => space.id),
+    resourceName: name,
     site: input.site,
-    technology: input.type === 'shared' ? 'NFS' : 'HostPath',
-    capacityGb: input.capacityGb,
-    usedGb: 0,
-    protocol: input.type === 'shared' ? 'NFS' : 'HostPath',
-    mountPath: input.type === 'shared' ? '/data/shared' : '/data/local',
-    readWriteStatus: 'read-write',
-    expiresAt: new Date(new Date(createdAt).setUTCFullYear(new Date(createdAt).getUTCFullYear() + 1)).toISOString(),
-    performance: {
-      readThroughputMbs: input.type === 'shared' ? 520 : 360,
-      writeThroughputMbs: input.type === 'shared' ? 420 : 310,
-      readIops: input.type === 'shared' ? 16000 : 10800,
-      writeIops: input.type === 'shared' ? 12400 : 9200,
-      averageLatencyMs: input.type === 'shared' ? 2.0 : 1.4,
-    },
-    status: 'processing',
-    createdAt,
-    updatedAt: createdAt,
-    mounts: [],
-    priceSnapshot: storagePriceSnapshot(
-      input.type === 'shared' ? 'storage-shared-gb-month' : 'storage-local-100gb-month',
-      input.capacityGb,
-      name,
-      createdAt,
-    ),
-  };
-  writeSpaces([space, ...readSpaces()]);
-  recordOperation({
+    configurationChanges: `${input.capacityGb} GB × ${input.quantity}`,
+    summary: [
+      { label: '存储类型', value: input.type === 'cloud-disk' ? '云硬盘' : '高性能共享存储' },
+      { label: '性能等级', value: input.performanceTier === 'performance' ? '性能型' : '标准型' },
+      { label: '容量', value: `${input.capacityGb} GB` },
+      { label: '数量', value: String(input.quantity) },
+      { label: '计费周期', value: `${input.durationMonths} 个月` },
+      { label: '挂载配置', value: mountsSummary(input.mounts) },
+      { label: '处理说明', value: '存储与挂载关系处于准备中，等待后续交付' },
+    ],
+    priceSnapshot: createPriceSnapshot(skuId, combined, now),
+  });
+  created.forEach((space) => recordOperation({
     module: 'storage',
-    action: '创建存储空间',
+    action: '购买存储',
     targetId: space.id,
     targetName: space.name,
     status: 'submitted',
-    message: '创建请求已提交，等待存储空间准备。',
+    message: '购买申请已提交，存储处于准备中。',
     targetPath: storageDetailPath(space.id),
-  });
-  return space;
+    createdAt: now,
+  }));
+  return { spaces: created, order };
+}
+
+function mountsSummary(mounts: PurchaseStorageInput['mounts']) {
+  return mounts.length ? `立即挂载 ${mounts.length} 个资源` : '暂不挂载';
 }
 
 export async function renameStorageSpace(storageId: string, nextName: string) {
   const name = nextName.trim();
   if (!name) throw new Error('请输入存储名称。');
-  const updated = updateSpace(storageId, (space) => ({
-    ...space,
-    name,
-    updatedAt: new Date().toISOString(),
-  }));
-  recordOperation({
-    module: 'storage',
-    action: '修改存储名称',
-    targetId: updated.id,
-    targetName: updated.name,
-    status: 'completed',
-    message: '存储名称已更新。',
-    targetPath: storageDetailPath(updated.id),
-  });
+  const updated = updateSpace(storageId, (space) => ({ ...space, name, updatedAt: new Date().toISOString(), lastOperatedAt: new Date().toISOString() }));
+  recordOperation({ module: 'storage', action: '修改存储名称', targetId: updated.id, targetName: updated.name, status: 'completed', message: '存储名称已更新。', targetPath: storageDetailPath(updated.id) });
   return updated;
 }
 
-export async function requestStorageExpansion(
-  storageId: string,
-  capacityGb: number,
-) {
-  const current = await getStorageSpace(storageId);
-  if (!current) throw new Error('未找到存储空间。');
-  if (!Number.isFinite(capacityGb) || capacityGb <= current.capacityGb) {
-    throw new Error('目标容量必须大于当前容量。');
-  }
-  const additionalCapacityGb = capacityGb - current.capacityGb;
-  const priceSnapshot = createPriceSnapshot(
-    current.skuId,
-    quoteForStorage(
-      current.skuId,
-      additionalCapacityGb,
-      `${current.name}扩容量`,
-    ),
-  );
-  recordOperation({
-    module: 'storage',
-    action: '提交扩容申请',
-    targetId: current.id,
-    targetName: current.name,
-    status: 'submitted',
-    message: `扩容至 ${capacityGb} GB 的申请已提交，当前容量保持不变。`,
-    targetPath: storageDetailPath(current.id),
-  });
-  createApplicationOrder({
+export async function requestStorageExpansion(storageId: string, capacityGb: number) {
+  const current = getStorageSpace(storageId);
+  if (!current) throw new Error('未找到存储。');
+  if (!Number.isSafeInteger(capacityGb) || capacityGb <= current.capacityGb) throw new Error('目标容量必须大于当前容量。');
+  const additional = capacityGb - current.capacityGb;
+  const snapshot = createPriceSnapshot(current.skuId, storageQuote(current.skuId, additional, `${current.name}扩容量`));
+  const order = createApplicationOrder({
     applicationType: 'storage-expansion',
     resourceType: 'storage',
     storageId: current.id,
@@ -338,99 +372,141 @@ export async function requestStorageExpansion(
     site: current.site,
     configurationChanges: `${current.capacityGb} GB → ${capacityGb} GB`,
     summary: [
-      { label: '申请类型', value: '存储扩容' },
-      { label: '存储空间', value: `${current.name}（${current.id}）` },
       { label: '当前容量', value: `${current.capacityGb} GB` },
+      { label: '已用容量', value: `${current.usedGb} GB` },
       { label: '目标容量', value: `${capacityGb} GB` },
-      { label: '处理说明', value: '申请处理完成前当前容量保持不变' },
+      { label: '文件系统', value: '扩容处理完成后按提示扩展文件系统' },
     ],
-    priceSnapshot,
+    priceSnapshot: snapshot,
   });
-  return current;
+  recordOperation({ module: 'storage', action: '扩容存储', targetId: current.id, targetName: current.name, status: 'submitted', message: `扩容至 ${capacityGb} GB 的申请已提交，当前容量保持不变。`, targetPath: storageDetailPath(current.id) });
+  return order;
+}
+
+export async function requestStorageRenewal(storageId: string, durationMonths: 1 | 3 | 6 | 12) {
+  const current = getStorageSpace(storageId);
+  if (!current) throw new Error('未找到存储。');
+  const expected = new Date(current.expiresAt);
+  expected.setUTCMonth(expected.getUTCMonth() + durationMonths);
+  const snapshot = createPriceSnapshot(current.skuId, storageQuote(current.skuId, current.capacityGb, `${current.name}续期`, durationMonths));
+  const order = createApplicationOrder({
+    applicationType: 'storage-renewal',
+    resourceType: 'storage',
+    storageId: current.id,
+    resourceName: current.name,
+    site: current.site,
+    expectedExpiresAt: expected.toISOString(),
+    summary: [
+      { label: '当前到期时间', value: current.expiresAt },
+      { label: '续期周期', value: `${durationMonths} 个月` },
+      { label: '预计新到期时间', value: expected.toISOString() },
+      { label: '自动续费', value: current.autoRenew ? '已开启' : '未开启' },
+    ],
+    priceSnapshot: snapshot,
+  });
+  recordOperation({ module: 'storage', action: '续期存储', targetId: current.id, targetName: current.name, status: 'submitted', message: '续期申请已提交，当前到期时间保持不变。', targetPath: storageDetailPath(current.id) });
+  return order;
+}
+
+export async function setStorageAutoRenew(storageId: string, enabled: boolean) {
+  const updated = updateSpace(storageId, (space) => ({ ...space, autoRenew: enabled, updatedAt: new Date().toISOString(), lastOperatedAt: new Date().toISOString() }));
+  recordOperation({ module: 'storage', action: enabled ? '开启自动续费' : '关闭自动续费', targetId: updated.id, targetName: updated.name, status: 'completed', message: `自动续费已${enabled ? '开启' : '关闭'}。`, targetPath: storageDetailPath(updated.id) });
+  return updated;
 }
 
 export function createStoragePriceQuote(
   space: Pick<StorageSpace, 'skuId' | 'capacityGb' | 'name'>,
   capacityGb = space.capacityGb,
+  durationMonths = 1,
 ) {
-  return quoteForStorage(space.skuId, capacityGb, space.name);
+  return storageQuote(space.skuId, capacityGb, space.name, durationMonths);
 }
 
-export async function requestStorageMount(
-  storageId: string,
-  input: Omit<StorageMount, 'id' | 'status'>,
-) {
+export async function requestStorageMount(storageId: string, input: Omit<StorageMount, 'id' | 'status'>) {
   const resource = getResourceByAnyId(input.resourceId);
-  if (!resource || resource.resourceType !== input.resourceType) {
-    throw new Error(`未找到有效的挂载资源：${input.resourceId}`);
-  }
+  if (!resource || resource.resourceType !== input.resourceType) throw new Error('未找到有效的挂载资源。');
   const updated = updateSpace(storageId, (space) => {
-    if (space.mounts.some((mount) => mount.resourceId === input.resourceId)) {
-      throw new Error('该资源已存在挂载关系或挂载请求。');
-    }
+    if (resource.site !== space.site) throw new Error('挂载目标与存储必须位于同一站点。');
+    if (space.type === 'cloud-disk' && resource.resourceType !== 'cloud-server') throw new Error('云硬盘只能挂载到云服务器。');
+    if (space.type === 'cloud-disk' && space.mounts.length) throw new Error('云硬盘一次只能挂载到一台云服务器。');
+    if (space.mounts.some((mount) => mount.resourceId === input.resourceId && mount.status !== 'removing')) throw new Error('该资源已存在挂载关系或挂载请求。');
+    const now = new Date().toISOString();
     return {
       ...space,
-      updatedAt: new Date().toISOString(),
-      mounts: [
-        ...space.mounts,
-        {
-          ...input,
-          resourceName: resource.name,
-          id: `mount-${Date.now()}`,
-          status: 'processing',
-        },
-      ],
+      updatedAt: now,
+      lastOperatedAt: now,
+      mounts: [...space.mounts, { ...input, resourceName: resource.name, id: `mount-${Date.now()}`, status: 'processing' }],
     };
   });
-  recordOperation({
-    module: 'storage',
-    action: '挂载存储',
-    targetId: updated.id,
-    targetName: updated.name,
-    status: 'processing',
-    message: '挂载请求已提交，等待基础设施处理。',
-    targetPath: storageDetailPath(updated.id),
+  createApplicationOrder({
+    applicationType: 'storage-mount',
+    resourceType: 'storage',
+    storageId,
+    resourceId: input.resourceId,
+    resourceName: updated.name,
+    site: updated.site,
+    summary: [
+      { label: '目标资源', value: `${resource.name}（${resource.id}）` },
+      { label: '挂载路径', value: input.mountPath },
+      { label: '读写模式', value: input.readOnly ? '只读' : '读写' },
+    ],
+    priceSnapshot: createZeroPriceSnapshot('storage-mount', '挂载申请不产生额外存储费用'),
   });
+  recordOperation({ module: 'storage', action: '挂载存储', targetId: updated.id, targetName: updated.name, status: 'processing', message: '挂载申请已提交，等待处理。', targetPath: storageDetailPath(updated.id) });
   return updated;
 }
 
-export async function requestStorageUnmount(
-  storageId: string,
-  mountId: string,
-) {
+export async function requestStorageUnmount(storageId: string, mountId: string) {
+  const current = getStorageSpace(storageId);
+  const mount = current?.mounts.find((candidate) => candidate.id === mountId);
+  if (!current || !mount) throw new Error('未找到挂载关系。');
   const updated = updateSpace(storageId, (space) => ({
     ...space,
     updatedAt: new Date().toISOString(),
-    mounts: space.mounts.map((mount) =>
-      mount.id === mountId ? { ...mount, status: 'removing' } : mount,
-    ),
+    lastOperatedAt: new Date().toISOString(),
+    mounts: space.mounts.map((candidate) => candidate.id === mountId ? { ...candidate, status: 'removing' } : candidate),
   }));
-  recordOperation({
-    module: 'storage',
-    action: '卸载存储',
-    targetId: updated.id,
-    targetName: updated.name,
-    status: 'processing',
-    message: '卸载请求已提交，当前关系保留至处理完成。',
-    targetPath: storageDetailPath(updated.id),
+  createApplicationOrder({
+    applicationType: 'storage-unmount',
+    resourceType: 'storage',
+    storageId,
+    resourceId: mount.resourceId,
+    resourceName: updated.name,
+    site: updated.site,
+    summary: [{ label: '目标资源', value: `${mount.resourceName}（${mount.resourceId}）` }, { label: '挂载路径', value: mount.mountPath }],
+    priceSnapshot: createZeroPriceSnapshot('storage-unmount', '卸载申请不产生费用'),
   });
+  recordOperation({ module: 'storage', action: '卸载存储', targetId: updated.id, targetName: updated.name, status: 'processing', message: '卸载申请已提交，当前关系保留至处理完成。', targetPath: storageDetailPath(updated.id) });
   return updated;
 }
 
-export async function deleteStorageSpace(storageId: string) {
-  const spaces = readSpaces();
-  const target = spaces.find((space) => space.id === storageId);
-  if (!target) throw new Error('未找到存储空间。');
-  if (target.mounts.length) throw new Error('存在挂载关系时不能删除。');
-  writeSpaces(spaces.filter((space) => space.id !== storageId));
-  recordOperation({
-    module: 'storage',
-    action: '删除存储空间',
-    targetId: target.id,
-    targetName: target.name,
-    status: 'submitted',
-    message: '删除请求已提交。',
+export async function requestStorageRelease(storageId: string) {
+  const current = getStorageSpace(storageId);
+  if (!current) throw new Error('未找到存储。');
+  if (current.mounts.some((mount) => mount.status !== 'removing')) throw new Error('请先卸载存储，再提交释放申请。');
+  createApplicationOrder({
+    applicationType: 'storage-release',
+    resourceType: 'storage',
+    storageId,
+    resourceName: current.name,
+    site: current.site,
+    summary: [{ label: '存储', value: `${current.name}（${current.id}）` }, { label: '处理说明', value: '申请完成前保留存储与文件记录' }],
+    priceSnapshot: createZeroPriceSnapshot('storage-release', '释放申请不产生费用'),
   });
+  recordOperation({ module: 'storage', action: '释放存储', targetId: current.id, targetName: current.name, status: 'submitted', message: '释放申请已提交，当前数据保持不变。', targetPath: storageDetailPath(current.id) });
+}
+
+export function updateStorageUsage(storageId: string, usedBytes: number, fileCount: number, directoryCount: number) {
+  return updateSpace(storageId, (space) => {
+    const usedGb = Math.max(space.systemReservedGb, Math.ceil(usedBytes / 1024 / 1024 / 1024 * 1000) / 1000 + space.systemReservedGb);
+    if (usedGb > space.capacityGb) throw new Error('文件大小超过存储可用容量。');
+    const now = new Date().toISOString();
+    return { ...space, usedGb, fileCount, directoryCount, updatedAt: now, lastOperatedAt: now };
+  });
+}
+
+export function filesTargetPath(storageId: string) {
+  return storageFilesPath(storageId);
 }
 
 export function resetStorageStore() {

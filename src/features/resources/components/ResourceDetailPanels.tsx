@@ -4,6 +4,7 @@ import {
   APP_PATHS,
   orderDetailPath,
   storageDetailPath,
+  storageFilesPath,
 } from '../../../app/routes';
 import {
   Button,
@@ -17,6 +18,7 @@ import {
 } from '../../../components/ui';
 import {
   getStorageMountsForResource,
+  canManageStorageFiles,
   storageAvailableGb,
   storageUsagePercent,
   type StorageMount,
@@ -227,7 +229,7 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
     { key: 'performance', title: '性能指标', multiline: true, render: (disk) => <div className="resource-table__primary"><span>读/写 {disk.performance.readThroughputMbs}/{disk.performance.writeThroughputMbs} MB/s</span><span>IOPS {disk.performance.readIops}/{disk.performance.writeIops}</span><span>平均时延 {disk.performance.averageLatencyMs} ms</span></div> },
   ];
   const sharedColumns: readonly TableColumn<{ space: StorageSpace; mount: StorageMount }>[] = [
-    { key: 'name', title: '共享存储', multiline: true, render: ({ space }) => <div className="resource-table__primary"><Link to={storageDetailPath(space.id)}>{space.name}</Link><span>{space.id}</span></div> },
+    { key: 'name', title: '外挂存储', multiline: true, render: ({ space }) => <div className="resource-table__primary"><Link to={storageDetailPath(space.id)}>{space.name}</Link><span>{space.type === 'cloud-disk' ? '云硬盘' : '高性能共享存储'} · {space.id}</span>{canManageStorageFiles(space) && <Link to={storageFilesPath(space.id)}>文件管理</Link>}</div> },
     { key: 'capacity', title: '容量', multiline: true, render: ({ space }) => {
       const state = capacityStatus(storageUsagePercent(space));
       return <div className="resource-capacity-cell"><Progress value={space.usedGb} max={space.capacityGb} label={state.label} tone={state.tone} /><span>总量 {space.capacityGb} GB · 已用 {space.usedGb} GB · 剩余 {storageAvailableGb(space)} GB</span></div>;
@@ -242,8 +244,8 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
         <Table aria-label="云服务器磁盘" columns={diskColumns} rows={resource.dataDisks} getRowKey={(disk) => disk.id} />
       </Container>
       <Container as="section" className="resource-section">
-        <div className="resource-section__heading"><div><span>独立管理</span><h3>关联存储空间</h3></div><Link to={APP_PATHS.storage}>进入存储管理</Link></div>
-        <Table aria-label="关联存储空间" columns={sharedColumns} rows={relations} getRowKey={({ mount }) => mount.id} empty={<EmptyTable title="未关联独立存储空间" />} />
+        <div className="resource-section__heading"><div><span>独立购买与挂载</span><h3>外挂存储</h3></div><div className="management-row-actions"><Link to={`${APP_PATHS.storagePurchase}?mount=${resource.id}&site=${encodeURIComponent(resource.site)}`}>购买并挂载存储</Link><Link to={`${APP_PATHS.storage}?mounted=no&site=${encodeURIComponent(resource.site)}`}>挂载已有存储</Link></div></div>
+        <Table aria-label="关联存储空间" columns={sharedColumns} rows={relations} getRowKey={({ mount }) => mount.id} empty={<EmptyTable title="尚未挂载独立存储，可购买或选择已有存储" />} />
       </Container>
     </div>
   );
@@ -329,10 +331,11 @@ export function ResourceOperations({ resourceId }: Readonly<{ resourceId: string
   return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>资源变更追踪</span><h3>操作记录</h3></div><Link to={`${APP_PATHS.operationRecords}?q=${resourceId}`}>查看全部记录</Link></div><Table aria-label="资源操作记录" columns={columns} rows={records} getRowKey={(record) => record.id} /></Container>;
 }
 
-export function ResourceDetailHeader({ resource, onBack, onConnection, onAction }: Readonly<{
+export function ResourceDetailHeader({ resource, onBack, onConnection, onPurchaseSimilar, onAction }: Readonly<{
   resource: Resource;
   onBack: () => void;
   onConnection: () => void;
+  onPurchaseSimilar: () => void;
   onAction: (action: ResourceMenuAction) => void;
 }>) {
   const isRunning = resource.status === 'running';
@@ -344,6 +347,10 @@ export function ResourceDetailHeader({ resource, onBack, onConnection, onAction 
         <div className="resource-detail-header__actions">
           <ResourceStatusBadge status={resource.status} />
           <StatusBadge tone={resource.health.status === 'normal' ? 'success' : resource.health.status === 'warning' ? 'warning' : 'info'}>{resource.health.status === 'normal' ? '健康正常' : resource.health.status === 'warning' ? '健康告警' : '健康检查中'}</StatusBadge>
+          <Button variant="primary" onClick={onPurchaseSimilar}>{resource.resourceType === 'cloud-server' ? '购买同规格' : '购买同类整机'}</Button>
+          {resource.resourceType === 'cloud-server'
+            ? <Button variant="secondary" onClick={() => onAction('configuration-change')}>变更配置</Button>
+            : <Button variant="secondary" onClick={() => onAction('hardware-health')}>硬件健康</Button>}
           <Button variant="secondary" onClick={onConnection}>{resource.resourceType === 'cloud-server' ? '连接' : '连接信息'}</Button>
           <Button variant="secondary" onClick={() => onAction(resource.resourceType === 'cloud-server' ? 'renew' : 'extend')}>{resource.resourceType === 'cloud-server' ? '续费' : '申请延期'}</Button>
           <Button onClick={() => onAction(isRunning ? 'stop' : 'start')}>{isRunning ? (resource.resourceType === 'cloud-server' ? '停止' : '关机') : '启动'}</Button>

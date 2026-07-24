@@ -95,7 +95,16 @@ export function ResourceDetailPage({ resourceType }: Readonly<{ resourceType: Re
 
   return (
     <div className="resource-page resource-detail-page" data-resource-type={resource.resourceType}>
-      <ResourceDetailHeader resource={resource} onBack={() => navigate(backPath)} onConnection={() => changeTab('network')} onAction={handleAction} />
+      <ResourceDetailHeader
+        resource={resource}
+        onBack={() => navigate(backPath)}
+        onConnection={() => changeTab('network')}
+        onPurchaseSimilar={() => navigate(
+          `${resource.resourceType === 'cloud-server' ? APP_PATHS.cloudPurchase : APP_PATHS.physicalPurchase}?product=${encodeURIComponent(resource.skuId)}`,
+          { state: { fromResourceDetail: location.pathname } },
+        )}
+        onAction={handleAction}
+      />
       {feedback && <Container className="resource-action-feedback" role="status">{feedback}</Container>}
       <Container className="resource-detail-tabs"><UnderlineTabs aria-label="资源详情" value={selectedTab} onValueChange={changeTab} items={tabs} /></Container>
       {directAction && <ResourceActionDialog resource={resource} action={directAction} open onClose={() => setDirectAction(undefined)} onCompleted={(result) => { setFeedback(result.record.message); setDirectAction(undefined); setRevision((value) => value + 1); }} />}

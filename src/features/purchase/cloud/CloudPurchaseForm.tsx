@@ -119,7 +119,7 @@ export function CloudPurchaseForm({ product, value, errors, onChange, onConfirm,
       <FormSection
         id="purchase-data-storage"
         title="数据盘"
-        description="可选择不挂载、本地数据存储或高性能共享存储。"
+        description="可暂不挂载、购买新存储，或选择当前站点已有的独立存储。"
       >
         <CloudStorageSection site={product.site} value={value} errors={errors} onChange={onChange} />
       </FormSection>

@@ -214,7 +214,7 @@ function disks(index: number, expiresAt: string): readonly CloudDataDisk[] {
       id: `disk-${index}-1`,
       name: index % 2 === 0 ? '研发共享数据' : '业务数据空间',
       role: 'data',
-      displayType: index % 2 === 0 ? '高性能共享存储' : '本地数据存储',
+      displayType: index % 2 === 0 ? '高性能共享存储' : '云硬盘',
       diskType: index % 2 === 0 ? '共享存储' : '高性能云盘',
       mountPath: '/data',
       deviceName: '/dev/vdb',
@@ -231,7 +231,7 @@ function disks(index: number, expiresAt: string): readonly CloudDataDisk[] {
         writeThroughputMbs: performance.writeThroughputMbs + 28,
       },
       storageId: index === 1
-        ? 'storage-local-east-001'
+        ? 'storage-cloud-east-001'
         : index === 2
           ? 'storage-shared-east-001'
           : undefined,
@@ -299,18 +299,17 @@ function createCloudResource(seed: ResourceSeed, index: number): CloudServerReso
       imageId,
       storage: index === 0
         ? {
-            skuId: 'storage-shared-gb-month',
+            skuId: 'storage-shared-performance-gb-month',
             capacityGb: 2048,
             label: '研发共享存储 · 2048 GB',
           }
         : dataDisk
           ? {
               skuId: dataDisk.displayType === '高性能共享存储'
-                ? 'storage-shared-gb-month'
-                : 'storage-local-100gb-month',
+                ? 'storage-shared-standard-gb-month'
+                : 'storage-cloud-performance-gb-month',
               capacityGb: dataDisk.capacityGb,
               label: dataDisk.displayType,
-              included: dataDisk.displayType === '本地数据存储',
             }
           : undefined,
     }),

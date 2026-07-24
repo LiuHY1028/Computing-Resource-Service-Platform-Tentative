@@ -155,10 +155,7 @@ export function calculateCloudPrice(input: CloudQuoteInput): PriceQuote {
   if (input.storage) {
     const storage = getStoragePrice(input.storage.skuId);
     if (!storage) throw new Error(`未找到存储价格：${input.storage.skuId}`);
-    const storageQuantity =
-      storage.billingUnit === 'package-month'
-        ? Math.ceil(input.storage.capacityGb / storage.packageSizeGb)
-        : positiveInteger(input.storage.capacityGb, '存储容量');
+    const storageQuantity = positiveInteger(input.storage.capacityGb, '存储容量');
     const monthlyUnit = storage.unitPriceFen;
     items.push(
       line({
@@ -176,12 +173,8 @@ export function calculateCloudPrice(input: CloudQuoteInput): PriceQuote {
           input.storage.included
             ? '已包含'
             : input.billingMode === 'subscription'
-            ? storage.billingUnit === 'package-month'
-              ? `${storage.packageSizeGb} GB 容量包/月`
-              : 'GB/月'
-            : storage.billingUnit === 'package-month'
-              ? `${storage.packageSizeGb} GB 容量包/小时`
-              : 'GB/小时',
+            ? 'GB/月'
+            : 'GB/小时',
       }),
     );
   }
@@ -254,10 +247,7 @@ export function calculateStoragePrice(input: Readonly<{
   const storage = getStoragePrice(input.skuId);
   if (!storage) throw new Error(`未找到存储价格：${input.skuId}`);
   const duration = positiveInteger(input.durationMonths ?? 1, '计费周期');
-  const quantity =
-    storage.billingUnit === 'package-month'
-      ? Math.ceil(input.capacityGb / storage.packageSizeGb)
-      : positiveInteger(input.capacityGb, '存储容量');
+  const quantity = positiveInteger(input.capacityGb, '存储容量');
   return quote(
     'monthly-capacity',
     quantity,
@@ -269,10 +259,7 @@ export function calculateStoragePrice(input: Readonly<{
         unitPriceFen: storage.unitPriceFen,
         quantity,
         duration,
-        unitLabel:
-          storage.billingUnit === 'package-month'
-            ? `${storage.packageSizeGb} GB 容量包/月`
-            : 'GB/月',
+        unitLabel: 'GB/月',
       }),
     ],
     duration,

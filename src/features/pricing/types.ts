@@ -61,22 +61,17 @@ export type ComputePriceEntry =
       monthlyPriceFen: number;
     }>;
 
-export type StoragePriceEntry =
-  | Readonly<{
-      skuId: string;
-      storageType: 'shared' | 'cloud-disk-standard' | 'cloud-disk-performance';
-      name: string;
-      billingUnit: 'gb-month';
-      unitPriceFen: number;
-    }>
-  | Readonly<{
-      skuId: string;
-      storageType: 'local';
-      name: string;
-      billingUnit: 'package-month';
-      packageSizeGb: number;
-      unitPriceFen: number;
-    }>;
+export type StoragePriceEntry = Readonly<{
+  skuId: string;
+  storageType:
+    | 'shared-standard'
+    | 'shared-performance'
+    | 'cloud-disk-standard'
+    | 'cloud-disk-performance';
+  name: string;
+  billingUnit: 'gb-month';
+  unitPriceFen: number;
+}>;
 
 export type PricePolicy = 'free' | 'included' | 'monthly' | 'requires-license';
 

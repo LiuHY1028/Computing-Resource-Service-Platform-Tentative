@@ -71,19 +71,18 @@
   ],
   "storage": [
     {
-      "skuId": "storage-local-100gb-month",
-      "storageType": "local",
-      "name": "本地数据存储 100 GB 容量包",
-      "billingUnit": "package-month",
-      "packageSizeGb": 100,
-      "unitPriceFen": 4900
-    },
-    {
-      "skuId": "storage-shared-gb-month",
-      "storageType": "shared",
-      "name": "高性能共享存储",
+      "skuId": "storage-shared-standard-gb-month",
+      "storageType": "shared-standard",
+      "name": "高性能共享存储（标准型）",
       "billingUnit": "gb-month",
       "unitPriceFen": 80
+    },
+    {
+      "skuId": "storage-shared-performance-gb-month",
+      "storageType": "shared-performance",
+      "name": "高性能共享存储（性能型）",
+      "billingUnit": "gb-month",
+      "unitPriceFen": 120
     },
     {
       "skuId": "storage-cloud-standard-gb-month",

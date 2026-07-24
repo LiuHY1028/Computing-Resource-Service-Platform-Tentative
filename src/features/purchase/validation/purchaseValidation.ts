@@ -91,31 +91,27 @@ export function validateCloudConfiguration(
     errors['cloud-instance-name'] = '请输入实例名称。';
   }
   validateQuantity(configuration.quantity, 'cloud-instance-quantity', errors);
-  if (configuration.storageType === 'host-path') {
-    if (!isValidAbsolutePath(configuration.hostPath)) {
-      errors['cloud-host-path'] = '请输入有效的绝对主机路径，且不能包含“..”。';
-    }
-    if (!isValidAbsolutePath(configuration.hostMountPath)) {
-      errors['cloud-host-mount-path'] = '请输入有效的绝对容器挂载路径。';
+  if (configuration.storageType === 'new') {
+    if (!Number.isSafeInteger(configuration.newStorageCapacityGb) || configuration.newStorageCapacityGb < 10) {
+      errors['cloud-new-storage-capacity'] = '存储容量必须为不小于 10 GB 的整数。';
     }
   }
-  if (configuration.storageType === 'shared') {
+  if (configuration.storageType === 'existing') {
     if (!configuration.storageSpaceId) {
-      errors['cloud-storage-space'] = '请选择一个高性能共享存储空间。';
+      errors['cloud-storage-space'] = '请选择一个已有存储。';
     }
-    if (!isValidAbsolutePath(configuration.sharedMountPath)) {
-      errors['cloud-shared-mount-path'] = '请输入有效的绝对挂载路径。';
-    }
+  }
+  if (configuration.storageType !== 'none' && !isValidAbsolutePath(configuration.storageMountPath)) {
+    errors['cloud-storage-mount-path'] = '请输入有效的绝对挂载路径。';
   }
   validateNetwork(configuration.network, 'cloud-source-cidr', errors);
 
   return result(errors, {
     'cloud-instance-name': '实例名称',
     'cloud-instance-quantity': '实例数量',
-    'cloud-host-path': '本地主机路径',
-    'cloud-host-mount-path': '本地存储挂载路径',
-    'cloud-storage-space': '共享存储空间',
-    'cloud-shared-mount-path': '共享存储挂载路径',
+    'cloud-new-storage-capacity': '新购存储容量',
+    'cloud-storage-space': '已有存储',
+    'cloud-storage-mount-path': '存储挂载路径',
     'cloud-source-cidr': 'SSH 允许来源',
   });
 }

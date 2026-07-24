@@ -126,14 +126,14 @@ export function isCloudDraft(
     typeof configuration.purpose === 'string' &&
     typeof configuration.systemDiskGb === 'number' &&
     (configuration.storageType === 'none' ||
-      configuration.storageType === 'host-path' ||
-      configuration.storageType === 'shared') &&
-    typeof configuration.hostPath === 'string' &&
-    typeof configuration.hostMountPath === 'string' &&
-    typeof configuration.hostReadOnly === 'boolean' &&
+      configuration.storageType === 'new' ||
+      configuration.storageType === 'existing') &&
+    (configuration.newStorageType === 'cloud-disk' || configuration.newStorageType === 'shared') &&
+    typeof configuration.newStorageSkuId === 'string' &&
+    typeof configuration.newStorageCapacityGb === 'number' &&
     typeof configuration.storageSpaceId === 'string' &&
-    typeof configuration.sharedMountPath === 'string' &&
-    typeof configuration.sharedReadOnly === 'boolean' &&
+    typeof configuration.storageMountPath === 'string' &&
+    typeof configuration.storageReadOnly === 'boolean' &&
     (configuration.imageId === null || typeof configuration.imageId === 'string')
     && (configuration.billingMode === 'subscription' || configuration.billingMode === 'pay-as-you-go')
     && typeof configuration.periodMonths === 'string'

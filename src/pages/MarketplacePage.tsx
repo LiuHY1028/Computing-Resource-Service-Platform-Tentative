@@ -271,6 +271,14 @@ export function MarketplacePage() {
 
   return (
     <div className="marketplace-page">
+      {(location.state as { fromResourceList?: string } | null)?.fromResourceList && (
+        <div className="marketplace-return-context">
+          <span>已从“我的资源”进入，当前资源类型筛选已保留。</span>
+          <Button variant="secondary" onClick={() => navigate((location.state as { fromResourceList: string }).fromResourceList)}>
+            返回我的资源
+          </Button>
+        </div>
+      )}
       <section className="marketplace-hero" data-resource-type={resourceType}>
         <div className="marketplace-hero__content">
           <span className="marketplace-hero__eyebrow">算力资源商城</span>

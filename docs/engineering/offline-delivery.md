@@ -6,15 +6,15 @@
 
 ## 静态数据位置
 
-商品和购买配置数据位于各领域的 `data/`；统一价格目录位于 `src/features/pricing/data/priceCatalog.json`；资源、存储、镜像、软件、网络、订单与操作记录的内置初始数据位于对应 `state/*Store.ts`。对象通过稳定 ID 和价格快照保持跨模块一致。
+商品和购买配置数据位于各领域的 `data/`；统一价格目录位于 `src/features/pricing/data/priceCatalog.json`；资源、存储、文件、镜像、软件、网络、订单与操作记录的内置初始数据位于对应 `state/*Store.ts`。对象通过稳定 ID 和价格快照保持跨模块一致。
 
 ## 前端状态边界
 
-领域 Store 管理当前页面会话内的修改和关联操作。`persistence.ts` 以内存为可靠边界，并在浏览器存储可用时执行可选的版本化读写；所有存储访问均受保护。刷新后恢复内置初始数据可以接受，核心功能不依赖持久化。
+领域 Store 管理当前页面会话内的修改和关联操作。`persistence.ts` 以内存为可靠边界，并在浏览器存储可用时执行可选的版本化读写；所有存储访问均受保护。文件上传使用浏览器 File API 和对象 URL，内置文本使用 Blob 下载，不发起 HTTP 请求；刷新后恢复内置初始文件可以接受。
 
 ## Hash 路由
 
-应用使用 `HashRouter`。空 Hash 重定向到 `#/marketplace`；`#/marketplace/*` 使用商城布局，`#/software` 使用软件中心布局，`#/console/*` 使用控制台布局。旧后台路径保留查询参数并重定向到对应 `/console/*`，未知 Hash 显示 404。菜单、Tabs、详情、返回、跨模块跳转以及浏览器前进、后退和刷新不依赖服务器重写；开发路由只在开发环境注册。
+应用使用 `HashRouter`。空 Hash 重定向到 `#/marketplace`；`#/marketplace/*` 使用商城布局，`#/software` 使用软件中心布局，`#/console/*` 使用控制台布局。存储购买和文件管理分别使用 `#/console/storage/purchase` 与 `#/console/storage/:storageId/files`。旧后台路径保留查询参数并重定向到对应 `/console/*`，未知 Hash 显示 404。
 
 ## 单 HTML 构建
 
@@ -35,6 +35,7 @@ npm run build:offline
 npm run verify:offline
 npm run verify:pricing
 npm run verify:relations
+npm run verify:storage
 ```
 
 验证器检查目标文件、单文件结构、内联入口、样式、字体、外部资源、API 地址、动态 Chunk、开发路由和合理文件体积。

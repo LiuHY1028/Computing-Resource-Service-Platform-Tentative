@@ -19,13 +19,15 @@
 }
 
 .software-center-layout {
-  --product-nav-text: #f4f1e8;
-  --product-nav-muted: #9ba0ac;
-  --product-nav-accent: #c7ff5e;
-  --product-nav-surface: rgb(20 21 25 / 94%);
+  --product-nav-text: #17233f;
+  --product-nav-muted: #65718b;
+  --product-nav-accent: #6557e8;
+  --product-nav-surface: rgb(255 255 255 / 90%);
   display: flex;
   flex-direction: column;
-  background: #f2f0ea;
+  background:
+    radial-gradient(circle at 84% 2%, rgb(101 87 232 / 12%), transparent 25rem),
+    #f5f7fc;
 }
 
 .product-area-navigation {
@@ -45,7 +47,7 @@
 }
 
 .product-area-navigation[data-variant='software'] {
-  border-bottom-color: rgb(255 255 255 / 10%);
+  border-bottom-color: rgb(31 46 84 / 10%);
 }
 
 .product-area-brand {
@@ -74,10 +76,10 @@
 }
 
 [data-variant='software'] .product-area-brand__mark {
-  border: 1px solid rgb(199 255 94 / 55%);
-  background: #24272d;
-  color: #c7ff5e;
-  box-shadow: none;
+  border: 0;
+  background: linear-gradient(145deg, #2459ff, #23c6b7);
+  color: #fff;
+  box-shadow: 0 9px 24px rgb(36 89 255 / 22%);
 }
 
 .product-area-brand__name {
@@ -170,8 +172,8 @@
 }
 
 [data-variant='software'] .product-area-navigation__console {
-  border-color: rgb(199 255 94 / 34%);
-  background: rgb(199 255 94 / 9%);
+  border-color: rgb(36 89 255 / 18%);
+  background: rgb(36 89 255 / 8%);
 }
 
 .product-area-navigation__avatar {
@@ -186,8 +188,8 @@
 }
 
 [data-variant='software'] .product-area-navigation__avatar {
-  background: #c7ff5e;
-  color: #17191d;
+  background: #17233f;
+  color: #fff;
 }
 
 .product-area-navigation__feedback {
@@ -236,9 +238,9 @@
 }
 
 .software-center-layout__footer {
-  border-top: 1px solid rgb(255 255 255 / 10%);
-  background: #141519;
-  color: #8d929e;
+  border-top: 1px solid rgb(41 70 134 / 10%);
+  background: #fff;
+  color: #71809f;
 }
 
 @media (max-width: 900px) {
