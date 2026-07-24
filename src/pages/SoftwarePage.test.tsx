@@ -61,4 +61,57 @@ describe('SoftwarePage', () => {
       '/console/operation-records?module=software',
     );
   });
+
+  it('fully closes the installation workflow from every close control', async () => {
+    const user = renderSoftware();
+    const card = screen.getByRole('heading', { name: '资源监控组件' }).closest('article');
+    expect(card).toBeTruthy();
+
+    await user.click(within(card as HTMLElement).getByRole('button', { name: '安装到资源' }));
+    await user.click(screen.getByRole('button', { name: '取消' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(within(card as HTMLElement).getByRole('button', { name: '安装到资源' }));
+    await user.click(screen.getByRole('button', { name: '关闭弹窗' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(within(card as HTMLElement).getByRole('button', { name: '查看详情' }));
+    await user.click(
+      within(screen.getByRole('dialog', { name: '软件详情' })).getByRole(
+        'button',
+        { name: '选择资源安装' },
+      ),
+    );
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('does not preselect or allow a resource with an active installation', async () => {
+    const user = renderSoftware('/software?resource=cs-east-001');
+    const card = screen.getByRole('heading', { name: '资源监控组件' }).closest('article');
+    expect(card).toBeTruthy();
+
+    await user.click(within(card as HTMLElement).getByRole('button', { name: '安装到资源' }));
+    const resourceSelect = screen.getByRole('combobox', { name: /目标资源/ });
+    expect(resourceSelect).toHaveTextContent('请选择目标资源');
+    await user.click(resourceSelect);
+    expect(
+      screen.getByRole('option', { name: '研发计算节点-01 · 已安装' }),
+    ).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('selects an available resource from the installation dialog', async () => {
+    const user = renderSoftware();
+    const card = screen.getByRole('heading', { name: '资源监控组件' }).closest('article');
+    expect(card).toBeTruthy();
+
+    await user.click(within(card as HTMLElement).getByRole('button', { name: '安装到资源' }));
+    const resourceSelect = screen.getByRole('combobox', { name: /目标资源/ });
+    await user.click(resourceSelect);
+    await user.click(screen.getByRole('option', { name: '数据处理节点-03 · 兼容' }));
+    expect(resourceSelect).toHaveTextContent('数据处理节点-03 · 兼容');
+
+    await user.click(screen.getByRole('button', { name: '提交安装任务' }));
+    expect(await screen.findByText(/资源监控组件 2.6.1 安装任务已提交/)).toBeInTheDocument();
+  });
 });

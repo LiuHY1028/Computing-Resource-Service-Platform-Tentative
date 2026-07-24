@@ -85,6 +85,7 @@ export function ImagesPage() {
   const [revision, setRevision] = useState(0);
   const [selected, setSelected] = useState<PlatformImage>();
   const [formMode, setFormMode] = useState<'create' | 'import' | 'edit'>();
+  const [editTarget, setEditTarget] = useState<PlatformImage>();
   const [deleteTarget, setDeleteTarget] = useState<PlatformImage>();
   const [draft, setDraft] = useState<ImageDraft>(INITIAL_DRAFT);
   const [error, setError] = useState('');
@@ -149,8 +150,15 @@ export function ImagesPage() {
 
   function openCreate(mode: 'create' | 'import') {
     setDraft(INITIAL_DRAFT);
+    setEditTarget(undefined);
     setError('');
     setFormMode(mode);
+  }
+
+  function closeForm() {
+    setFormMode(undefined);
+    setEditTarget(undefined);
+    setError('');
   }
 
   function openEdit(image: PlatformImage) {
@@ -167,16 +175,16 @@ export function ImagesPage() {
     });
     setSelected(undefined);
     setError('');
+    setEditTarget(image);
     setFormMode('edit');
-    setDeleteTarget(image);
   }
 
   async function submitForm(event: FormEvent) {
     event.preventDefault();
     setError('');
     try {
-      if (formMode === 'edit' && deleteTarget) {
-        await updateCustomImage(deleteTarget.id, {
+      if (formMode === 'edit' && editTarget) {
+        await updateCustomImage(editTarget.id, {
           name: draft.name,
           description: draft.description,
         });
@@ -204,6 +212,7 @@ export function ImagesPage() {
         );
       }
       setFormMode(undefined);
+      setEditTarget(undefined);
       setDeleteTarget(undefined);
       setParam('type', 'custom');
       setRevision((value) => value + 1);
@@ -288,7 +297,7 @@ export function ImagesPage() {
         ) : null}
       </Modal>
 
-      <Modal open={Boolean(formMode)} title={formMode === 'edit' ? '编辑自定义镜像' : formMode === 'import' ? '导入镜像' : '创建自定义镜像记录'} onClose={() => setFormMode(undefined)} footer={null}>
+      <Modal open={Boolean(formMode)} title={formMode === 'edit' ? '编辑自定义镜像' : formMode === 'import' ? '导入镜像' : '创建自定义镜像记录'} onClose={closeForm} footer={null}>
         <Form onSubmit={submitForm}>
           <FormField label="镜像名称" required error={error || undefined}><Input value={draft.name} maxLength={48} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></FormField>
           {formMode !== 'edit' && (
@@ -301,7 +310,7 @@ export function ImagesPage() {
             </>
           )}
           <FormField label="说明"><Textarea value={draft.description} maxLength={240} showCount onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></FormField>
-          <div className="management-form-actions"><Button type="button" variant="secondary" onClick={() => setFormMode(undefined)}>取消</Button><Button type="submit" variant="primary">确认提交</Button></div>
+          <div className="management-form-actions"><Button type="button" variant="secondary" onClick={closeForm}>取消</Button><Button type="submit" variant="primary">确认提交</Button></div>
         </Form>
       </Modal>
 

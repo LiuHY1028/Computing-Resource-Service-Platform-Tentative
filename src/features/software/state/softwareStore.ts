@@ -103,7 +103,10 @@ function isInstallation(value: unknown): value is SoftwareInstallation {
     typeof item.id === 'string' &&
     typeof item.softwareId === 'string' &&
     typeof item.resourceId === 'string' &&
-    typeof item.status === 'string'
+    (item.status === 'submitted' ||
+      item.status === 'processing' ||
+      item.status === 'installed' ||
+      item.status === 'failed')
   );
 }
 
@@ -151,7 +154,7 @@ export function getSoftwareForResource(resourceId: string) {
 
 export function getSoftwareInstallCount(softwareId: string) {
   return readInstallations().filter(
-    (item) => item.softwareId === softwareId && item.status === 'installed',
+    (item) => item.softwareId === softwareId && item.status !== 'failed',
   ).length;
 }
 
@@ -203,7 +206,7 @@ export async function submitSoftwareInstallation(input: Readonly<{
 
   const submittedAt = new Date().toISOString();
   const task: SoftwareInstallation = {
-    id: `installation-${submittedAt.replace(/\D/g, '').slice(0, 14)}`,
+    id: `installation-${submittedAt.replace(/\D/g, '')}-${software.id}-${input.resource.id}`,
     softwareId: software.id,
     softwareName: software.name,
     version: input.version,

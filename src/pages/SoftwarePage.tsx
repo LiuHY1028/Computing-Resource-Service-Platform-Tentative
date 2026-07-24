@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { APP_PATHS, resourceDetailPath } from '../app/routes';
 import {
@@ -18,6 +18,7 @@ import {
   getSoftwareInstallations,
   querySoftware,
   submitSoftwareInstallation,
+  type InstallationStatus,
   type SoftwareProduct,
 } from '../features/software';
 import {
@@ -41,6 +42,22 @@ const CATEGORY_NOTES: Readonly<Record<(typeof CATEGORIES)[number], string>> = {
   运维工具: '监控与诊断',
 };
 
+type SoftwareDialogState = Readonly<{
+  view: 'detail' | 'install';
+  software: SoftwareProduct;
+}>;
+
+const INSTALLATION_STATUS_LABEL: Readonly<Record<InstallationStatus, string>> = {
+  submitted: '已提交',
+  processing: '处理中',
+  installed: '已安装',
+  failed: '未完成',
+};
+
+function isActiveInstallation(status: InstallationStatus) {
+  return status !== 'failed';
+}
+
 function softwarePriceLabel(softwareId: string) {
   const price = getSoftwarePrice(softwareId);
   return price
@@ -61,13 +78,14 @@ function softwareGlyph(item: SoftwareProduct) {
 
 export function SoftwarePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selected, setSelected] = useState<SoftwareProduct>();
-  const [installing, setInstalling] = useState(false);
+  const [dialog, setDialog] = useState<SoftwareDialogState>();
   const [version, setVersion] = useState('');
   const [resourceId, setResourceId] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [completedResource, setCompletedResource] = useState<Resource>();
+  const selected = dialog?.software;
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const feePolicy = searchParams.get('fee') ?? 'all';
   const installState = searchParams.get('installation') ?? 'all';
@@ -88,7 +106,7 @@ export function SoftwarePage() {
   const software = useMemo(() => {
     const installedSoftwareIds = new Set(
       installations
-        .filter((item) => item.status === 'installed' || item.status === 'processing')
+        .filter((item) => isActiveInstallation(item.status))
         .map((item) => item.softwareId),
     );
     return querySoftware(query).filter((item) => {
@@ -136,25 +154,56 @@ export function SoftwarePage() {
     ? installations.filter((item) => item.softwareId === selected.id)
     : [];
 
+  const closeDialog = useCallback(() => {
+    setDialog(undefined);
+    setVersion('');
+    setResourceId('');
+    setError('');
+    setSubmitting(false);
+  }, []);
+
+  function getInstallationAvailability(item: SoftwareProduct, resource: Resource) {
+    const compatibility = getSoftwareCompatibility(item, resource);
+    if (!compatibility.compatible) {
+      return { available: false, reason: compatibility.reason };
+    }
+    const existing = installations.find(
+      (installation) =>
+        installation.softwareId === item.id &&
+        installation.resourceId === resource.id &&
+        isActiveInstallation(installation.status),
+    );
+    return existing
+      ? {
+          available: false,
+          reason: existing.status === 'installed' ? '已安装' : '安装任务处理中',
+        }
+      : { available: true, reason: '兼容' };
+  }
+
+  function openDetail(item: SoftwareProduct) {
+    setDialog({ view: 'detail', software: item });
+  }
+
   function openInstall(item: SoftwareProduct) {
     const contextualResource = resources.find((resource) => resource.id === contextualResourceId);
     const canUseContext = contextualResource
-      ? getSoftwareCompatibility(item, contextualResource).compatible
+      ? getInstallationAvailability(item, contextualResource).available
       : false;
-    setSelected(item);
-    setInstalling(true);
+    setDialog({ view: 'install', software: item });
     setVersion(item.versions[0] ?? '');
     setResourceId(canUseContext && contextualResource ? contextualResource.id : '');
     setError('');
   }
 
   async function submitInstall() {
-    if (!selected) return;
+    if (!selected || dialog?.view !== 'install' || submitting) return;
     const resource = resources.find((item) => item.id === resourceId);
     if (!resource) {
       setError('请选择目标资源。');
       return;
     }
+    setSubmitting(true);
     try {
       const task = await submitSoftwareInstallation({
         softwareId: selected.id,
@@ -163,10 +212,14 @@ export function SoftwarePage() {
       });
       setFeedback(`${task.softwareName} ${task.version} 安装任务已提交。`);
       setCompletedResource(resource);
-      setInstalling(false);
-      setSelected(undefined);
+      setDialog(undefined);
+      setVersion('');
+      setResourceId('');
+      setError('');
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : '安装任务提交失败。');
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -327,6 +380,12 @@ export function SoftwarePage() {
                 const itemInstallations = installations.filter(
                   (installation) => installation.softwareId === item.id,
                 );
+                const activeInstallations = itemInstallations.filter((installation) =>
+                  isActiveInstallation(installation.status),
+                );
+                const hasPendingInstallation = activeInstallations.some(
+                  (installation) => installation.status !== 'installed',
+                );
                 return (
                   <article className="software-card" key={item.id}>
                     <div className="software-card__topline">
@@ -347,18 +406,18 @@ export function SoftwarePage() {
                       <StatusBadge tone="info">
                         {item.compatibleComputeTypes.map((type) => type.toUpperCase()).join(' / ')}
                       </StatusBadge>
-                      <StatusBadge tone={itemInstallations.length ? 'success' : 'neutral'}>
-                        {itemInstallations.length ? '已关联资源' : '可安装'}
+                      <StatusBadge tone={hasPendingInstallation ? 'info' : activeInstallations.length ? 'success' : 'neutral'}>
+                        {hasPendingInstallation ? '安装处理中' : activeInstallations.length ? '已安装' : '可安装'}
                       </StatusBadge>
                     </div>
                     <dl className="software-card__facts">
                       <div><dt>最新版本</dt><dd>{item.versions[0]}</dd></div>
                       <div><dt>操作系统</dt><dd>{item.compatibleOperatingSystems.join(' / ')}</dd></div>
                       <div><dt>费用</dt><dd>{softwarePriceLabel(item.id)}</dd></div>
-                      <div><dt>安装数量</dt><dd>{getSoftwareInstallCount(item.id)} 个</dd></div>
+                      <div><dt>关联资源</dt><dd>{getSoftwareInstallCount(item.id)} 个</dd></div>
                     </dl>
                     <div className="software-card__actions">
-                      <Button variant="secondary" onClick={() => setSelected(item)}>查看详情</Button>
+                      <Button variant="secondary" onClick={() => openDetail(item)}>查看详情</Button>
                       <Button variant="primary" onClick={() => openInstall(item)}>安装到资源</Button>
                     </div>
                   </article>
@@ -385,11 +444,11 @@ export function SoftwarePage() {
       </section>
 
       <Modal
-        open={Boolean(selected) && !installing}
+        open={dialog?.view === 'detail'}
         title="软件详情"
-        onClose={() => setSelected(undefined)}
+        onClose={closeDialog}
         primaryAction={{ label: '选择资源安装', onClick: () => selected && openInstall(selected) }}
-        secondaryAction={{ label: '关闭', onClick: () => setSelected(undefined) }}
+        secondaryAction={{ label: '关闭', onClick: closeDialog }}
       >
         {selected && (
           <div className="software-detail">
@@ -412,7 +471,7 @@ export function SoftwarePage() {
                       key={item.id}
                       to={`${resourceDetailPath(item.resourceId.startsWith('pm-') ? 'physical-machine' : 'cloud-server', item.resourceId)}?tab=software`}
                     >
-                      {item.resourceName} · {item.status === 'installed' ? '已安装' : '处理中'}
+                      {item.resourceName} · {INSTALLATION_STATUS_LABEL[item.status]}
                     </Link>
                   ))
                 : <span>暂无关联资源</span>}
@@ -422,11 +481,12 @@ export function SoftwarePage() {
       </Modal>
 
       <Modal
-        open={installing}
+        open={dialog?.view === 'install'}
         title="提交软件安装任务"
-        onClose={() => setInstalling(false)}
+        onClose={closeDialog}
+        busy={submitting}
         primaryAction={{ label: '提交安装任务', onClick: () => void submitInstall() }}
-        secondaryAction={{ label: '取消', onClick: () => setInstalling(false) }}
+        secondaryAction={{ label: '取消', onClick: closeDialog }}
       >
         {selected && (
           <Form>
@@ -447,11 +507,11 @@ export function SoftwarePage() {
                   setError('');
                 }}
                 options={resources.map((resource) => {
-                  const compatibility = getSoftwareCompatibility(selected, resource);
+                  const availability = getInstallationAvailability(selected, resource);
                   return {
                     value: resource.id,
-                    label: `${resource.name} · ${compatibility.compatible ? '兼容' : compatibility.reason}`,
-                    disabled: !compatibility.compatible,
+                    label: `${resource.name} · ${availability.reason}`,
+                    disabled: !availability.available,
                   };
                 })}
               />
