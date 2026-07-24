@@ -30,21 +30,22 @@ npm run verify:offline
 npm run verify:pricing
 npm run verify:relations
 npm run verify:storage
+npm run verify:ui
 ```
 
 ## 应用结构
 
 - `src/app/`：Hash 路由、三套布局、控制台菜单和错误边界。
-- `src/components/ui/`：公共 UI 组件及统一导出。
+- `src/components/ui/`：公共 UI 组件及统一导出，包含可扩展数据表格和容量使用率体系。
 - `src/features/*/data/`：随应用打包的目录与配置数据。
 - `src/features/*/state/`：领域状态、操作和跨模块关联。
 - `src/features/pricing/`：SKU 价目、整数分报价、统一格式化和价格快照。
-- `src/features/files/`：离线文件树、文件操作和任务中心。
+- `src/features/files/`：离线文件树、文件操作、撤销记录和任务中心。
 - `src/features/platform/`：可选浏览器存储与兼容能力。
 - `src/pages/`：正式页面及只在开发环境注册的组件检查页。
 - `release/算力资源服务平台.html`：可直接打开的交付文件。
 
-资源、存储、镜像、软件、网络、订单和操作记录使用稳定 ID 联动。运行中的修改以内存状态为准；浏览器存储可用时会保存部分状态，不可用时自动回退到内存。刷新后恢复内置初始数据是允许的，核心功能不依赖持久化能力。
+资源、存储、镜像、软件、网络、订单和操作记录使用稳定 ID 联动。数据密集页面共享表格工具栏、排序、密度、选择和状态反馈，容量信息统一展示已用、总量、剩余和风险状态。文件管理器提供紧凑命令栏、快速访问、列表/网格、按需详情面板、上下文菜单、任务抽屉及本地撤销。运行中的修改以内存状态为准；浏览器存储可用时会保存部分状态，不可用时自动回退到内存。刷新后恢复内置初始数据是允许的，核心功能不依赖持久化能力。
 
 ## 正式路由
 
@@ -65,6 +66,7 @@ npm run test:run
 npm run verify:pricing
 npm run verify:relations
 npm run verify:storage
+npm run verify:ui
 npm run build
 npm run build:offline
 npm run verify:offline

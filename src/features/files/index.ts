@@ -1,5 +1,6 @@
 export {
   clearCompletedTasks,
+  canUndoFileOperation,
   copyNodes,
   createFolder,
   deleteNodes,
@@ -17,5 +18,6 @@ export {
   resetFileStore,
   retryFileTask,
   uploadFiles,
+  undoLastFileOperation,
 } from './state/fileStore';
 export type * from './types';

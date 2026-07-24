@@ -3,6 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   Button,
   Container,
+  DataTable,
+  DropdownMenu,
+  DropdownMenuItem,
   Form,
   FormField,
   Input,
@@ -12,10 +15,9 @@ import {
   SearchInput,
   Select,
   StatusBadge,
-  Table,
+  TextButton,
   Textarea,
   type TableColumn,
-  type TableKey,
 } from '../components/ui';
 import { APP_PATHS, resourceDetailPath } from '../app/routes';
 import {
@@ -70,8 +72,6 @@ export function NetworkAccessPage() {
   const [revision, setRevision] = useState(0);
   const [editing, setEditing] = useState<NetworkAccessRule | 'create'>();
   const [deleteTarget, setDeleteTarget] = useState<NetworkAccessRule>();
-  const [batchOpen, setBatchOpen] = useState(false);
-  const [selectedKeys, setSelectedKeys] = useState<readonly TableKey[]>([]);
   const [draft, setDraft] = useState<RuleDraft>(INITIAL_DRAFT);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -184,6 +184,9 @@ export function NetworkAccessPage() {
     {
       key: 'resource',
       title: '关联资源',
+      sortable: true,
+      sortValue: (rule) => rule.resourceName,
+      hideable: false,
       render: (rule) => (
         <div className="management-primary-cell">
           <Link to={resourcePath(rule)}>{rule.resourceName}</Link>
@@ -191,15 +194,24 @@ export function NetworkAccessPage() {
         </div>
       ),
     },
-    { key: 'privateIp', title: '内网 IP', render: (rule) => rule.privateIp },
-    { key: 'publicIp', title: '公网 IP', render: (rule) => rule.publicIp ?? '未分配' },
-    { key: 'protocol', title: '协议', render: (rule) => rule.protocol },
-    { key: 'ports', title: '服务/映射端口', render: (rule) => `${rule.servicePort} → ${rule.mappedPort}` },
-    { key: 'source', title: '允许来源', render: (rule) => rule.source },
+    {
+      key: 'address',
+      title: '地址',
+      render: (rule) => <div className="management-primary-cell"><strong>{rule.privateIp}</strong><span>{rule.publicIp ? `公网 ${rule.publicIp}` : '公网 IP 未分配'}</span></div>,
+    },
+    {
+      key: 'policy',
+      title: '访问策略',
+      sortable: true,
+      sortValue: (rule) => `${rule.protocol}-${rule.servicePort}`,
+      render: (rule) => <div className="management-primary-cell"><strong>{rule.protocol} · {rule.servicePort} → {rule.mappedPort}</strong><span>来源 {rule.source}</span></div>,
+    },
     { key: 'description', title: '说明', render: (rule) => rule.description || '未填写' },
     {
       key: 'status',
       title: '状态',
+      sortable: true,
+      sortValue: (rule) => statusView(rule).label,
       render: (rule) => {
         const view = statusView(rule);
         return <StatusBadge tone={view.tone}>{view.label}</StatusBadge>;
@@ -207,43 +219,44 @@ export function NetworkAccessPage() {
     },
   ];
 
-  const batchRules = rules.filter((rule) => selectedKeys.includes(rule.id));
   const recentOperations = listOperationRecords()
     .filter((record) => record.module === 'network')
     .slice(0, 5);
 
   return (
     <div className="management-page">
-      <Container className="management-toolbar">
-        <div className="management-filter-grid">
-          <SearchInput aria-label="按资源搜索网络规则" value={query.search} placeholder="搜索资源、IP 或说明" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
-          <Select aria-label="资源类型" value={query.resourceType} onValueChange={(value) => setParam('resourceType', value)} options={[{ value: 'all', label: '全部资源类型' }, { value: 'cloud-server', label: '云服务器' }, { value: 'physical-machine', label: '物理机' }]} />
-          <Select aria-label="站点" value={query.site} onValueChange={(value) => setParam('site', value)} options={[{ value: 'all', label: '全部站点' }, { value: '东部算力中心', label: '东部算力中心' }, { value: '西部算力中心', label: '西部算力中心' }, { value: '南部算力中心', label: '南部算力中心' }]} />
-          <Select aria-label="协议" value={query.protocol} onValueChange={(value) => setParam('protocol', value)} options={[{ value: 'all', label: '全部协议' }, { value: 'TCP', label: 'TCP' }, { value: 'UDP', label: 'UDP' }]} />
-          <Select aria-label="规则状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'effective', label: '已生效' }, { value: 'submitted', label: '变更请求已提交' }, { value: 'processing', label: '处理中' }, { value: 'failed', label: '失败' }]} />
-        </div>
-        <div className="management-toolbar__actions">
-          <Button disabled={!selectedKeys.length} onClick={() => setBatchOpen(true)}>批量查看（{selectedKeys.length}）</Button>
-          <Button variant="primary" onClick={openCreate}>新增规则</Button>
-        </div>
-      </Container>
       {feedback && <Container className="management-feedback" role="status">{feedback}</Container>}
-      <Container className="management-results">
-        <div className="management-results__header"><div><span>端口与访问控制</span><h2>网络访问规则</h2></div><p>共 {rules.length} 个结果</p></div>
-        <Table
-          className="management-table"
-          aria-label="网络访问规则列表"
-          columns={columns}
-          rows={rows}
-          getRowKey={(rule) => rule.id}
-          selectable
-          selectedKeys={selectedKeys}
-          onSelectionChange={setSelectedKeys}
-          empty={<PageState title={query.search ? '没有匹配的网络规则' : '暂无网络访问规则'} description={query.search ? '请调整搜索或筛选条件。' : '可选择资源并提交新的访问规则。'} />}
-          renderRowActions={(rule) => <div className="management-row-actions"><Button variant="secondary" disabled={rule.status === 'processing'} onClick={() => openEdit(rule)}>编辑</Button><Button variant="danger" disabled={rule.status === 'processing'} onClick={() => setDeleteTarget(rule)}>删除</Button></div>}
-        />
-        {rules.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={rules.length} onPageChange={(next) => setParam('page', String(next))} />}
-      </Container>
+      <DataTable
+        className="management-table"
+        aria-label="网络访问规则列表"
+        eyebrow="端口与访问控制"
+        title="网络访问规则"
+        description="按资源、地址和访问策略核查对外暴露范围。"
+        actions={<Button variant="primary" onClick={openCreate}>新增规则</Button>}
+        toolbar={(
+          <div className="management-filter-grid">
+            <SearchInput aria-label="按资源搜索网络规则" value={query.search} placeholder="搜索资源、IP 或说明" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
+            <Select aria-label="资源类型" value={query.resourceType} onValueChange={(value) => setParam('resourceType', value)} options={[{ value: 'all', label: '全部资源类型' }, { value: 'cloud-server', label: '云服务器' }, { value: 'physical-machine', label: '物理机' }]} />
+            <Select aria-label="站点" value={query.site} onValueChange={(value) => setParam('site', value)} options={[{ value: 'all', label: '全部站点' }, { value: '东部算力中心', label: '东部算力中心' }, { value: '西部算力中心', label: '西部算力中心' }, { value: '南部算力中心', label: '南部算力中心' }]} />
+            <Select aria-label="协议" value={query.protocol} onValueChange={(value) => setParam('protocol', value)} options={[{ value: 'all', label: '全部协议' }, { value: 'TCP', label: 'TCP' }, { value: 'UDP', label: 'UDP' }]} />
+            <Select aria-label="规则状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'effective', label: '已生效' }, { value: 'submitted', label: '变更请求已提交' }, { value: 'processing', label: '处理中' }, { value: 'failed', label: '失败' }]} />
+          </div>
+        )}
+        resultLabel={`共 ${rules.length} 个结果`}
+        columns={columns}
+        rows={rows}
+        getRowKey={(rule) => rule.id}
+        empty={<PageState title={query.search ? '没有匹配的网络规则' : '暂无网络访问规则'} description={query.search ? '请调整搜索或筛选条件。' : '可选择资源并提交新的访问规则。'} />}
+        renderRowActions={(rule) => (
+          <div className="management-row-actions">
+            <TextButton disabled={rule.status === 'processing'} onClick={() => openEdit(rule)}>编辑</TextButton>
+            <DropdownMenu trigger="更多">
+              <DropdownMenuItem danger disabled={rule.status === 'processing'} onSelect={() => setDeleteTarget(rule)}>删除规则</DropdownMenuItem>
+            </DropdownMenu>
+          </div>
+        )}
+        pagination={rules.length > 0 ? <Pagination page={safePage} totalPages={totalPages} totalItems={rules.length} onPageChange={(next) => setParam('page', String(next))} /> : undefined}
+      />
       <Container as="section" className="management-detail-section">
         <div className="management-results__header"><div><span>最近变更</span><h2>操作记录</h2></div><Link to={`${APP_PATHS.operationRecords}?module=network`}>查看全部</Link></div>
         {recentOperations.length ? <ul className="management-record-list">{recentOperations.map((record) => <li key={record.id}><span>{record.action} · {record.targetName}</span><StatusBadge tone="info">处理中</StatusBadge><p>{record.message}</p></li>)}</ul> : <PageState title="暂无网络操作记录" />}
@@ -266,9 +279,6 @@ export function NetworkAccessPage() {
         <p>{error || '删除请求提交后，规则将保留为处理中，直至基础设施确认。'}</p>
       </Modal>
 
-      <Modal open={batchOpen} title="批量查看网络规则" onClose={() => setBatchOpen(false)} primaryAction={{ label: '关闭', onClick: () => setBatchOpen(false) }}>
-        <ul className="management-record-list">{batchRules.map((rule) => <li key={rule.id}><strong>{rule.resourceName}</strong><span>{rule.protocol} {rule.servicePort} → {rule.mappedPort}</span><p>{rule.source} · {rule.privateIp}{rule.publicIp ? ` / ${rule.publicIp}` : ''}</p></li>)}</ul>
-      </Modal>
     </div>
   );
 }

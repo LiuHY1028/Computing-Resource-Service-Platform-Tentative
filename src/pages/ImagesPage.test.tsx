@@ -24,7 +24,8 @@ beforeEach(() => {
 describe('ImagesPage modal transitions', () => {
   it('closes image editing without opening the delete confirmation', async () => {
     const user = renderImages();
-    await user.click(screen.getByRole('button', { name: '编辑' }));
+    await user.click(screen.getByRole('button', { name: '更多操作' }));
+    await user.click(screen.getByRole('menuitem', { name: '编辑信息' }));
     expect(screen.getByRole('dialog', { name: '编辑自定义镜像' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '取消' }));

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,14 +46,40 @@ describe('storage purchase and file management routes', () => {
 
   it('supports directory navigation, list-grid switching and folder creation', async () => {
     const user = renderRoute('/console/storage/storage-shared-east-001/files');
-    expect(screen.getByRole('heading', { level: 2, name: /研发共享存储 · 文件管理/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: '研发共享存储' })).toBeInTheDocument();
     expect(screen.getByRole('grid', { name: '文件列表' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '网格视图' }));
+    expect(screen.queryByRole('dialog', { name: '文件任务中心' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '网格' }));
     expect(document.querySelector('.file-grid')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '新建文件夹' }));
     await user.type(screen.getByPlaceholderText('输入文件夹名称'), '新目录');
     await user.click(screen.getByRole('button', { name: '创建文件夹' }));
-    expect(await screen.findByText('新目录')).toBeInTheDocument();
+    expect((await screen.findAllByText('新目录')).length).toBeGreaterThan(0);
+  });
+
+  it('supports selection commands, keyboard shortcuts, inspector and task drawer', async () => {
+    const user = renderRoute('/console/storage/storage-shared-east-001/files');
+    await user.dblClick(within(screen.getByRole('grid', { name: '文件列表' })).getByText('项目'));
+    await user.click(screen.getByText('README.md'));
+    expect(screen.getByRole('toolbar', { name: '已选文件操作' })).toHaveTextContent('已选择 1 项');
+    await user.keyboard('{F2}');
+    expect(screen.getByRole('dialog', { name: '重命名' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '取消' }));
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: '详细信息' }));
+    expect(document.querySelector('.file-manager-details')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /任务中心/ }));
+    expect(screen.getByRole('dialog', { name: '文件任务中心' })).toBeInTheDocument();
+  });
+
+  it('keeps checkbox selection from bubbling into a second row toggle', async () => {
+    const user = renderRoute('/console/storage/storage-shared-east-001/files');
+    const reportCheckbox = screen.getByRole('checkbox', { name: '选择报告' });
+
+    await user.click(reportCheckbox);
+
+    expect(reportCheckbox).toBeChecked();
+    expect(screen.getByRole('toolbar', { name: '已选文件操作' })).toHaveTextContent('已选择 1 项');
   });
 
   it('shows expansion and renewal price summaries before submission', async () => {

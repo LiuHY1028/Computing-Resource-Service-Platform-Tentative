@@ -20,7 +20,7 @@ export type FileNode = Readonly<{
 export type FileTask = Readonly<{
   id: string;
   storageId: string;
-  operation: '上传' | '下载' | '复制' | '移动' | '删除';
+  operation: '上传' | '下载' | '复制' | '移动' | '删除' | '撤销';
   subject: string;
   targetPath?: string;
   progress: number;

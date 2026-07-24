@@ -15,6 +15,9 @@ export type TableColumn<T> = Readonly<{
   key: string;
   title: ReactNode;
   render: (row: T, rowIndex: number) => ReactNode;
+  sortable?: boolean;
+  sortValue?: (row: T) => string | number;
+  hideable?: boolean;
   align?: 'left' | 'center' | 'right';
   multiline?: boolean;
   width?: string;
@@ -61,6 +64,10 @@ export type TableProps<T> = Readonly<{
   getRowLabel?: (row: T, rowIndex: number) => string;
   caption?: ReactNode;
   compact?: boolean;
+  density?: 'compact' | 'standard' | 'comfortable';
+  sortKey?: string;
+  sortDirection?: 'ascending' | 'descending';
+  onSortChange?: (key: string, direction: 'ascending' | 'descending') => void;
   selectable?: boolean;
   selectedKeys?: readonly TableKey[];
   defaultSelectedKeys?: readonly TableKey[];
@@ -77,6 +84,7 @@ export type TableProps<T> = Readonly<{
   minWidth?: string;
   overflow?: 'auto' | 'clip';
   actionsWidth?: string;
+  onRowClick?: (row: T, rowIndex: number) => void;
   'aria-label'?: string;
 }>;
 
@@ -88,6 +96,10 @@ function TableInner<T>(
     getRowLabel,
     caption,
     compact = false,
+    density = compact ? 'compact' : 'standard',
+    sortKey,
+    sortDirection = 'ascending',
+    onSortChange,
     selectable = false,
     selectedKeys,
     defaultSelectedKeys = [],
@@ -104,6 +116,7 @@ function TableInner<T>(
     minWidth,
     overflow = 'auto',
     actionsWidth,
+    onRowClick,
     'aria-label': ariaLabel,
   }: TableProps<T>,
   ref: React.ForwardedRef<HTMLDivElement>,
@@ -166,7 +179,8 @@ function TableInner<T>(
     >
       <table
         className="ui-table"
-        data-compact={compact || undefined}
+        data-compact={density === 'compact' || undefined}
+        data-density={density}
         data-layout={layout}
         aria-label={ariaLabel}
         aria-busy={loading || undefined}
@@ -193,8 +207,29 @@ function TableInner<T>(
               </th>
             )}
             {columns.map((column) => (
-              <th key={column.key} scope="col" data-align={column.align ?? 'left'}>
-                {column.title}
+              <th
+                key={column.key}
+                scope="col"
+                data-align={column.align ?? 'left'}
+                aria-sort={sortKey === column.key ? sortDirection : undefined}
+              >
+                {column.sortable && onSortChange ? (
+                  <button
+                    type="button"
+                    className="ui-table__sort"
+                    onClick={() => onSortChange(
+                      column.key,
+                      sortKey === column.key && sortDirection === 'ascending'
+                        ? 'descending'
+                        : 'ascending',
+                    )}
+                  >
+                    <span>{column.title}</span>
+                    <span className="ui-table__sort-mark" aria-hidden="true">
+                      {sortKey === column.key ? (sortDirection === 'ascending' ? '↑' : '↓') : '↕'}
+                    </span>
+                  </button>
+                ) : column.title}
               </th>
             ))}
             {renderRowActions && <th className="ui-table__actions-heading" scope="col">{actionsTitle}</th>}
@@ -212,7 +247,12 @@ function TableInner<T>(
               const selectionDisabled = isRowSelectionDisabled?.(row, rowIndex) ?? false;
               const rowLabel = getRowLabel?.(row, rowIndex) ?? `第 ${rowIndex + 1} 行`;
               return (
-                <tr key={rowKey} data-selected={selected || undefined}>
+                <tr
+                  key={rowKey}
+                  data-selected={selected || undefined}
+                  data-interactive={onRowClick ? true : undefined}
+                  onClick={onRowClick ? () => onRowClick(row, rowIndex) : undefined}
+                >
                   {selectable && (
                     <td className="ui-table__selection-cell">
                       <Checkbox

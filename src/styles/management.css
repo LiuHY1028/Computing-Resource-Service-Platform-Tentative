@@ -73,6 +73,7 @@
 .management-link-button:focus-visible { outline: var(--engineering-focus-outline-width) solid var(--color-primary); outline-offset: var(--engineering-focus-outline-offset); }
 .management-row-actions,
 .management-related-links { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+.ui-table__actions .management-row-actions { flex-wrap: nowrap; justify-content: flex-end; }
 .management-related-links { margin-top: var(--space-20); }
 .management-results .ui-pagination { margin-top: var(--space-16); }
 .management-detail-header { padding: var(--space-16) var(--space-20); }
@@ -152,6 +153,7 @@
 @media (max-width: 1440px) {
   .management-page { padding: var(--space-16); }
   .management-filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .management-filter-grid--four { grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(140px, 1fr)); }
   .management-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {

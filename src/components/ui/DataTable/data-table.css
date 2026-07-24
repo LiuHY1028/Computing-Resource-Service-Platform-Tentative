@@ -1,0 +1,105 @@
+.ui-data-table {
+  min-width: 0;
+  overflow: visible;
+  border: var(--border-width-control-temporary) solid var(--table-border-color);
+  border-radius: var(--data-table-radius);
+  background: var(--color-surface-default);
+  box-shadow: var(--table-shell-shadow);
+}
+
+.ui-data-table__header,
+.ui-data-table__utility,
+.ui-data-table__selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.ui-data-table__header {
+  align-items: flex-start;
+  padding: var(--space-20) var(--space-20) var(--space-16);
+}
+
+.ui-data-table__heading {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.ui-data-table__heading h2,
+.ui-data-table__heading p {
+  margin: 0;
+}
+
+.ui-data-table__heading h2 {
+  color: var(--color-text-title);
+  font-size: var(--font-size-subtitle);
+  line-height: var(--line-height-subtitle);
+}
+
+.ui-data-table__heading span,
+.ui-data-table__heading p,
+.ui-data-table__result {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.ui-data-table__filters {
+  padding: 0 var(--space-20) var(--space-16);
+}
+
+.ui-data-table__utility {
+  min-height: var(--data-table-utility-min-height);
+  padding: var(--space-8) var(--space-20);
+  border-top: var(--border-width-control-temporary) solid var(--table-row-divider);
+  background: var(--table-utility-background);
+}
+
+.ui-data-table__settings,
+.ui-data-table__primary-actions,
+.ui-data-table__selection-bar > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.ui-data-table__selection-bar {
+  width: 100%;
+  min-height: var(--data-table-selection-min-height);
+}
+
+.ui-data-table__selection-bar strong {
+  color: var(--color-primary-active);
+  font-weight: var(--font-weight-medium);
+}
+
+.ui-data-table > .ui-table-shell {
+  border: 0;
+  border-top: var(--border-width-control-temporary) solid var(--table-row-divider);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ui-data-table__pagination {
+  display: flex;
+  justify-content: flex-end;
+  min-height: var(--data-table-pagination-min-height);
+  padding: var(--space-12) var(--space-20);
+  border-top: var(--border-width-control-temporary) solid var(--table-row-divider);
+}
+
+@media (max-width: 56.25rem) {
+  .ui-data-table__header,
+  .ui-data-table__utility,
+  .ui-data-table__selection-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ui-data-table__settings,
+  .ui-data-table__primary-actions {
+    justify-content: flex-start;
+  }
+}

@@ -10,17 +10,16 @@ import {
   Button,
   Container,
   EmptyTable,
+  getUsageState,
   Modal,
-  Progress,
   StatusBadge,
   Table,
+  UsageMeter,
   type TableColumn,
 } from '../../../components/ui';
 import {
   getStorageMountsForResource,
   canManageStorageFiles,
-  storageAvailableGb,
-  storageUsagePercent,
   type StorageMount,
   type StorageSpace,
 } from '../../storage';
@@ -50,11 +49,11 @@ import { ResourceActionMenu, type ResourceMenuAction } from './ResourceTable';
 import { createExtensionQuote, createRenewalQuote } from '../state/resourceStore';
 
 function capacityStatus(percent: number) {
-  return percent >= 90
-    ? { label: '容量不足', tone: 'critical' as const, badge: 'error' as const }
-    : percent >= 75
-      ? { label: '使用率偏高', tone: 'warning' as const, badge: 'warning' as const }
-      : { label: '正常', tone: 'normal' as const, badge: 'success' as const };
+  const state = getUsageState(percent);
+  return {
+    ...state,
+    badge: state.tone === 'critical' ? 'error' as const : state.tone === 'warning' ? 'warning' as const : 'success' as const,
+  };
 }
 
 function DefinitionSection({ title, eyebrow, fields }: Readonly<{
@@ -181,13 +180,9 @@ export function ResourceBilling({
 }
 
 function DiskCapacity({ disk }: Readonly<{ disk: CloudDataDisk }>) {
-  const available = disk.capacityGb - disk.usedGb;
-  const percent = Math.round((disk.usedGb / disk.capacityGb) * 100);
-  const state = capacityStatus(percent);
   return (
     <div className="resource-capacity-cell">
-      <Progress value={disk.usedGb} max={disk.capacityGb} label={state.label} tone={state.tone} />
-      <span>总量 {disk.capacityGb} GB · 已用 {disk.usedGb} GB · 剩余 {available} GB</span>
+      <UsageMeter used={disk.usedGb} total={disk.capacityGb} label={`${disk.name}容量使用率`} size="mini" />
     </div>
   );
 }
@@ -208,7 +203,7 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
             <div><span>可用容量</span><strong>{storage.totalCapacityGb - storage.usedCapacityGb} GB</strong></div>
             <div><span>使用率</span><strong>{percent}%</strong></div>
           </div>
-          <Progress value={storage.usedCapacityGb} max={storage.totalCapacityGb} label={state.label} tone={state.tone} />
+          <UsageMeter used={storage.usedCapacityGb} total={storage.totalCapacityGb} label="本地存储容量使用率" size="large" />
         </Container>
         <DefinitionSection eyebrow="物理磁盘与逻辑卷" title="本地存储配置" fields={[
           ['物理磁盘', `${storage.diskCount} 块 × ${storage.perDiskCapacityGb} GB`],
@@ -231,8 +226,7 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
   const sharedColumns: readonly TableColumn<{ space: StorageSpace; mount: StorageMount }>[] = [
     { key: 'name', title: '外挂存储', multiline: true, render: ({ space }) => <div className="resource-table__primary"><Link to={storageDetailPath(space.id)}>{space.name}</Link><span>{space.type === 'cloud-disk' ? '云硬盘' : '高性能共享存储'} · {space.id}</span>{canManageStorageFiles(space) && <Link to={storageFilesPath(space.id)}>文件管理</Link>}</div> },
     { key: 'capacity', title: '容量', multiline: true, render: ({ space }) => {
-      const state = capacityStatus(storageUsagePercent(space));
-      return <div className="resource-capacity-cell"><Progress value={space.usedGb} max={space.capacityGb} label={state.label} tone={state.tone} /><span>总量 {space.capacityGb} GB · 已用 {space.usedGb} GB · 剩余 {storageAvailableGb(space)} GB</span></div>;
+      return <div className="resource-capacity-cell"><UsageMeter used={space.usedGb} total={space.capacityGb} label={`${space.name}容量使用率`} size="mini" /></div>;
     } },
     { key: 'access', title: '访问', multiline: true, render: ({ space, mount }) => <div className="resource-table__primary"><strong>{space.protocol}</strong><span>{mount.mountPath}</span><span>{mount.readOnly ? '只读' : '读写'}</span></div> },
     { key: 'expiry', title: '到期时间', render: ({ space }) => formatDateTime(space.expiresAt) },

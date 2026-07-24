@@ -54,6 +54,7 @@ type ResourceTableProps = Readonly<{
   error?: string;
   catalogEmpty: boolean;
   selectedKeys: readonly TableKey[];
+  density: 'compact' | 'standard' | 'comfortable';
   visibleOptionalColumns: readonly string[];
   onSelectionChange: (keys: TableKey[]) => void;
   onRetry: () => void;
@@ -231,6 +232,7 @@ export function ResourceTable(props: ResourceTableProps) {
       onRetry={props.onRetry}
       selectable
       selectedKeys={props.selectedKeys}
+      density={props.density}
       onSelectionChange={props.onSelectionChange}
       getRowKey={(resource) => resource.id}
       getRowLabel={(resource) => resource.name}

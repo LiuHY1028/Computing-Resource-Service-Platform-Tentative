@@ -163,7 +163,45 @@
   --tabs-title-padding-inline: var(--space-12);
   --tabs-underline-padding-inline: var(--space-20);
   --table-row-selected-background: var(--color-primary-background);
-  --table-header-background: var(--color-background-header);
+  --table-header-background: #f2f5f8;
+
+  /* Console data-workflow tokens */
+  --table-border-color: #dfe5eb;
+  --table-row-divider: #e8edf2;
+  --table-row-hover-background: #f7faff;
+  --table-row-focus-background: #f1f7fe;
+  --table-utility-background: #fbfcfd;
+  --table-shell-shadow: 0 1px 2px rgb(31 45 61 / 4%);
+  --data-emphasis: #15324b;
+  --inspector-background: #f8fafc;
+  --file-folder-color: #d79027;
+  --file-type-color: #56738f;
+  --task-running: var(--color-primary);
+  --task-complete: var(--color-success-active);
+  --task-failed: var(--color-error);
+  --usage-track-background: #e6edf3;
+  --usage-normal: #1684df;
+  --usage-warning: #d98200;
+  --usage-critical: #d83b3b;
+  --data-table-radius: 12px;
+  --data-table-cell-padding-block: 13px;
+  --data-table-selected-edge-width: 3px;
+  --data-table-comfortable-row-min-height: 60px;
+  --data-table-sort-padding-block: 2px;
+  --data-table-sort-outline-width: 2px;
+  --data-table-sort-outline-offset: 2px;
+  --data-table-sort-mark-font-size: 11px;
+  --data-table-utility-min-height: 48px;
+  --data-table-selection-min-height: 32px;
+  --data-table-pagination-min-height: 52px;
+  --usage-meter-standard-min-width: 180px;
+  --usage-meter-mini-min-width: 190px;
+  --usage-meter-large-min-width: 260px;
+  --usage-meter-track-height: 8px;
+  --usage-meter-mini-track-height: 7px;
+  --usage-meter-large-track-height: 10px;
+  --usage-meter-pill-radius: 999px;
+  --usage-meter-track-shadow: inset 0 0 0 1px rgb(17 17 17 / 4%);
 
   /* Minimal engineering tokens for requirements not specified by the PDF */
   --engineering-focus-outline-width: 1px;

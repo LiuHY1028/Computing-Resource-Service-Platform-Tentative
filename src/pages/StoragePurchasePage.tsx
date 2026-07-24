@@ -127,7 +127,7 @@ export function StoragePurchasePage() {
   return (
     <main className="management-page storage-purchase-page">
       <Container className="storage-purchase-heading">
-        <div><span>存储管理</span><h2>购买存储</h2><p>在一个页面完成类型、规格、挂载和价格确认。</p></div>
+        <div><span>存储管理</span><h2>存储配置</h2><p>在一个页面完成类型、规格、挂载和价格确认。</p></div>
         <Button onClick={() => navigate(APP_PATHS.storage)}>返回存储管理</Button>
       </Container>
 

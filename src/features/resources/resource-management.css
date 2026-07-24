@@ -11,10 +11,13 @@
   gap: var(--space-20);
   padding: var(--space-20);
 }
-.resource-list-titlebar h1,
-.resource-list-titlebar p { margin: var(--space-4) 0 0; }
+.resource-list-titlebar strong {
+  color: var(--data-emphasis);
+  font-size: var(--font-size-subtitle);
+}
 .resource-list-titlebar span,
 .resource-list-titlebar p { color: var(--color-text-secondary); }
+.resource-list-titlebar > div { display: grid; gap: var(--space-4); }
 
 .resource-type-tabs,
 .resource-filters,
@@ -77,7 +80,11 @@
 }
 
 .resource-results {
+  overflow: hidden;
   padding: var(--space-20);
+  border-color: var(--table-border-color);
+  border-radius: 12px;
+  box-shadow: var(--table-shell-shadow);
 }
 
 .resource-results__header {

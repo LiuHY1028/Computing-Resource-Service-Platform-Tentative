@@ -102,6 +102,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
     'cloud-server': [],
     'physical-machine': [],
   });
+  const [density, setDensity] = useState<'compact' | 'standard' | 'comfortable'>('standard');
   const selectedKeys = selectedByType[resourceType];
   const visibleColumns = columnsByType[resourceType];
   const [resourceAction, setResourceAction] = useState<{ resource: Resource; action: ResourceAction }>();
@@ -266,6 +267,11 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
           <div><span>{resourceType === 'cloud-server' ? '云实例资源' : '整机硬件资源'}</span><h2>{resourceType === 'cloud-server' ? '云服务器' : '物理机'}资源</h2></div>
           <div className="resource-results__tools">
             <p aria-live="polite">共 {result.total} 个结果</p>
+            <DropdownMenu trigger={`密度：${density === 'compact' ? '紧凑' : density === 'comfortable' ? '宽松' : '标准'}`} aria-label="资源表格密度">
+              <DropdownMenuItem onSelect={() => setDensity('compact')}>{density === 'compact' ? '✓ ' : ''}紧凑</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDensity('standard')}>{density === 'standard' ? '✓ ' : ''}标准</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDensity('comfortable')}>{density === 'comfortable' ? '✓ ' : ''}宽松</DropdownMenuItem>
+            </DropdownMenu>
             <DropdownMenu trigger="列设置" aria-label="列表列设置">
               <DropdownMenuGroup label="扩展列">
                 {defaultColumns.map((column) => (
@@ -300,6 +306,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
           loading={false}
           catalogEmpty={result.catalogTotal === 0}
           selectedKeys={selectedKeys}
+          density={density}
           visibleOptionalColumns={visibleColumns}
           onSelectionChange={setSelectedKeys}
           onRetry={() => undefined}
@@ -321,9 +328,8 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
     <div className="resource-page" data-resource-type={resourceType}>
       <Container className="resource-list-titlebar">
         <div>
-          <span>我的资源</span>
-          <h1>{resourceType === 'cloud-server' ? '云服务器' : '物理机'}</h1>
-          <p>查看已购资源，并直接进入购买、连接与关联能力。</p>
+          <span>{resourceType === 'cloud-server' ? '云实例资源' : '整机硬件资源'}</span>
+          <strong>查看已购资源，并直接进入购买、连接与关联能力。</strong>
         </div>
         <Button variant="primary" onClick={goPurchase}>
           {resourceType === 'cloud-server' ? '购买云服务器' : '购买物理机'}
@@ -335,8 +341,8 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
           value={resourceType === 'cloud-server' ? 'cloud' : 'physical'}
           onValueChange={(value) => navigate(`${resourceListPath(value === 'cloud' ? 'cloud-server' : 'physical-machine')}${suffix}`)}
           items={[
-            { value: 'cloud', label: <><span aria-hidden="true">☁</span> 云服务器</>, panel: listContent },
-            { value: 'physical', label: <><span aria-hidden="true">▤</span> 物理机</>, panel: listContent },
+            { value: 'cloud', label: '云服务器', panel: listContent },
+            { value: 'physical', label: '物理机', panel: listContent },
           ]}
         />
       </Container>

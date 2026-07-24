@@ -3,6 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   Button,
   Container,
+  DataTable,
+  DropdownMenu,
+  DropdownMenuItem,
   Form,
   FormField,
   Input,
@@ -12,7 +15,7 @@ import {
   SearchInput,
   Select,
   StatusBadge,
-  Table,
+  TextButton,
   Textarea,
   TitleBarTabs,
   type TableColumn,
@@ -124,6 +127,9 @@ export function ImagesPage() {
     {
       key: 'name',
       title: '镜像名称',
+      sortable: true,
+      sortValue: (image) => image.name,
+      hideable: false,
       render: (image) => (
         <div className="management-primary-cell">
           <button className="management-link-button" type="button" onClick={() => setSelected(image)}>{image.name}</button>
@@ -131,21 +137,22 @@ export function ImagesPage() {
         </div>
       ),
     },
-    { key: 'type', title: '镜像类型', render: (image) => typeLabel(image.type) },
-    { key: 'os', title: '操作系统', render: (image) => `${image.operatingSystem} ${image.version}` },
-    { key: 'architecture', title: '架构', render: (image) => image.architecture },
+    { key: 'type', title: '镜像类型', sortable: true, sortValue: (image) => typeLabel(image.type), render: (image) => typeLabel(image.type) },
+    { key: 'os', title: '操作系统', sortable: true, sortValue: (image) => `${image.operatingSystem} ${image.version}`, render: (image) => <div className="management-primary-cell"><strong>{image.operatingSystem} {image.version}</strong><span>{image.architecture}</span></div> },
     { key: 'environment', title: '环境摘要', render: (image) => image.environmentSummary, multiline: true },
     { key: 'compute', title: '适用计算类型', render: (image) => image.compatibleComputeTypes.map((item) => item.toUpperCase()).join(' / ') },
-    { key: 'price', title: '费用', render: (image) => imagePriceLabel(image.id) },
+    { key: 'price', title: '费用', sortable: true, sortValue: (image) => imagePriceLabel(image.id), render: (image) => <strong>{imagePriceLabel(image.id)}</strong> },
     {
       key: 'status',
       title: '状态',
+      sortable: true,
+      sortValue: (image) => statusView(image.status).label,
       render: (image) => {
         const view = statusView(image.status);
         return <StatusBadge tone={view.tone}>{view.label}</StatusBadge>;
       },
     },
-    { key: 'created', title: '创建时间', render: (image) => formatDate(image.createdAt) },
+    { key: 'created', title: '创建时间', sortable: true, sortValue: (image) => image.createdAt, render: (image) => formatDate(image.createdAt) },
   ];
 
   function openCreate(mode: 'create' | 'import') {
@@ -223,37 +230,40 @@ export function ImagesPage() {
 
   const list = (
     <div className="management-list-stack">
-      <Container className="management-toolbar">
-        <div className="management-filter-grid management-filter-grid--four">
-          <SearchInput aria-label="搜索镜像" value={query.search} placeholder="搜索镜像名称、ID 或环境" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
-          <Select aria-label="操作系统筛选" value={query.operatingSystem} onValueChange={(value) => setParam('os', value)} options={[{ value: 'all', label: '全部操作系统' }, { value: 'Linux LTS', label: 'Linux LTS' }]} />
-          <Select aria-label="计算类型筛选" value={query.computeType} onValueChange={(value) => setParam('compute', value)} options={[{ value: 'all', label: '全部计算类型' }, { value: 'cpu', label: 'CPU' }, { value: 'gpu', label: 'GPU' }]} />
-          <Select aria-label="镜像状态筛选" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'available', label: '可用' }, { value: 'submitted', label: '任务已提交' }, { value: 'processing', label: '处理中' }, { value: 'failed', label: '失败' }]} />
-        </div>
-        <div className="management-toolbar__actions">
-          <Button onClick={() => openCreate('create')}>创建自定义镜像记录</Button>
-          <Button variant="primary" onClick={() => openCreate('import')}>导入镜像</Button>
-        </div>
-      </Container>
       {feedback && <Container className="management-feedback" role="status">{feedback}</Container>}
-      <Container className="management-results">
-        <div className="management-results__header"><div><span>{typeLabel(type)}</span><h2>镜像列表</h2></div><p>共 {images.length} 个结果</p></div>
-        <Table
-          className="management-table"
-          aria-label={`${typeLabel(type)}列表`}
-          columns={columns}
-          rows={rows}
-          getRowKey={(image) => image.id}
-          empty={<PageState title={query.search ? '没有匹配的镜像' : `暂无${typeLabel(type)}`} description={query.search ? '请调整搜索或筛选条件。' : '当前分类暂无可显示的镜像记录。'} />}
-          renderRowActions={(image) => (
-            <div className="management-row-actions">
-              <Button variant="secondary" onClick={() => setSelected(image)}>查看详情</Button>
-              {image.type === 'custom' && <Button variant="secondary" onClick={() => openEdit(image)}>编辑</Button>}
-            </div>
-          )}
-        />
-        {images.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={images.length} onPageChange={(next) => setParam('page', String(next))} />}
-      </Container>
+      <DataTable
+        className="management-table"
+        aria-label={`${typeLabel(type)}列表`}
+        eyebrow={typeLabel(type)}
+        title="镜像列表"
+        description="按操作系统、计算类型和状态快速定位可用镜像。"
+        actions={<><Button onClick={() => openCreate('create')}>创建镜像记录</Button><Button variant="primary" onClick={() => openCreate('import')}>导入镜像</Button></>}
+        toolbar={(
+          <div className="management-filter-grid management-filter-grid--four">
+            <SearchInput aria-label="搜索镜像" value={query.search} placeholder="搜索镜像名称、ID 或环境" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
+            <Select aria-label="操作系统筛选" value={query.operatingSystem} onValueChange={(value) => setParam('os', value)} options={[{ value: 'all', label: '全部操作系统' }, { value: 'Linux LTS', label: 'Linux LTS' }]} />
+            <Select aria-label="计算类型筛选" value={query.computeType} onValueChange={(value) => setParam('compute', value)} options={[{ value: 'all', label: '全部计算类型' }, { value: 'cpu', label: 'CPU' }, { value: 'gpu', label: 'GPU' }]} />
+            <Select aria-label="镜像状态筛选" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'available', label: '可用' }, { value: 'submitted', label: '任务已提交' }, { value: 'processing', label: '处理中' }, { value: 'failed', label: '失败' }]} />
+          </div>
+        )}
+        resultLabel={`共 ${images.length} 个结果`}
+        columns={columns}
+        rows={rows}
+        getRowKey={(image) => image.id}
+        empty={<PageState title={query.search ? '没有匹配的镜像' : `暂无${typeLabel(type)}`} description={query.search ? '请调整搜索或筛选条件。' : '当前分类暂无可显示的镜像记录。'} />}
+        renderRowActions={(image) => (
+          <div className="management-row-actions">
+            <TextButton onClick={() => setSelected(image)}>查看详情</TextButton>
+            {image.type === 'custom' && (
+              <DropdownMenu trigger="更多">
+                <DropdownMenuItem onSelect={() => openEdit(image)}>编辑信息</DropdownMenuItem>
+                <DropdownMenuItem danger disabled={Boolean(image.resourceIds.length)} title={image.resourceIds.length ? '有关联资源时不能删除' : undefined} onSelect={() => setDeleteTarget(image)}>删除镜像</DropdownMenuItem>
+              </DropdownMenu>
+            )}
+          </div>
+        )}
+        pagination={images.length > 0 ? <Pagination page={safePage} totalPages={totalPages} totalItems={images.length} onPageChange={(next) => setParam('page', String(next))} /> : undefined}
+      />
     </div>
   );
 

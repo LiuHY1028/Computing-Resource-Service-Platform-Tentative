@@ -10,7 +10,7 @@
 
 ## 前端状态边界
 
-领域 Store 管理当前页面会话内的修改和关联操作。`persistence.ts` 以内存为可靠边界，并在浏览器存储可用时执行可选的版本化读写；所有存储访问均受保护。文件上传使用浏览器 File API 和对象 URL，内置文本使用 Blob 下载，不发起 HTTP 请求；刷新后恢复内置初始文件可以接受。
+领域 Store 管理当前页面会话内的修改和关联操作。`persistence.ts` 以内存为可靠边界，并在浏览器存储可用时执行可选的版本化读写；所有存储访问均受保护。文件上传使用浏览器 File API 和对象 URL，内置文本使用 Blob 下载，不发起 HTTP 请求；复制、剪切、移动、撤销和任务抽屉均为当前会话内的前端行为，刷新后恢复内置初始文件可以接受。
 
 ## Hash 路由
 
@@ -18,7 +18,7 @@
 
 ## 单 HTML 构建
 
-`vite.offline.config.ts` 使用单文件构建插件，将 JavaScript、CSS、MiSans VF、图标和数据内联，并禁用 Source Map、CSS 拆分和外部 Chunk。构建完成后生成：
+`vite.offline.config.ts` 使用单文件构建插件，将 JavaScript、CSS、MiSans VF、图标、数据表格、容量组件、文件管理器和领域数据内联，并禁用 Source Map、CSS 拆分和外部 Chunk。构建完成后生成：
 
 ```text
 release/算力资源服务平台.html
@@ -36,6 +36,7 @@ npm run verify:offline
 npm run verify:pricing
 npm run verify:relations
 npm run verify:storage
+npm run verify:ui
 ```
 
-验证器检查目标文件、单文件结构、内联入口、样式、字体、外部资源、API 地址、动态 Chunk、开发路由和合理文件体积。
+离线验证器检查目标文件、单文件结构、内联入口、样式、字体、外部资源、API 地址、动态 Chunk、开发路由和合理文件体积。UI 验证器检查重复标题、旧表格与原生进度样式、容量组件、文件管理器旧结构、用户可见开发文案、新增 UI 依赖和外部运行时资源。

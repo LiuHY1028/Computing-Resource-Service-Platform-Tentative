@@ -92,6 +92,24 @@ export {
   type TableProps,
 } from './Table/Table';
 export {
+  DataTable,
+  type DataTableDensity,
+  type DataTableProps,
+} from './DataTable/DataTable';
+export {
+  CapacityBar,
+  MetricProgress,
+  MiniProgress,
+  UsageMeter,
+  type UsageMeterProps,
+  type UsageMeterSize,
+} from './UsageMeter/UsageMeter';
+export {
+  getUsageState,
+  USAGE_THRESHOLDS,
+  type UsageTone,
+} from './UsageMeter/usageThresholds';
+export {
   Pagination,
   type PaginationProps,
 } from './Pagination/Pagination';

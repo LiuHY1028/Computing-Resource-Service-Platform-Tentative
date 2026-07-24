@@ -18,6 +18,7 @@
     "verify:relations": "node scripts/verify-relations.mjs",
     "verify:pricing": "node scripts/verify-pricing.mjs",
     "verify:storage": "node scripts/verify-storage.mjs",
+    "verify:ui": "node scripts/verify-ui.mjs",
     "verify:offline": "node scripts/verify-offline.mjs",
     "preview": "vite preview"
   },

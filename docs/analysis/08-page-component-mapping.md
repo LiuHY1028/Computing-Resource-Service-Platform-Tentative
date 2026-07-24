@@ -33,7 +33,7 @@
 |---|---|---|---|---|
 | `TPL-CATALOG` | 目录/卡片模板 | 页面标题栏 → 标题栏 Tab/筛选 → 24 栏卡片区 → 分页/页面状态 | `MKT-01`、`SW-01` | p.7、p.9、p.12、p.14、p.16、p.17 |
 | `TPL-FORM` | 配置表单模板 | 页面标题栏 → 栅格化分段表单 → 右侧锚点 → 底部操作区；上传区域可按 p.18 使用 800 px 明确宽度 | `BUY-01`、`BUY-02` | p.10-p.13、p.16、p.18 |
-| `TPL-LIST` | 列表管理模板 | 页面标题栏 → Tabs/搜索/筛选/主操作 → 表格 → 分页 | `RES-01`、`RES-03`、`STO-01`、`IMG-01`、`NET-01`、`ORD-01`、`OPS-01` | p.7、p.9-p.12、p.14、p.17 |
+| `TPL-LIST` | 列表管理模板 | 页面标题栏 → 搜索/筛选/主操作 → DataTable 工具栏 → 可排序表格 → 紧凑分页；按任务启用选择、批量操作、列设置和密度 | `RES-01`、`RES-03`、`STO-01`、`IMG-01`、`NET-01`、`ORD-01`、`OPS-01` | p.7、p.9-p.12、p.14、p.17；复杂数据场景按 Task 13 扩展 |
 | `TPL-DETAIL` | 对象详情模板 | 页面标题栏 → 对象摘要 → 下划线 Tabs/锚点 → 分区容器 | `RES-02`、`RES-04`、`STO-02`、`ORD-02` | p.7、p.8、p.14、p.16、p.18 |
 | `TPL-TASK-MODAL` | 轻量任务模板 | 普通弹窗/抽屉 → 表单 → 确认/取消 → 结果反馈 | 创建存储、上传镜像、安装软件、开放端口等 | p.10-p.13、p.18；Drawer/结果反馈为规范外扩展 |
 
@@ -50,9 +50,9 @@
 | `RES-02` 云服务器详情 | `TPL-DETAIL`；摘要 + 详情分区/下划线 Tabs | Container、Tabs、Button、Tooltip、Table、Modal、Form | `ResourceSummary`、`ConnectionInfo`、`MonitoringPanel`、`MetricChart`、`StorageMountSummary`、`NetworkRuleSummary`、`SoftwareInstallSummary`、`RelatedOrderLink` | 查看规格/站点/系统盘/存储；复制 IP/SSH 信息；查看监控；发起开关机；跳转存储/网络/软件/订单 | 页面 `L/F`；监控 `L/E/F`；复制 `S`；各异步操作 `P/S/F/D`；关联对象缺失；无监控数据不等于加载失败 | **需要**：资源摘要、连接信息、监控图表、状态标识、复制反馈、异步结果。依据：`REQ-009-014/017/018/021-027`；PDF 无图表、复制与业务状态组件 |
 | `RES-03` 物理机列表 | `TPL-LIST`；“我的资源”物理机 Tab | Tabs、Search Input、Select、Button、Table、Pagination、Tooltip | `ResourceStatusBadge`、`PhysicalSpecCell`、`QuickActionMenu` | 搜索/筛选；进入 `RES-04`；发起已确认适用操作；不得假设物理机与云服务器操作完全相同 | `L/E/N/F/P/S/D`；不可用操作说明；交付状态名称保持可替换 | **需要**：状态标识、整机规格单元格、异步反馈。依据：物理机需管理与监控 `REQ-008/010`，具体动作集合待确认 |
 | `RES-04` 物理机详情 | `TPL-DETAIL`；摘要 + 分区/下划线 Tabs | Container、Tabs、Button、Tooltip、Table、Modal、Form | `PhysicalResourceSummary`、`ConnectionInfo`、`MonitoringPanel`、`MetricChart`、`NetworkRuleSummary`、`SoftwareInstallSummary`、`PendingDecisionNotice` | 查看整机规格、IP/连接、CPU/内存/加速卡监控；进入网络/软件/订单；只显示已确认适用操作 | 页面 `L/F`；监控 `L/E/F`；复制 `S`；操作 `P/S/F/D`；OS/镜像/存储适用性待确认提示 | **需要**：物理机摘要、监控图表、连接信息、待确认提示。依据：`REQ-008/010/011/016/017`；PDF 无领域详情与图表 |
-| `STO-01` 存储列表 | `TPL-LIST`；主操作“购买存储”进入正式购买页 | Search Input、Select、Button、Table、DropdownMenu、Progress | `StorageTypeBadge`、`MountCountCell`、`CapacityProgress`、`StorageCompatibilityHint` | 搜索/筛选；区分云硬盘与高性能共享存储；文件、挂载、详情和更多操作 | `L/E/N/F`；状态与站点不兼容 D 并说明 | **需要**：存储类型标识、容量、操作反馈。依据：独立外挂存储管理 |
+| `STO-01` 存储列表 | `TPL-LIST`；统计摘要 + 筛选 + 主操作“购买存储” | Search Input、Select、Button、DataTable、DropdownMenu、UsageMeter | `StorageTypeBadge`、`MountCountCell`、`StorageCompatibilityHint` | 搜索/筛选/排序/密度；区分云硬盘与高性能共享存储；文件、挂载、详情和更多操作 | `L/E/N/F`；容量 Normal/High/Critical；状态与站点不兼容 D 并说明 | **需要**：存储类型、统一容量语义、分层操作与即时反馈。依据：独立外挂存储管理及 Task 13 数据密集页面审计 |
 | `STO-03` 存储购买 | `TPL-FORM`；一页式类型、规格、挂载和价格摘要 | Form、CardRadio、Select、Checkbox、Input、PricingSummary、Button | `StorageTypeSelector`、`MountTargetSelector`、`StoragePriceSummary` | 云硬盘/共享存储；性能、容量、数量、周期；立即挂载或暂不挂载；提交 | 校验 Error、价格更新、提交 Processing/Success/Failure | **需要**：存储购买组合。依据：独立购买与统一价格目录 |
-| `STO-04` 文件管理 | 三段式桌面文件管理器 | Button、SearchInput、Select、Checkbox、DropdownMenu、Modal、Progress、PageState | `FileManagerShell`、`DirectoryTree`、`FileGrid`、`FileDetails`、`DirectoryPicker`、`FilePreview`、`FileTaskCenter` | 导航、上传下载、新建、重命名、复制、移动、删除、搜索、排序、预览和任务 | 空目录、拖放、选择、同名冲突、循环阻止、任务成功/失败 | **需要**：PDF 无文件管理器；基于存储文件管理需求 |
+| `STO-04` 文件管理 | 单一工作区；双层 Command Bar + 可折叠导航 + 文件区 + 按需 Inspector | Button、SearchInput、Select、Checkbox、DropdownMenu、Modal、UsageMeter、PageState | `FileManagerShell`、`QuickAccess`、`DirectoryTree`、`FileGrid`、`ContextMenu`、`FileInspector`、`FilePreview`、`FileTaskDrawer` | 前进/后退/上级、搜索、排序、列表/网格、单选/范围多选、复制/剪切/粘贴、拖放、新建、上传下载、重命名、移动、删除、预览、快捷键、撤销 | 空目录、拖放目标、同名冲突、循环阻止、单选/多选、任务成功/失败/重试、Inspector 自动收起 | **需要**：PDF 无文件管理器；基于存储文件管理需求、Task 13 竞品研究与 1366/1920 工作区验收 |
 | `STO-02` 存储空间详情 | `TPL-DETAIL`；摘要 + 挂载关系列表 | Container、Tabs/锚点、Button、Table、Pagination、Modal、Tooltip | `StorageSummary`、`MountRelationTable`、`StorageTypeBadge`、`CompatibilityNotice` | 查看类型、站点和挂载关系；从关联资源返回；购后挂载/解绑仅在规则确认后开放 | 页面 `L/F`；挂载关系 `L/E/F`；关联资源缺失；操作若未确认则 D/不展示 | **需要**：存储摘要、挂载关系、兼容提示。依据：存储独立管理 `REQ-012/026/027`；文件浏览器不在当前确认范围 |
 | `IMG-01` 镜像管理 | `TPL-LIST`；上传入口使用任务弹窗/抽屉 | Search Input、Select、Button、Table、Pagination、Modal、Form、Tooltip | `ImageCompatibilityBadge`、`UploadImageForm`、`UploadProgress`、`ImageSourceLabel` | 搜索/筛选；打开上传；校验表单；上传并查看结果；作为 `BUY-01` 的关联入口 | `L/E/N/F`；上传校验 Error/D；上传 `P/S/F`；兼容性未知或不兼容提示 | **需要**：Drawer（如采用）、上传进度、兼容性标识、结果反馈。依据：镜像上传与创建选择 `REQ-015`；PDF 仅给上传区域，无进度/兼容性 |
 | `SW-01` 软件中心 | `TPL-CATALOG`；软件卡片 + 安装任务弹窗 | Search Input、Select、筛选标签、Button、Container、Pagination、Modal、Form、Tooltip | `SoftwareCard`、`CompatibilityBadge`、`TargetResourceSelector`、`InstallTaskSummary` | 搜索/筛选；查看软件信息；选择目标资源；发起安装；跳转资源/操作记录 | `L/E/N/F`；目标资源加载 `L/E/F`；不兼容 D；安装 `P/S/F`；版本/卸载规则不擅自出现 | **需要**：软件卡、兼容性标识、安装任务反馈。依据：软件安装 `REQ-017`；PDF 无软件目录与安装进度 |
@@ -142,7 +142,8 @@
 | `MetricChart` | 已确认资源监控无法由表格替代 | Loading、Empty、Error、Normal、Hover Tooltip | 色彩/字体/Tooltip 取 p.2、p.3、p.15；图表轴线/曲线规范待设计 |
 | `Progress` | 上传镜像、安装软件、异步交付需要过程反馈 | Indeterminate、Determinate（仅有数据时）、Success、Failure | PDF 缺失；不得虚构百分比 |
 | `DropdownMenu` / `DropdownMenuItem` / `DropdownMenuGroup` / `DropdownMenuSeparator` | 资源列表和详情需要在触发器附近承载分组操作，避免使用大型弹窗导航 | Closed、Open、Keyboard focus、Disabled、Danger、Viewport edge | Task 09；使用 Portal 避免表格裁切，具体操作仍由 Modal 承担确认或填写 |
-| `CapacityProgress` | 存储详情必须同时表达总量、已用、可用和使用率，并以文字区分正常、偏高、容量不足 | Normal、High、Critical、Unknown | Task 09；复用 `Progress` 的确定值能力，不引入随机或服务端指标 |
+| `DataTable` | 数据密集页面需要统一但可按领域扩展的搜索、筛选、排序、密度、选择、批量操作、列设置、状态和分页 | Default/Compact、Sorted、Selected、Loading、Empty、NoResult、Error、Overflow | Task 13；基于公共 `Table` 语义组合，不引入表格库，页面仅启用适用能力 |
+| `UsageMeter`（含 `CapacityBar` / `MiniProgress` / `MetricProgress`） | 存储、资源详情和文件管理器需要在不同密度下统一表达总量、已用、剩余、百分比与容量风险 | Compact、Default、Detail；Normal、High、Critical、Unknown | Task 13；阈值集中维护，文字、数值、颜色并用，不引入随机或服务端指标 |
 | `PricingSummary` | 在购买、续费、延期、扩容和订单中统一展示整数分费用明细与总额 | Free、Included、Monthly、Hourly、Quantity、Duration | Task 10；金额只读 `src/features/pricing/`，不表达支付或扣款结果 |
 | `PendingDecisionNotice` | 防止将待确认项实现成确定规则 | Inline、Section、Blocking | 使用 p.8 信息/注意容器；文案明确“暂定/待确认” |
 

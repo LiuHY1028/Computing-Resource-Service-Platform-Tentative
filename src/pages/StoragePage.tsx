@@ -9,6 +9,7 @@ import {
 } from '../app/routes';
 import {
   Button,
+  DataTable,
   Container,
   DropdownMenu,
   DropdownMenuItem,
@@ -16,12 +17,11 @@ import {
   Input,
   Modal,
   PageState,
-  Progress,
   SearchInput,
   Select,
   StatusBadge,
-  Table,
   TextButton,
+  UsageMeter,
   type TableColumn,
 } from '../components/ui';
 import { queryOrders } from '../features/orders';
@@ -40,7 +40,6 @@ import {
   requestStorageUnmount,
   setStorageAutoRenew,
   storageAvailableGb,
-  storageUsagePercent,
   type StorageMount,
   type StorageSpace,
   type StorageStatus,
@@ -94,6 +93,9 @@ export function StorageListPage() {
   };
   void revision;
   const spaces = queryStorageSpaces(query);
+  const totalCapacity = spaces.reduce((total, space) => total + space.capacityGb, 0);
+  const totalUsed = spaces.reduce((total, space) => total + space.usedGb, 0);
+  const mountedCount = spaces.filter((space) => space.mounts.length > 0).length;
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -106,6 +108,9 @@ export function StorageListPage() {
     {
       key: 'storage',
       title: '存储',
+      sortable: true,
+      sortValue: (space) => space.name,
+      hideable: false,
       render: (space) => (
         <div className="management-primary-cell">
           <Link to={storageDetailPath(space.id)}>{space.name}</Link>
@@ -117,6 +122,8 @@ export function StorageListPage() {
     {
       key: 'type',
       title: '类型和规格',
+      sortable: true,
+      sortValue: (space) => typeLabel(space.type),
       render: (space) => (
         <div className="management-primary-cell">
           <strong>{typeLabel(space.type)}</strong>
@@ -127,12 +134,15 @@ export function StorageListPage() {
     {
       key: 'capacity',
       title: '容量',
+      sortable: true,
+      sortValue: (space) => space.usedGb / space.capacityGb,
       render: (space) => (
-        <div className="management-storage-usage">
-          <span>{space.usedGb} / {space.capacityGb} GB</span>
-          <Progress value={storageUsagePercent(space)} label={`${space.name}容量使用率`} />
-          <small>剩余 {storageAvailableGb(space)} GB</small>
-        </div>
+        <UsageMeter
+          used={space.usedGb}
+          total={space.capacityGb}
+          label={`${space.name}容量使用率`}
+          size="mini"
+        />
       ),
     },
     {
@@ -155,29 +165,12 @@ export function StorageListPage() {
     {
       key: 'status',
       title: '状态',
+      sortable: true,
+      sortValue: (space) => statusView(space.status).label,
       render: (space) => {
         const view = statusView(space.status);
         return <StatusBadge tone={view.tone}>{view.label}</StatusBadge>;
       },
-    },
-    {
-      key: 'actions',
-      title: '操作',
-      render: (space) => (
-        <div className="management-row-actions">
-          {canManageStorageFiles(space) && <TextButton onClick={() => navigate(storageFilesPath(space.id))}>文件管理</TextButton>}
-          {!space.mounts.length && <TextButton onClick={() => setDialog({ type: 'mount', space })}>挂载</TextButton>}
-          <TextButton onClick={() => navigate(storageDetailPath(space.id))}>查看详情</TextButton>
-          <DropdownMenu trigger={<span>更多</span>}>
-            <DropdownMenuItem onSelect={() => setDialog({ type: 'expand', space })}>扩容</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setDialog({ type: 'renew', space })}>续期</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => void toggleAutoRenew(space)}>设置自动续费</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setDialog({ type: 'rename', space })}>修改名称</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate(`${APP_PATHS.storagePurchase}?type=${space.type}&tier=${space.performanceTier}`)}>购买同类型</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setDialog({ type: 'release', space })}>提交释放申请</DropdownMenuItem>
-          </DropdownMenu>
-        </div>
-      ),
     },
   ];
 
@@ -189,24 +182,51 @@ export function StorageListPage() {
 
   return (
     <main className="management-page">
-      <Container className="management-toolbar">
-        <div className="management-results__header">
-          <div><h2>存储管理</h2><p>独立购买并管理云硬盘与高性能共享存储。</p></div>
-          <Button variant="primary" onClick={() => navigate(APP_PATHS.storagePurchase)}>购买存储</Button>
-        </div>
-        <div className="management-filter-grid management-filter-grid--four">
-          <SearchInput value={query.search} placeholder="搜索名称、ID或站点" onChange={(event) => setParam('q', event.target.value)} />
-          <Select aria-label="存储类型" value={query.type} onValueChange={(value) => setParam('type', value)} options={[{ value: 'all', label: '全部类型' }, { value: 'cloud-disk', label: '云硬盘' }, { value: 'shared', label: '高性能共享存储' }]} />
-          <Select aria-label="状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'available', label: '可用' }, { value: 'preparing', label: '准备中' }, { value: 'processing', label: '处理中' }, { value: 'error', label: '异常' }]} />
-          <Select aria-label="挂载状态" value={query.mounted} onValueChange={(value) => setParam('mounted', value)} options={[{ value: 'all', label: '全部挂载状态' }, { value: 'yes', label: '已挂载' }, { value: 'no', label: '未挂载' }]} />
-        </div>
-      </Container>
+      <div className="management-capacity-summary" aria-label="存储概览">
+        <div><span>存储空间</span><strong>{spaces.length}</strong></div>
+        <div><span>总容量</span><strong>{totalCapacity.toLocaleString('zh-CN')} GB</strong></div>
+        <div><span>已使用</span><strong>{totalUsed.toLocaleString('zh-CN')} GB</strong></div>
+        <div><span>已挂载</span><strong>{mountedCount}</strong></div>
+      </div>
       {feedback && <div className="management-feedback" role="status">{feedback}</div>}
-      <Container className="management-results">
-        {spaces.length ? <Table<StorageSpace> aria-label="存储列表" className="storage-table" columns={columns} rows={spaces} getRowKey={(space) => space.id} /> : (
-          <PageState title="暂无符合条件的存储" description="调整筛选条件，或购买新的独立存储。" actionLabel="购买存储" onAction={() => navigate(APP_PATHS.storagePurchase)} />
+      <DataTable<StorageSpace>
+        aria-label="存储列表"
+        className="storage-table"
+        eyebrow="容量、挂载与费用"
+        title="存储空间"
+        description="集中查看独立存储的使用率、挂载关系与到期信息。"
+        actions={<Button variant="primary" onClick={() => navigate(APP_PATHS.storagePurchase)}>购买存储</Button>}
+        toolbar={(
+          <div className="management-filter-grid management-filter-grid--four">
+            <SearchInput value={query.search} placeholder="搜索名称、ID或站点" onChange={(event) => setParam('q', event.target.value)} />
+            <Select aria-label="存储类型" value={query.type} onValueChange={(value) => setParam('type', value)} options={[{ value: 'all', label: '全部类型' }, { value: 'cloud-disk', label: '云硬盘' }, { value: 'shared', label: '高性能共享存储' }]} />
+            <Select aria-label="状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'available', label: '可用' }, { value: 'preparing', label: '准备中' }, { value: 'processing', label: '处理中' }, { value: 'error', label: '异常' }]} />
+            <Select aria-label="挂载状态" value={query.mounted} onValueChange={(value) => setParam('mounted', value)} options={[{ value: 'all', label: '全部挂载状态' }, { value: 'yes', label: '已挂载' }, { value: 'no', label: '未挂载' }]} />
+          </div>
         )}
-      </Container>
+        columns={columns}
+        rows={spaces}
+        getRowKey={(space) => space.id}
+        actionsWidth="132px"
+        empty={<PageState title="暂无符合条件的存储" description="调整筛选条件，或购买新的独立存储。" actionLabel="购买存储" onAction={() => navigate(APP_PATHS.storagePurchase)} />}
+        renderRowActions={(space) => (
+          <div className="management-row-actions">
+            <TextButton onClick={() => canManageStorageFiles(space) ? navigate(storageFilesPath(space.id)) : navigate(storageDetailPath(space.id))}>
+              {canManageStorageFiles(space) ? '文件管理' : '查看详情'}
+            </TextButton>
+            <DropdownMenu trigger={<span>更多</span>}>
+              {canManageStorageFiles(space) && <DropdownMenuItem onSelect={() => navigate(storageDetailPath(space.id))}>查看详情</DropdownMenuItem>}
+              {!space.mounts.length && <DropdownMenuItem onSelect={() => setDialog({ type: 'mount', space })}>挂载</DropdownMenuItem>}
+              <DropdownMenuItem onSelect={() => setDialog({ type: 'expand', space })}>扩容</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDialog({ type: 'renew', space })}>续期</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void toggleAutoRenew(space)}>设置自动续费</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDialog({ type: 'rename', space })}>修改名称</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate(`${APP_PATHS.storagePurchase}?type=${space.type}&tier=${space.performanceTier}`)}>购买同类型</DropdownMenuItem>
+              <DropdownMenuItem danger onSelect={() => setDialog({ type: 'release', space })}>提交释放申请</DropdownMenuItem>
+            </DropdownMenu>
+          </div>
+        )}
+      />
       <StorageActionDialog key={dialog ? `${dialog.type}-${dialog.space.id}` : 'closed'} dialog={dialog} onClose={() => setDialog(undefined)} onDone={(message) => { setDialog(undefined); setFeedback(message); setRevision((value) => value + 1); }} />
     </main>
   );
@@ -249,6 +269,13 @@ export function StorageDetailPage() {
       <div className="management-detail-grid">
         <Container className="management-detail-section">
           <h2>容量与费用</h2>
+          <UsageMeter
+            className="storage-detail-usage"
+            used={space.usedGb}
+            total={space.capacityGb}
+            label={`${space.name}容量使用率`}
+            size="large"
+          />
           <dl className="management-definition-grid">
             <div><dt>总容量</dt><dd>{space.capacityGb} GB</dd></div>
             <div><dt>已使用</dt><dd>{space.usedGb} GB</dd></div>

@@ -3,6 +3,7 @@ import { resetOperationsStore } from '../../operations';
 import { getStorageSpace, resetStorageStore } from '../../storage';
 import {
   copyNodes,
+  canUndoFileOperation,
   createFolder,
   deleteNodes,
   getNodePath,
@@ -13,6 +14,7 @@ import {
   renameNode,
   resetFileStore,
   uploadFiles,
+  undoLastFileOperation,
 } from './fileStore';
 
 const memory = new Map<string, string>();
@@ -74,5 +76,14 @@ describe('fileStore', () => {
     deleteNodes([target.nodeId]);
     expect(listDirectory(root.storageId, root.nodeId).map((item) => item.name)).not.toContain('目标目录');
     expect(listFileTasks(root.storageId).map((task) => task.operation)).toEqual(expect.arrayContaining(['复制', '移动', '删除']));
+  });
+
+  it('restores the most recent local mutation and capacity state', () => {
+    const root = getRootFolder('storage-shared-east-001')!;
+    const created = createFolder(root.storageId, root.nodeId, '待撤销目录');
+    expect(canUndoFileOperation(root.storageId)).toBe(true);
+    expect(listDirectory(root.storageId, root.nodeId).some((item) => item.nodeId === created.nodeId)).toBe(true);
+    expect(undoLastFileOperation(root.storageId)).toContain('新建文件夹');
+    expect(listDirectory(root.storageId, root.nodeId).some((item) => item.nodeId === created.nodeId)).toBe(false);
   });
 });

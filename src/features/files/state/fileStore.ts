@@ -61,6 +61,13 @@ let nodes = initialNodes();
 let tasks: FileTask[] = [];
 let sequence = 100;
 const uploadedFiles = new Map<string, File>();
+type FileSnapshot = {
+  storageId: string;
+  label: string;
+  nodes: FileNode[];
+  uploadedFiles: Map<string, File>;
+};
+let undoStack: FileSnapshot[] = [];
 
 function now() {
   return new Date().toISOString();
@@ -112,6 +119,18 @@ function syncUsage(storageId: string) {
     scoped.filter((item) => item.type === 'file').length,
     scoped.filter((item) => item.type === 'folder').length,
   );
+}
+
+function remember(storageId: string, label: string) {
+  undoStack = [
+    ...undoStack.slice(-19),
+    {
+      storageId,
+      label,
+      nodes: structuredClone(nodes),
+      uploadedFiles: new Map(uploadedFiles),
+    },
+  ];
 }
 
 function pathForNode(nodeId: string): string {
@@ -211,6 +230,7 @@ export function createFolder(storageId: string, parentId: string, folderName: st
   assertFolder(storageId, parentId);
   const name = folderName.trim();
   ensureUnique(storageId, parentId, name);
+  remember(storageId, `新建文件夹“${name}”`);
   const timestamp = now();
   const created = node(nextId('folder'), storageId, parentId, 'folder', name, 0, '', timestamp);
   nodes = [...nodes, created];
@@ -241,6 +261,7 @@ export async function uploadFiles(storageId: string, parentId: string, files: re
       if (incomingNames.has(normalized)) throw new Error(`所选文件中存在同名项：“${file.name}”。`);
       incomingNames.add(normalized);
     });
+    remember(storageId, `上传 ${files.length} 个文件`);
     for (const file of files) {
       const timestamp = now();
       const extension = file.name.includes('.') ? file.name.split('.').pop()?.toLocaleLowerCase() ?? '' : '';
@@ -273,6 +294,7 @@ export function renameNode(nodeId: string, nextName: string) {
   if (!current || current.parentId === null) throw new Error('根目录不能重命名。');
   const name = nextName.trim();
   ensureUnique(current.storageId, current.parentId, name, current.nodeId);
+  remember(current.storageId, `重命名“${current.name}”`);
   nodes = nodes.map((item) => item.nodeId === nodeId ? {
     ...item,
     name,
@@ -288,6 +310,7 @@ export function copyNodes(nodeIds: readonly string[], targetFolderId: string) {
   if (!target) throw new Error('未找到目标目录。');
   const sources = nodeIds.map((id) => nodes.find((item) => item.nodeId === id)).filter((item): item is FileNode => Boolean(item));
   sources.forEach((source) => ensureUnique(target.storageId, target.nodeId, source.name));
+  remember(target.storageId, `复制 ${sources.length} 个对象`);
   const cloneBranch = (source: FileNode, parentId: string): FileNode => {
     const copiedFile = uploadedFiles.get(source.nodeId);
     const copy: FileNode = {
@@ -318,6 +341,7 @@ export function moveNodes(nodeIds: readonly string[], targetFolderId: string) {
     if (source.nodeId === target.nodeId || descendants(source.nodeId).includes(target.nodeId)) throw new Error('不能将目录移动到自身或其子目录。');
     ensureUnique(target.storageId, target.nodeId, source.name, source.nodeId);
   });
+  remember(target.storageId, `移动 ${sources.length} 个对象`);
   nodes = nodes.map((item) => nodeIds.includes(item.nodeId) ? { ...item, parentId: target.nodeId, updatedAt: now() } : item);
   task(target.storageId, '移动', sources.map((item) => item.name).join('、'), pathForNode(target.nodeId));
   log(target.storageId, '移动文件', pathForNode(target.nodeId), `已移动 ${sources.length} 个对象。`);
@@ -328,10 +352,9 @@ export function deleteNodes(nodeIds: readonly string[]) {
   if (!sources.length) throw new Error('请选择要删除的对象。');
   if (sources.some((item) => item.parentId === null)) throw new Error('根目录不能删除。');
   const storageId = sources[0].storageId;
+  remember(storageId, `删除 ${sources.length} 个对象`);
   const allIds = new Set(sources.flatMap((item) => [item.nodeId, ...descendants(item.nodeId)]));
   allIds.forEach((id) => {
-    const item = nodes.find((candidate) => candidate.nodeId === id);
-    if (item?.objectUrl) URL.revokeObjectURL(item.objectUrl);
     uploadedFiles.delete(id);
   });
   nodes = nodes.filter((item) => !allIds.has(item.nodeId));
@@ -371,12 +394,37 @@ export function retryFileTask(taskId: string) {
   tasks = tasks.map((item) => item.id === taskId ? { ...item, status: 'completed', progress: 100, error: undefined, completedAt: now() } : item);
 }
 
+export function canUndoFileOperation(storageId: string) {
+  return undoStack.some((snapshot) => snapshot.storageId === storageId);
+}
+
+export function undoLastFileOperation(storageId: string) {
+  let index = -1;
+  for (let current = undoStack.length - 1; current >= 0; current -= 1) {
+    if (undoStack[current].storageId === storageId) {
+      index = current;
+      break;
+    }
+  }
+  if (index < 0) throw new Error('当前没有可撤销的文件操作。');
+  const snapshot = undoStack[index];
+  undoStack = undoStack.filter((_, currentIndex) => currentIndex !== index);
+  nodes = structuredClone(snapshot.nodes);
+  uploadedFiles.clear();
+  snapshot.uploadedFiles.forEach((file, nodeId) => uploadedFiles.set(nodeId, file));
+  syncUsage(storageId);
+  task(storageId, '撤销', snapshot.label);
+  log(storageId, '撤销文件操作', '/', `已撤销：${snapshot.label}。`);
+  return snapshot.label;
+}
+
 export function resetFileStore() {
   nodes.forEach((item) => {
     if (item.objectUrl) URL.revokeObjectURL(item.objectUrl);
   });
   nodes = initialNodes();
   tasks = [];
+  undoStack = [];
   uploadedFiles.clear();
   sequence = 100;
 }

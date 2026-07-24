@@ -56,6 +56,15 @@ Business requirements override UI examples on behavior. UI specifications govern
 - Preserve documented PDF conflicts; component-specific rules take precedence until design confirms otherwise.
 - New components outside the PDF must be documented in `docs/analysis/08-page-component-mapping.md` with their requirement basis and state coverage.
 
+### UI specification as a quality baseline
+
+- The existing UI specification is the minimum consistency baseline for typography, component semantics, sizing, spacing, states, and accessibility; it is not a ceiling on visual quality.
+- Do not use specification compliance to justify mechanical, dated, or low-quality interfaces.
+- Improve hierarchy, visual finish, feedback, and industry maturity without breaking brand consistency or component semantics.
+- Design complex data-dense pages, tables, progress and capacity views, and file-management workflows around their real user tasks.
+- Public components must enable page-level innovation instead of forcing every page into the same low-level presentation.
+- Every complex UI task must include competitor research, an interaction audit, and browser acceptance at the target viewports.
+
 ## Production-like user experience
 
 - 本规则永久生效，并优先于单次任务中的临时展示文案。
