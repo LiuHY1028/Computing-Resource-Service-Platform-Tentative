@@ -38,8 +38,13 @@ const businessUiSources = Object.fromEntries(
   ),
 );
 
-const marketplaceStyles = Object.values(productionSources)
-  .filter((source) => source.includes('.resource-product-card'))
+const marketplaceStyles = Object.entries(productionSources)
+  .filter(([file]) => file.endsWith('/marketplace.css'))
+  .map(([, source]) => source)
+  .join('\n');
+const marketplaceExperienceStyles = Object.entries(productionSources)
+  .filter(([file]) => file.endsWith('/marketplace-experience.css'))
+  .map(([, source]) => source)
   .join('\n');
 const marketplacePageTokenBlock =
   marketplaceStyles.match(/\.marketplace-page\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
@@ -123,18 +128,16 @@ describe('marketplace production-source policies', () => {
     expect(sourceOffenders(/\u65e0\u5361/u)).toEqual([]);
   });
 
-  it('keeps the formal menu unchanged and free of development state parameters', () => {
+  it('keeps the console menu separated from product pages and free of development state parameters', () => {
     expect(navigationGroups).toHaveLength(1);
     expect(
       navigationGroups[0]?.items.map((item) => [item.label, item.path]),
     ).toEqual([
-      ['\u8d44\u6e90\u5546\u57ce', '/marketplace'],
-      ['\u6211\u7684\u8d44\u6e90', '/resources/cloud-servers'],
-      ['\u5b58\u50a8\u7ba1\u7406', '/storage'],
-      ['\u955c\u50cf\u7ba1\u7406', '/images'],
-      ['\u8f6f\u4ef6\u4e2d\u5fc3', '/software'],
-      ['\u7f51\u7edc\u4e0e\u8bbf\u95ee', '/network-access'],
-      ['\u8ba2\u5355\u4e0e\u8bb0\u5f55', '/orders'],
+      ['\u6211\u7684\u8d44\u6e90', '/console/resources/cloud-servers'],
+      ['\u5b58\u50a8\u7ba1\u7406', '/console/storage'],
+      ['\u955c\u50cf\u7ba1\u7406', '/console/images'],
+      ['\u7f51\u7edc\u4e0e\u8bbf\u95ee', '/console/network-access'],
+      ['\u8ba2\u5355\u4e0e\u8bb0\u5f55', '/console/orders'],
     ]);
     expect(
       navigationGroups[0]?.items.at(-1)?.children?.map((item) => [
@@ -142,8 +145,8 @@ describe('marketplace production-source policies', () => {
         item.path,
       ]),
     ).toEqual([
-      ['\u8ba2\u5355', '/orders'],
-      ['\u64cd\u4f5c\u8bb0录', '/operation-records'],
+      ['\u8ba2\u5355', '/console/orders'],
+      ['\u64cd\u4f5c\u8bb0录', '/console/operation-records'],
     ]);
 
     const navigationSource = Object.values(navigationModules).join('\n');
@@ -188,6 +191,9 @@ describe('marketplace production-source policies', () => {
       marketplaceStyles.match(/\.resource-product-card\s*\{([^}]+)\}/)?.[1] ??
       '';
     expect(cardRootRule).not.toContain('minmax(0, 1fr)');
+    expect(marketplaceExperienceStyles).toContain('.marketplace-layout .marketplace-page');
+    expect(marketplaceExperienceStyles).not.toContain('.console-layout');
+    expect(marketplaceExperienceStyles).not.toContain('.software-center-layout');
   });
 
   it('documents the four-to-three-column contract and accessible motion states', () => {

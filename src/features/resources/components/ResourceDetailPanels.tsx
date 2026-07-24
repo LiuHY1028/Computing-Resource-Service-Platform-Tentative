@@ -1,6 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  APP_PATHS,
+  orderDetailPath,
+  storageDetailPath,
+} from '../../../app/routes';
+import {
   Button,
   Container,
   EmptyTable,
@@ -112,7 +117,7 @@ export function ResourceOverview({ resource }: Readonly<{ resource: Resource }>)
       <DefinitionSection eyebrow={resource.resourceType === 'cloud-server' ? '虚拟化与云资源' : '整机硬件与位置'} title={resource.resourceType === 'cloud-server' ? '云服务器配置' : '物理机配置'} fields={specific} />
       <Container as="section" className="resource-section">
         <div className="resource-section__heading"><div><span>生命周期申请</span><h3>相关申请</h3></div></div>
-        {relatedOrders.length ? <div className="management-related-links">{relatedOrders.map((order) => <Link to={`/orders/${order.id}`} key={order.id}>{order.id} · {APPLICATION_TYPE_LABELS[order.applicationType]} · {ORDER_STATUS_VIEWS[order.status].label}</Link>)}</div> : <EmptyTable title="暂无相关申请" />}
+        {relatedOrders.length ? <div className="management-related-links">{relatedOrders.map((order) => <Link to={orderDetailPath(order.id)} key={order.id}>{order.id} · {APPLICATION_TYPE_LABELS[order.applicationType]} · {ORDER_STATUS_VIEWS[order.status].label}</Link>)}</div> : <EmptyTable title="暂无相关申请" />}
       </Container>
     </div>
   );
@@ -142,7 +147,7 @@ export function ResourceBilling({
         ['自动续费', resource.billingMode === 'subscription' ? (resource.autoRenewal.enabled ? `已开启 · ${resource.autoRenewal.periodMonths} 个月` : '未开启') : '不适用'],
         ['到期时间', resource.billingMode === 'subscription' ? formatDateTime(resource.expiresAt) : '不适用'],
         ['价格生成时间', formatDateTime(resource.priceSnapshot.generatedAt)],
-        ['最近订单', latestOrder ? <Link to={`/orders/${latestOrder.id}`}>{latestOrder.id}</Link> : '暂无'],
+        ['最近订单', latestOrder ? <Link to={orderDetailPath(latestOrder.id)}>{latestOrder.id}</Link> : '暂无'],
       ]
     : [
         ['月租价格', formatMonthlyPrice(resource.priceSnapshot.unitPrice)],
@@ -151,7 +156,7 @@ export function ResourceBilling({
         ['到期时间', formatDateTime(resource.expiresAt)],
         ['延期状态', resource.extensionStatus === 'pending' ? '处理中' : '无待处理申请'],
         ['价格生成时间', formatDateTime(resource.priceSnapshot.generatedAt)],
-        ['最近申请', latestOrder ? <Link to={`/orders/${latestOrder.id}`}>{latestOrder.id}</Link> : '暂无'],
+        ['最近申请', latestOrder ? <Link to={orderDetailPath(latestOrder.id)}>{latestOrder.id}</Link> : '暂无'],
       ];
   return (
     <div className="resource-detail-stack">
@@ -222,7 +227,7 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
     { key: 'performance', title: '性能指标', multiline: true, render: (disk) => <div className="resource-table__primary"><span>读/写 {disk.performance.readThroughputMbs}/{disk.performance.writeThroughputMbs} MB/s</span><span>IOPS {disk.performance.readIops}/{disk.performance.writeIops}</span><span>平均时延 {disk.performance.averageLatencyMs} ms</span></div> },
   ];
   const sharedColumns: readonly TableColumn<{ space: StorageSpace; mount: StorageMount }>[] = [
-    { key: 'name', title: '共享存储', multiline: true, render: ({ space }) => <div className="resource-table__primary"><Link to={`/storage/${space.id}`}>{space.name}</Link><span>{space.id}</span></div> },
+    { key: 'name', title: '共享存储', multiline: true, render: ({ space }) => <div className="resource-table__primary"><Link to={storageDetailPath(space.id)}>{space.name}</Link><span>{space.id}</span></div> },
     { key: 'capacity', title: '容量', multiline: true, render: ({ space }) => {
       const state = capacityStatus(storageUsagePercent(space));
       return <div className="resource-capacity-cell"><Progress value={space.usedGb} max={space.capacityGb} label={state.label} tone={state.tone} /><span>总量 {space.capacityGb} GB · 已用 {space.usedGb} GB · 剩余 {storageAvailableGb(space)} GB</span></div>;
@@ -237,7 +242,7 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
         <Table aria-label="云服务器磁盘" columns={diskColumns} rows={resource.dataDisks} getRowKey={(disk) => disk.id} />
       </Container>
       <Container as="section" className="resource-section">
-        <div className="resource-section__heading"><div><span>独立管理</span><h3>关联存储空间</h3></div><Link to="/storage">进入存储管理</Link></div>
+        <div className="resource-section__heading"><div><span>独立管理</span><h3>关联存储空间</h3></div><Link to={APP_PATHS.storage}>进入存储管理</Link></div>
         <Table aria-label="关联存储空间" columns={sharedColumns} rows={relations} getRowKey={({ mount }) => mount.id} empty={<EmptyTable title="未关联独立存储空间" />} />
       </Container>
     </div>
@@ -257,7 +262,7 @@ export function ResourceImageSystem({ resource }: Readonly<{ resource: Resource 
   if (resource.resourceType !== 'cloud-server') return null;
   return <DefinitionSection eyebrow="镜像与启动系统" title="镜像和操作系统" fields={[
     ['镜像名称', resource.image],
-    ['镜像 ID', <Link to={`/images?resource=${resource.id}`}>{resource.imageId}</Link>],
+    ['镜像 ID', <Link to={`${APP_PATHS.images}?resource=${resource.id}`}>{resource.imageId}</Link>],
     ['操作系统', resource.operatingSystem],
     ['SSH', resource.sshEnabled ? '已启用' : '未启用'],
     ['系统盘', `${resource.systemDiskGb} GB`],
@@ -291,7 +296,7 @@ export function ResourceNetwork({ resource, connectionContent }: Readonly<{ reso
     <div className="resource-detail-stack">
       {connectionContent}
       <Container as="section" className="resource-section">
-        <div className="resource-section__heading"><div><span>端口与来源</span><h3>访问规则</h3></div><Link to={`/network?resource=${resource.id}`}>进入网络管理</Link></div>
+        <div className="resource-section__heading"><div><span>端口与来源</span><h3>访问规则</h3></div><Link to={`${APP_PATHS.networkAccess}?resource=${resource.id}`}>进入网络管理</Link></div>
         <Table aria-label="网络访问规则" columns={columns} rows={rules} getRowKey={(rule) => rule.id} renderRowActions={(rule) => <Button variant="ghost" onClick={() => setSelectedRule(rule)}>查看</Button>} empty={<EmptyTable title="暂无访问规则" />} />
       </Container>
       <Modal open={Boolean(selectedRule)} title="访问规则详情" onClose={() => setSelectedRule(undefined)} primaryAction={{ label: '关闭', onClick: () => setSelectedRule(undefined) }}>
@@ -321,7 +326,7 @@ export function ResourceOperations({ resourceId }: Readonly<{ resourceId: string
     { key: 'status', title: '执行状态', render: (record) => OPERATION_STATUS_LABELS[record.status] },
     { key: 'message', title: '结果说明', render: (record) => record.message },
   ];
-  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>资源变更追踪</span><h3>操作记录</h3></div><Link to={`/operation-records?q=${resourceId}`}>查看全部记录</Link></div><Table aria-label="资源操作记录" columns={columns} rows={records} getRowKey={(record) => record.id} /></Container>;
+  return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>资源变更追踪</span><h3>操作记录</h3></div><Link to={`${APP_PATHS.operationRecords}?q=${resourceId}`}>查看全部记录</Link></div><Table aria-label="资源操作记录" columns={columns} rows={records} getRowKey={(record) => record.id} /></Container>;
 }
 
 export function ResourceDetailHeader({ resource, onBack, onConnection, onAction }: Readonly<{

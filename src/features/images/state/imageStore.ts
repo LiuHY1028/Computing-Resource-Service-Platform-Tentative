@@ -1,4 +1,5 @@
 import { recordOperation } from '../../operations';
+import { APP_PATHS } from '../../../app/routes';
 import {
   readVersionedState,
   removeVersionedState,
@@ -209,7 +210,7 @@ export async function createCustomImage(input: Readonly<{
     message: input.sourceFile
       ? '镜像导入任务已提交，当前仅记录文件元数据。'
       : '自定义镜像记录已提交。',
-    targetPath: '/images',
+    targetPath: APP_PATHS.images,
   });
   return image;
 }
@@ -230,7 +231,7 @@ export async function updateCustomImage(
     targetName: updated.name,
     status: 'completed',
     message: '镜像名称和说明已更新。',
-    targetPath: '/images',
+    targetPath: APP_PATHS.images,
   });
   return updated;
 }

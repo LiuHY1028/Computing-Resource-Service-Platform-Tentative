@@ -1,4 +1,5 @@
 import { recordOperation } from '../../operations';
+import { storageDetailPath } from '../../../app/routes';
 import { createApplicationOrder } from '../../orders';
 import {
   readVersionedState,
@@ -277,7 +278,7 @@ export async function createStorageSpace(input: CreateStorageInput) {
     targetName: space.name,
     status: 'submitted',
     message: '创建请求已提交，等待存储空间准备。',
-    targetPath: `/storage/${space.id}`,
+    targetPath: storageDetailPath(space.id),
   });
   return space;
 }
@@ -297,7 +298,7 @@ export async function renameStorageSpace(storageId: string, nextName: string) {
     targetName: updated.name,
     status: 'completed',
     message: '存储名称已更新。',
-    targetPath: `/storage/${updated.id}`,
+    targetPath: storageDetailPath(updated.id),
   });
   return updated;
 }
@@ -327,7 +328,7 @@ export async function requestStorageExpansion(
     targetName: current.name,
     status: 'submitted',
     message: `扩容至 ${capacityGb} GB 的申请已提交，当前容量保持不变。`,
-    targetPath: `/storage/${current.id}`,
+    targetPath: storageDetailPath(current.id),
   });
   createApplicationOrder({
     applicationType: 'storage-expansion',
@@ -388,7 +389,7 @@ export async function requestStorageMount(
     targetName: updated.name,
     status: 'processing',
     message: '挂载请求已提交，等待基础设施处理。',
-    targetPath: `/storage/${updated.id}`,
+    targetPath: storageDetailPath(updated.id),
   });
   return updated;
 }
@@ -411,7 +412,7 @@ export async function requestStorageUnmount(
     targetName: updated.name,
     status: 'processing',
     message: '卸载请求已提交，当前关系保留至处理完成。',
-    targetPath: `/storage/${updated.id}`,
+    targetPath: storageDetailPath(updated.id),
   });
   return updated;
 }

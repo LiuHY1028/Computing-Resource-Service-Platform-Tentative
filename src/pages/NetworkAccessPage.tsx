@@ -17,6 +17,7 @@ import {
   type TableColumn,
   type TableKey,
 } from '../components/ui';
+import { APP_PATHS, resourceDetailPath } from '../app/routes';
 import {
   createNetworkRule,
   deleteNetworkRule,
@@ -43,7 +44,7 @@ function statusView(rule: NetworkAccessRule) {
 }
 
 function resourcePath(rule: NetworkAccessRule) {
-  return `/resources/${rule.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${rule.resourceId}?tab=network`;
+  return `${resourceDetailPath(rule.resourceType, rule.resourceId)}?tab=network`;
 }
 
 type RuleDraft = Readonly<{
@@ -244,7 +245,7 @@ export function NetworkAccessPage() {
         {rules.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={rules.length} onPageChange={(next) => setParam('page', String(next))} />}
       </Container>
       <Container as="section" className="management-detail-section">
-        <div className="management-results__header"><div><span>最近变更</span><h2>操作记录</h2></div><Link to="/operation-records?module=network">查看全部</Link></div>
+        <div className="management-results__header"><div><span>最近变更</span><h2>操作记录</h2></div><Link to={`${APP_PATHS.operationRecords}?module=network`}>查看全部</Link></div>
         {recentOperations.length ? <ul className="management-record-list">{recentOperations.map((record) => <li key={record.id}><span>{record.action} · {record.targetName}</span><StatusBadge tone="info">处理中</StatusBadge><p>{record.message}</p></li>)}</ul> : <PageState title="暂无网络操作记录" />}
       </Container>
 

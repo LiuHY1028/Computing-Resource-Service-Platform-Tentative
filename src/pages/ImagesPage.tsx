@@ -17,6 +17,7 @@ import {
   TitleBarTabs,
   type TableColumn,
 } from '../components/ui';
+import { resourceDetailPath } from '../app/routes';
 import {
   createCustomImage,
   deleteCustomImage,
@@ -282,7 +283,7 @@ export function ImagesPage() {
         {selected?.resourceIds.length ? (
           <div className="management-related-links">
             <strong>关联资源</strong>
-            {selected.resourceIds.map((resourceId) => <Link key={resourceId} to={`/resources/${resourceId.startsWith('pm-') ? 'physical-machines' : 'cloud-servers'}/${resourceId}`}>{resourceId}</Link>)}
+            {selected.resourceIds.map((resourceId) => <Link key={resourceId} to={resourceDetailPath(resourceId.startsWith('pm-') ? 'physical-machine' : 'cloud-server', resourceId)}>{resourceId}</Link>)}
           </div>
         ) : null}
       </Modal>

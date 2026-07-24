@@ -1,0 +1,62 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { App } from '../app/App';
+import { resetOperationsStore } from '../features/operations';
+import { resetSoftwareStore } from '../features/software';
+
+function renderSoftware(path = '/software') {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  );
+  return user;
+}
+
+beforeEach(() => {
+  resetSoftwareStore();
+  resetOperationsStore();
+});
+
+describe('SoftwarePage', () => {
+  it('uses its independent discovery layout and filters by fee policy', async () => {
+    const user = renderSoftware();
+
+    expect(screen.getByTestId('software-center-layout')).toBeInTheDocument();
+    expect(screen.queryByTestId('side-navigation')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: '把合适的软件，装到合适的算力上' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('combobox', { name: '费用策略' }));
+    await user.click(screen.getByRole('option', { name: '服务已包含' }));
+    expect(screen.getByText('4 个匹配结果')).toBeInTheDocument();
+  });
+
+  it('submits an installation and links the result back to the console', async () => {
+    const user = renderSoftware('/software?resource=cs-east-002');
+    const softwareHeading = screen
+      .getAllByRole('heading', { name: '加速计算工具集' })
+      .find((heading) => heading.closest('article.software-card'));
+    const card = softwareHeading?.closest('article');
+
+    expect(card).toBeTruthy();
+    await user.click(within(card as HTMLElement).getByRole('button', { name: '安装到资源' }));
+    expect(screen.getByRole('dialog', { name: '提交软件安装任务' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /目标资源/ })).toHaveTextContent('视觉训练节点-02');
+
+    await user.click(screen.getByRole('button', { name: '提交安装任务' }));
+    expect(await screen.findByText(/加速计算工具集 12.4 安装任务已提交/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '查看资源软件环境' })).toHaveAttribute(
+      'href',
+      '/console/resources/cloud-servers/cs-east-002?tab=software',
+    );
+    expect(screen.getByRole('link', { name: '查看操作记录' })).toHaveAttribute(
+      'href',
+      '/console/operation-records?module=software',
+    );
+  });
+});

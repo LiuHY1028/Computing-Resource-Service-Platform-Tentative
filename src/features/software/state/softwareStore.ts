@@ -1,4 +1,5 @@
 import { recordOperation } from '../../operations';
+import { resourceDetailPath } from '../../../app/routes';
 import {
   readVersionedState,
   removeVersionedState,
@@ -219,7 +220,7 @@ export async function submitSoftwareInstallation(input: Readonly<{
     targetName: input.resource.name,
     status: 'processing',
     message: `${software.name} ${input.version} 安装任务已提交。`,
-    targetPath: `/resources/${input.resource.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${input.resource.id}?tab=software`,
+    targetPath: `${resourceDetailPath(input.resource.resourceType, input.resource.id)}?tab=software`,
   });
   return task;
 }

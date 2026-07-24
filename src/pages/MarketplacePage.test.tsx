@@ -78,12 +78,12 @@ describe('MarketplacePage', () => {
     renderMarketplace();
 
     expect(
-      screen.getByRole('heading', { level: 1, name: '资源商城' }),
+      screen.getByRole('heading', { level: 1, name: '让每一份算力都匹配真实工作负载' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: '发现适合业务的计算资源',
+        name: '选择适合当前工作负载的资源',
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
@@ -98,7 +98,7 @@ describe('MarketplacePage', () => {
     );
     expect(screen.queryByText('演示数据')).not.toBeInTheDocument();
     expect(
-      screen.getByText(/购买完成后获得独占机器资源/),
+      screen.getByText('物理资源独占'),
     ).toBeInTheDocument();
     await waitForCloudCatalog();
     expect(
@@ -566,7 +566,7 @@ describe('MarketplacePage', () => {
     await user.type(search, 'G2');
     await waitForCloudCatalog(1);
 
-    const scrollRegion = document.querySelector<HTMLElement>('.main-content__scroll-region');
+    const scrollRegion = document.querySelector<HTMLElement>('.marketplace-layout__content');
     expect(scrollRegion).not.toBeNull();
     if (scrollRegion) scrollRegion.scrollTop = 420;
     const product = screen.getByRole('article', { name: '加速计算 G2，可继续配置' });

@@ -1,4 +1,5 @@
 import { createApplicationOrder } from '../../orders';
+import { resourceDetailPath } from '../../../app/routes';
 import { recordOperation } from '../../operations';
 import {
   calculateCloudPrice,
@@ -43,7 +44,7 @@ function unique(values: readonly string[]) {
 }
 
 function pathFor(resource: Resource) {
-  return `/resources/${resource.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${resource.id}`;
+  return resourceDetailPath(resource.resourceType, resource.id);
 }
 
 function resourceSearchText(resource: Resource) {

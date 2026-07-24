@@ -3,6 +3,7 @@ import {
   removeVersionedState,
   writeVersionedState,
 } from '../../platform/persistence';
+import { resourceDetailPath } from '../../../app/routes';
 import type {
   CreateOperationInput,
   PlatformOperationRecord,
@@ -22,7 +23,7 @@ const INITIAL_RECORDS: readonly PlatformOperationRecord[] = [
     createdAt: '2026-07-22T03:15:00.000Z',
     status: 'completed',
     message: '资源启动操作已完成。',
-    targetPath: '/resources/cloud-servers/cs-east-002',
+    targetPath: resourceDetailPath('cloud-server', 'cs-east-002'),
   },
   {
     id: 'operation-seed-resource-start',
@@ -34,7 +35,7 @@ const INITIAL_RECORDS: readonly PlatformOperationRecord[] = [
     createdAt: '2026-07-21T08:20:00.000Z',
     status: 'completed',
     message: '资源启动操作已完成。',
-    targetPath: '/resources/cloud-servers/cs-east-001',
+    targetPath: resourceDetailPath('cloud-server', 'cs-east-001'),
   },
 ];
 

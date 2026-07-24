@@ -12,6 +12,11 @@ import {
   type TableKey,
 } from '../components/ui';
 import {
+  APP_PATHS,
+  resourceDetailPath,
+  resourceListPath,
+} from '../app/routes';
+import {
   getResourceFilterOptions,
   queryResources,
   ResourceActionDialog,
@@ -162,8 +167,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
   }
 
   function detailPath(resource: Resource, tab?: string) {
-    const root = resource.resourceType === 'cloud-server' ? '/resources/cloud-servers' : '/resources/physical-machines';
-    navigate(`${root}/${encodeURIComponent(resource.id)}${tab ? `?tab=${tab}` : ''}`, {
+    navigate(`${resourceDetailPath(resource.resourceType, resource.id)}${tab ? `?tab=${tab}` : ''}`, {
       state: { fromResourceList: `${location.pathname}?${searchParams.toString()}` },
     });
   }
@@ -181,7 +185,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
       storage: 'storage', network: 'network', monitoring: 'monitoring', operations: 'operations',
       'hardware-health': 'health', bmc: 'delivery',
     };
-    if (action === 'image') navigate(`/images?resource=${encodeURIComponent(resource.id)}`);
+    if (action === 'image') navigate(`${APP_PATHS.images}?resource=${encodeURIComponent(resource.id)}`);
     else detailPath(resource, tabs[action]);
   }
 
@@ -268,7 +272,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
           onSelectionChange={setSelectedKeys}
           onRetry={() => undefined}
           onResetFilters={() => setSearchParams({})}
-          onGoMarketplace={() => navigate(resourceType === 'cloud-server' ? '/marketplace?type=cloud' : '/marketplace?type=physical')}
+          onGoMarketplace={() => navigate(resourceType === 'cloud-server' ? `${APP_PATHS.marketplace}?type=cloud` : `${APP_PATHS.marketplace}?type=physical`)}
           onConnection={(resource) => detailPath(resource, 'network')}
           onAction={handleAction}
         />
@@ -287,7 +291,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
         <TitleBarTabs
           aria-label="我的资源类型"
           value={resourceType === 'cloud-server' ? 'cloud' : 'physical'}
-          onValueChange={(value) => navigate(value === 'cloud' ? `/resources/cloud-servers${suffix}` : `/resources/physical-machines${suffix}`)}
+          onValueChange={(value) => navigate(`${resourceListPath(value === 'cloud' ? 'cloud-server' : 'physical-machine')}${suffix}`)}
           items={[
             { value: 'cloud', label: <><span aria-hidden="true">☁</span> 云服务器</>, panel: listContent },
             { value: 'physical', label: <><span aria-hidden="true">▤</span> 物理机</>, panel: listContent },

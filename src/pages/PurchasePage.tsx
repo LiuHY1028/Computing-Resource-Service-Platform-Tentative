@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PromptModal } from '../components/ui';
+import { APP_PATHS, orderDetailPath } from '../app/routes';
 import {
   CloudPurchaseForm,
   ConfigurationSummary,
@@ -210,7 +211,7 @@ function PurchasePageContent({
   }, [physicalConfiguration, product]);
 
   function returnToMarketplace() {
-    navigate(`/marketplace?type=${marketplaceType(resourceType)}`, {
+    navigate(`${APP_PATHS.marketplace}?type=${marketplaceType(resourceType)}`, {
       state: { restoreMarketplaceContext: true },
     });
   }
@@ -300,7 +301,7 @@ function PurchasePageContent({
         result={result}
         onReturn={returnToMarketplace}
         onViewOrder={(orderId) =>
-          navigate(`/orders/${encodeURIComponent(orderId)}`)
+          navigate(orderDetailPath(orderId))
         }
       />
     );

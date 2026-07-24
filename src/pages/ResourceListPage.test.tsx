@@ -15,7 +15,7 @@ function LocationObserver() {
   );
 }
 
-function renderResource(path = '/resources/cloud-servers') {
+function renderResource(path = '/console/resources/cloud-servers') {
   const user = userEvent.setup();
   render(
     <MemoryRouter initialEntries={[path]}>
@@ -65,13 +65,13 @@ describe('ResourceListPage', () => {
     expect(screen.getByText('当前条件')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '重置全部' }));
-    await waitFor(() => expect(location()).toBe('/resources/cloud-servers'));
+    await waitFor(() => expect(location()).toBe('/console/resources/cloud-servers'));
     expect(await screen.findByText('研发计算节点-01')).toBeInTheDocument();
   });
 
   it('distinguishes no results from an empty catalog', async () => {
     const { user } = renderResource(
-      '/resources/cloud-servers?q=不存在的资源名称',
+      '/console/resources/cloud-servers?q=不存在的资源名称',
     );
     expect(await screen.findByText('没有匹配的资源')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '重置筛选' }));
@@ -84,7 +84,7 @@ describe('ResourceListPage', () => {
     await user.click(screen.getByRole('tab', { name: '物理机' }));
 
     await waitFor(() =>
-      expect(location()).toBe('/resources/physical-machines'),
+      expect(location()).toBe('/console/resources/physical-machines'),
     );
     expect(await screen.findByText('研发物理节点-01')).toBeInTheDocument();
     expect(
@@ -122,6 +122,6 @@ describe('ResourceListPage', () => {
     const menus = screen.getAllByRole('button', { name: /更多操作/ });
     await user.click(menus[0]!);
     await user.click(screen.getByRole('menuitem', { name: '查看详情' }));
-    expect(location()).toBe('/resources/cloud-servers/cs-east-001');
+    expect(location()).toBe('/console/resources/cloud-servers/cs-east-001');
   });
 });

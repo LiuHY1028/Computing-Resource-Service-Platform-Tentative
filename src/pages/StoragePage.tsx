@@ -18,6 +18,11 @@ import {
   type TableColumn,
 } from '../components/ui';
 import {
+  APP_PATHS,
+  resourceDetailPath,
+  storageDetailPath,
+} from '../app/routes';
+import {
   createStorageSpace,
   createStoragePriceQuote,
   deleteStorageSpace,
@@ -92,7 +97,7 @@ const STORAGE_COLUMNS: readonly TableColumn<StorageSpace>[] = [
     multiline: true,
     render: (space) => (
       <div className="management-primary-cell">
-        <Link to={`/storage/${space.id}`}>{space.name}</Link>
+        <Link to={storageDetailPath(space.id)}>{space.name}</Link>
         <span>{space.id}</span>
       </div>
     ),
@@ -303,7 +308,7 @@ export function StorageListPage() {
             />
           }
           renderRowActions={(space) => (
-            <Link to={`/storage/${space.id}`}>查看详情</Link>
+            <Link to={storageDetailPath(space.id)}>查看详情</Link>
           )}
         />
         {spaces.length > 0 && (
@@ -418,7 +423,7 @@ export function StorageDetailPage() {
           title="未找到存储空间"
           description="该存储空间不存在或记录已移除。"
           actionLabel="返回存储列表"
-          onAction={() => navigate('/storage')}
+          onAction={() => navigate(APP_PATHS.storage)}
         />
       </div>
     );
@@ -456,7 +461,7 @@ export function StorageDetailPage() {
         setFeedback('挂载请求已提交。');
       } else if (action === 'delete') {
         await deleteStorageSpace(currentSpace.id);
-        navigate('/storage', { replace: true });
+        navigate(APP_PATHS.storage, { replace: true });
         return;
       }
       setAction(undefined);
@@ -471,7 +476,7 @@ export function StorageDetailPage() {
       key: 'resource',
       title: '挂载资源',
       render: (mount) => (
-        <Link to={`/resources/${mount.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${mount.resourceId}?tab=storage`}>
+        <Link to={`${resourceDetailPath(mount.resourceType, mount.resourceId)}?tab=storage`}>
           {mount.resourceName}
         </Link>
       ),
@@ -497,7 +502,7 @@ export function StorageDetailPage() {
   return (
     <div className="management-page">
       <Container className="management-detail-header">
-        <TextButton onClick={() => navigate('/storage')}>返回存储列表</TextButton>
+        <TextButton onClick={() => navigate(APP_PATHS.storage)}>返回存储列表</TextButton>
         <div className="management-detail-header__main">
           <div>
             <span>{space.id}</span>

@@ -13,6 +13,12 @@ import {
   type TableColumn,
 } from '../components/ui';
 import {
+  APP_PATHS,
+  orderDetailPath,
+  resourceDetailPath,
+  storageDetailPath,
+} from '../app/routes';
+import {
   getOrder,
   queryOrders,
   APPLICATION_TYPE_LABELS,
@@ -42,10 +48,11 @@ function formatDate(value: string) {
 
 function resourcePath(order: PurchaseOrder) {
   if (order.applicationType === 'storage-expansion' && order.storageId) {
-    return `/storage/${order.storageId}`;
+    return storageDetailPath(order.storageId);
   }
   if (!order.resourceId) return undefined;
-  return `/resources/${order.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${order.resourceId}`;
+  if (!order.resourceType || order.resourceType === 'storage') return undefined;
+  return resourceDetailPath(order.resourceType, order.resourceId);
 }
 
 function resourceTypeLabel(order: PurchaseOrder) {
@@ -100,7 +107,7 @@ export function OrderListPage() {
   const safePage = Math.min(page, totalPages);
   const rows = orders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const columns: readonly TableColumn<PurchaseOrder>[] = [
-    { key: 'type-resource', title: '类型与资源', width: '22%', multiline: true, render: (order) => <div className="management-primary-cell"><Link to={`/orders/${order.id}`}>{order.id}</Link><strong>{APPLICATION_TYPE_LABELS[order.applicationType]} · {resourceTypeLabel(order)}</strong><span>{order.productName} · 数量 {order.quantity}</span></div> },
+    { key: 'type-resource', title: '类型与资源', width: '22%', multiline: true, render: (order) => <div className="management-primary-cell"><Link to={orderDetailPath(order.id)}>{order.id}</Link><strong>{APPLICATION_TYPE_LABELS[order.applicationType]} · {resourceTypeLabel(order)}</strong><span>{order.productName} · 数量 {order.quantity}</span></div> },
     { key: 'spec', title: '配置与站点', width: '21%', multiline: true, render: (order) => <div className="management-primary-cell"><strong>{order.specificationSummary || order.productName}</strong><span>{order.site}</span></div> },
     { key: 'billing-amount', title: '计费与金额', width: '18%', multiline: true, render: (order) => <div className="management-primary-cell"><strong>{billingModeLabel(order.priceSnapshot.billingMode)} · {formatMoney(order.priceSnapshot.total)}</strong><span>{order.priceSnapshot.duration ? `${order.priceSnapshot.duration} 个月` : order.priceSnapshot.billingMode === 'pay-as-you-go' ? '按小时计费' : '当前申请'}</span></div> },
     { key: 'status-time', title: '状态与时间', width: '15%', multiline: true, render: (order) => <div className="management-primary-cell"><StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>{ORDER_STATUS_VIEWS[order.status].label}</StatusBadge><span>{formatDate(order.submittedAt)}</span></div> },
@@ -125,7 +132,7 @@ export function OrderListPage() {
       </Container>
       <Container className="management-results">
         <div className="management-results__header"><div><span>资源配置申请</span><h2>申请记录</h2></div><p>共 {orders.length} 个结果</p></div>
-        <Table className="management-table" aria-label="订单列表" columns={columns} rows={rows} getRowKey={(order) => order.id} layout="fixed" minWidth="0" overflow="clip" actionsWidth="88px" empty={<PageState title={query.search ? '没有匹配的申请记录' : '暂无申请记录'} description={query.search ? '请调整搜索或筛选条件。' : '从资源商城提交配置后可在此查看处理进度。'} />} renderRowActions={(order) => <Link to={`/orders/${order.id}`}>查看详情</Link>} />
+        <Table className="management-table" aria-label="订单列表" columns={columns} rows={rows} getRowKey={(order) => order.id} layout="fixed" minWidth="0" overflow="clip" actionsWidth="88px" empty={<PageState title={query.search ? '没有匹配的申请记录' : '暂无申请记录'} description={query.search ? '请调整搜索或筛选条件。' : '从资源商城提交配置后可在此查看处理进度。'} />} renderRowActions={(order) => <Link to={orderDetailPath(order.id)}>查看详情</Link>} />
         {orders.length > 0 && <Pagination page={safePage} totalPages={totalPages} totalItems={orders.length} onPageChange={(next) => setParam('page', String(next))} />}
       </Container>
     </div>
@@ -137,7 +144,7 @@ export function OrderDetailPage() {
   const navigate = useNavigate();
   const order = getOrder(orderId);
 
-  if (!order) return <div className="management-page"><PageState title="未找到申请记录" description="该申请不存在或记录已移除。" actionLabel="返回申请列表" onAction={() => navigate('/orders')} /></div>;
+  if (!order) return <div className="management-page"><PageState title="未找到申请记录" description="该申请不存在或记录已移除。" actionLabel="返回申请列表" onAction={() => navigate(APP_PATHS.orders)} /></div>;
   const relatedPath = resourcePath(order);
   const currentResource = order.resourceId
     ? getResourceByAnyId(order.resourceId)
@@ -153,7 +160,7 @@ export function OrderDetailPage() {
   return (
     <div className="management-page">
       <Container className="management-detail-header">
-        <TextButton onClick={() => navigate('/orders')}>返回申请列表</TextButton>
+        <TextButton onClick={() => navigate(APP_PATHS.orders)}>返回申请列表</TextButton>
         <div className="management-detail-header__main">
           <div><span>申请编号</span><h2>{order.id}</h2><p>{resourceTypeLabel(order)} · {order.site}</p></div>
           <StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>{ORDER_STATUS_VIEWS[order.status].label}</StatusBadge>

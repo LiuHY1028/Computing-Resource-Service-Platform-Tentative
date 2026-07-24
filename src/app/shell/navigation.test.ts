@@ -21,9 +21,11 @@ describe('application navigation configuration', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('keeps the seven first-level modules from the information architecture', () => {
+  it('keeps only the five console modules in the side navigation', () => {
     expect(navigationGroups).toHaveLength(1);
-    expect(navigationGroups[0]?.items).toHaveLength(7);
+    expect(navigationGroups[0]?.items).toHaveLength(5);
+    expect(navigationItems.map((item) => item.path)).not.toContain('/marketplace');
+    expect(navigationItems.map((item) => item.path)).not.toContain('/software');
   });
 
   it('matches every formal menu path to a registered route', () => {

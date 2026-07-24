@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Container, TitleBarTabs } from '../components/ui';
+import { Button, Container, TitleBarTabs } from '../components/ui';
+import { APP_PATHS } from '../app/routes';
 import {
   MarketplaceFilters,
   MarketplaceResults,
@@ -15,6 +16,7 @@ import {
   type MarketplaceResultsState,
 } from '../features/marketplace';
 import '../features/marketplace/marketplace.css';
+import '../features/marketplace/marketplace-experience.css';
 
 const PAGE_SIZE = 6;
 
@@ -201,8 +203,8 @@ export function MarketplacePage() {
   function handleConfigure(product: MarketplaceProduct) {
     const purchasePath =
       product.resourceType === 'cloud-server'
-        ? '/marketplace/cloud-server/purchase'
-        : '/marketplace/physical-machine/purchase';
+        ? APP_PATHS.cloudPurchase
+        : APP_PATHS.physicalPurchase;
     saveMarketplaceNavigationContext(
       effectiveQuery,
       page,
@@ -269,25 +271,89 @@ export function MarketplacePage() {
 
   return (
     <div className="marketplace-page">
-      <Container
-        as="section"
-        className="marketplace-introduction"
-        data-resource-type={resourceType}
-      >
-        <div className="marketplace-introduction__content">
-          <span className="marketplace-introduction__eyebrow">
-            计算资源目录
-          </span>
-          <h2>
-            发现适合业务的<span>计算资源</span>
-          </h2>
+      <section className="marketplace-hero" data-resource-type={resourceType}>
+        <div className="marketplace-hero__content">
+          <span className="marketplace-hero__eyebrow">算力资源商城</span>
+          <h1>
+            让每一份算力
+            <span>都匹配真实工作负载</span>
+          </h1>
           <p>
-            比较云服务器与物理机的站点、计算类型和基础规格，再进入对应的配置页面。购买完成后获得独占机器资源，购后管理在“我的资源”中进行。
+            汇集 CPU 与 GPU 云服务器、专属物理机资源。按站点、核心规格和价格快速比较，进入配置页完成镜像、存储与网络选择。
           </p>
+          <div className="marketplace-hero__actions">
+            <Button
+              variant="primary"
+              onClick={() =>
+                document
+                  .getElementById('marketplace-catalog')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            >
+              浏览可购资源
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                handleResourceTypeChange(
+                  resourceType === 'cloud-server' ? 'physical' : 'cloud',
+                )
+              }
+            >
+              查看{resourceType === 'cloud-server' ? '物理机' : '云服务器'}
+            </Button>
+          </div>
+          <dl className="marketplace-hero__facts">
+            <div>
+              <dt>资源形态</dt>
+              <dd>云服务器 · 物理机</dd>
+            </div>
+            <div>
+              <dt>计算覆盖</dt>
+              <dd>CPU · GPU</dd>
+            </div>
+            <div>
+              <dt>可选站点</dt>
+              <dd>{filterOptions.sites.length} 个</dd>
+            </div>
+          </dl>
         </div>
-      </Container>
+        <div className="marketplace-hero__visual" aria-hidden="true">
+          <span className="marketplace-hero__glow" />
+          <div className="marketplace-hero__compute-card marketplace-hero__compute-card--primary">
+            <span>GPU Compute</span>
+            <strong>并行算力</strong>
+            <i>高性能计算资源</i>
+          </div>
+          <div className="marketplace-hero__compute-card marketplace-hero__compute-card--secondary">
+            <span>CPU Cloud</span>
+            <strong>通用计算</strong>
+            <i>灵活规格组合</i>
+          </div>
+          <div className="marketplace-hero__compute-card marketplace-hero__compute-card--physical">
+            <span>Bare Metal</span>
+            <strong>专属整机</strong>
+            <i>物理资源独占</i>
+          </div>
+          <span className="marketplace-hero__orbit marketplace-hero__orbit--one" />
+          <span className="marketplace-hero__orbit marketplace-hero__orbit--two" />
+        </div>
+      </section>
 
-      <Container className="marketplace-tabs-shell">
+      <section className="marketplace-capability-strip" aria-label="资源购买能力">
+        <div><span>01</span><strong>筛选与比较</strong><p>用同一视图核对站点、规格和价格。</p></div>
+        <div><span>02</span><strong>完整配置</strong><p>继续选择镜像、存储与网络访问。</p></div>
+        <div><span>03</span><strong>进入控制台</strong><p>提交后统一追踪订单与资源信息。</p></div>
+      </section>
+
+      <Container className="marketplace-tabs-shell" id="marketplace-catalog">
+        <div className="marketplace-catalog-heading">
+          <div>
+            <span>RESOURCE CATALOG</span>
+            <h2>选择适合当前工作负载的资源</h2>
+          </div>
+          <p>资源价格来自统一价目目录，具体配置在下一步核对。</p>
+        </div>
         <TitleBarTabs
           className="marketplace-tabs"
           aria-label="资源类型"

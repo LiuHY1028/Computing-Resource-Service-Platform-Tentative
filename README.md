@@ -1,6 +1,6 @@
 # 算力资源服务平台
 
-企业算力资源服务平台纯前端应用。页面复用项目 Design Token、MiSans VF、AppShell 和公共 UI 组件，全部业务数据随前端代码打包。
+企业算力资源服务平台纯前端应用。资源商城、软件中心和控制台使用独立布局，复用统一字体、公共 UI 组件和领域数据，全部业务数据随前端代码打包。
 
 ## 直接查看
 
@@ -33,7 +33,7 @@ npm run verify:relations
 
 ## 应用结构
 
-- `src/app/`：Hash 路由、AppShell、正式菜单和错误边界。
+- `src/app/`：Hash 路由、三套布局、控制台菜单和错误边界。
 - `src/components/ui/`：公共 UI 组件及统一导出。
 - `src/features/*/data/`：随应用打包的目录与配置数据。
 - `src/features/*/state/`：领域状态、操作和跨模块关联。
@@ -46,7 +46,13 @@ npm run verify:relations
 
 ## 正式路由
 
-独立文件使用 `#/marketplace`、`#/resources/cloud-servers`、`#/resources/physical-machines`、`#/storage`、`#/images`、`#/software`、`#/network-access`、`#/orders` 和 `#/operation-records` 等正式路由；详情页使用对应对象 ID。未知 Hash 显示 404，开发检查路由不会进入正式构建。
+- 资源商城：`#/marketplace` 及 `#/marketplace/*` 购买配置。
+- 软件中心：`#/software`。
+- 控制台：`#/console/resources/*`、`#/console/storage/*`、`#/console/images`、`#/console/network-access`、`#/console/orders/*`、`#/console/operation-records`。
+
+根路径进入资源商城；旧的资源、存储、镜像、网络、订单和操作记录路径会保留查询参数并重定向到 `/console/*`。未知 Hash 显示 404，开发检查路由不会进入正式构建。
+
+商城与软件中心使用无侧栏的独立顶部导航；控制台保留侧栏，并在顶栏提供前往商城和软件中心的跨区入口。
 
 ## 自动检查
 

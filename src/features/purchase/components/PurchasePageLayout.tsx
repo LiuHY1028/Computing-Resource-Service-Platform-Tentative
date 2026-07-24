@@ -29,6 +29,11 @@ export function PurchasePageLayout({
 }: PurchasePageLayoutProps) {
   return (
     <section className="purchase-page" data-resource-type={resourceType} aria-label={title}>
+      <header className="purchase-page__header">
+        <span>RESOURCE CONFIGURATOR · 资源配置</span>
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </header>
       <Container as="section" className="purchase-config-notice" aria-label="配置说明">
         <span aria-hidden="true">i</span>
         <p><strong>配置说明</strong> · {description}</p>

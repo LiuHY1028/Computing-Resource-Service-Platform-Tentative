@@ -1,4 +1,11 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import {
+  Navigate,
+  Route,
+  Routes,
+  generatePath,
+  useLocation,
+  useParams,
+} from 'react-router-dom';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { UiSpecPage } from '../pages/UiSpecPage';
 import { FoundationComponentsPage } from '../pages/FoundationComponentsPage';
@@ -16,10 +23,15 @@ import {
   OrderDetailPage,
   OrderListPage,
 } from '../pages/OrdersPage';
-import { AppShell } from './shell/AppShell';
+import { ConsoleLayout } from './layouts/ConsoleLayout';
+import { MarketplaceLayout } from './layouts/MarketplaceLayout';
+import { SoftwareCenterLayout } from './layouts/SoftwareCenterLayout';
 import {
   APP_PAGE_ROUTES,
   DEFAULT_APP_ROUTE,
+  LEGACY_ROUTE_REDIRECTS,
+  getAppPageRoute,
+  type PageId,
   type AppPageRoute,
 } from './routes';
 
@@ -76,6 +88,14 @@ function appPageElement(route: AppPageRoute) {
   }
 }
 
+function LegacyRouteRedirect({ pageId }: Readonly<{ pageId: PageId }>) {
+  const location = useLocation();
+  const params = useParams();
+  const target = generatePath(getAppPageRoute(pageId).path, params);
+
+  return <Navigate to={`${target}${location.search}`} replace />;
+}
+
 export function AppRouter() {
   return (
     <Routes>
@@ -83,8 +103,26 @@ export function AppRouter() {
         path={ROUTE_PATHS.root}
         element={<Navigate to={ROUTE_PATHS.default} replace />}
       />
-      <Route element={<AppShell />}>
-        {APP_PAGE_ROUTES.map((route) => (
+      <Route element={<MarketplaceLayout />}>
+        {APP_PAGE_ROUTES.filter((route) => route.area === 'marketplace').map((route) => (
+          <Route
+            path={route.path}
+            element={appPageElement(route)}
+            key={route.pageId}
+          />
+        ))}
+      </Route>
+      <Route element={<SoftwareCenterLayout />}>
+        {APP_PAGE_ROUTES.filter((route) => route.area === 'software').map((route) => (
+          <Route
+            path={route.path}
+            element={appPageElement(route)}
+            key={route.pageId}
+          />
+        ))}
+      </Route>
+      <Route element={<ConsoleLayout />}>
+        {APP_PAGE_ROUTES.filter((route) => route.area === 'console').map((route) => (
           <Route
             path={route.path}
             element={appPageElement(route)}
@@ -104,6 +142,13 @@ export function AppRouter() {
           </>
         )}
       </Route>
+      {LEGACY_ROUTE_REDIRECTS.map((route) => (
+        <Route
+          key={route.path}
+          path={route.path}
+          element={<LegacyRouteRedirect pageId={route.pageId} />}
+        />
+      ))}
       {developmentRoutes && (
         <Route path={developmentRoutes.uiSpec} element={<UiSpecPage />} />
       )}

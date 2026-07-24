@@ -20,7 +20,7 @@ function renderRoute(path: string) {
 
 describe('AppShell', () => {
   it('renders the top navbar and expanded side navigation', () => {
-    renderRoute('/marketplace');
+    renderRoute('/console/resources/cloud-servers');
 
     expect(screen.getByTestId('top-navbar')).toBeInTheDocument();
     expect(screen.getByTestId('side-navigation')).toHaveAttribute(
@@ -32,7 +32,7 @@ describe('AppShell', () => {
 
   it('collapses and restores the side navigation without changing the route', async () => {
     const user = userEvent.setup();
-    renderRoute('/storage');
+    renderRoute('/console/storage');
 
     await user.click(screen.getByRole('button', { name: '收起侧边菜单' }));
 
@@ -58,7 +58,7 @@ describe('AppShell', () => {
 
   it('updates the selected item and page title after navigation', async () => {
     const user = userEvent.setup();
-    renderRoute('/marketplace');
+    renderRoute('/console/resources/cloud-servers');
 
     await user.click(screen.getByRole('link', { name: '存储管理' }));
 
@@ -73,7 +73,7 @@ describe('AppShell', () => {
 
   it('shows an accessible tooltip for a collapsed navigation item', async () => {
     const user = userEvent.setup();
-    renderRoute('/marketplace');
+    renderRoute('/console/resources/cloud-servers');
     await user.click(screen.getByRole('button', { name: '收起侧边菜单' }));
 
     const storageLink = screen.getByRole('link', { name: '存储管理' });
@@ -84,7 +84,7 @@ describe('AppShell', () => {
 
   it('provides accurate feedback for both top navbar entries', async () => {
     const user = userEvent.setup();
-    renderRoute('/marketplace');
+    renderRoute('/console/resources/cloud-servers');
 
     await user.click(screen.getByRole('button', { name: '消息入口' }));
     expect(screen.getByText('暂无新消息').closest('[role="status"]')).toHaveTextContent(
@@ -99,10 +99,12 @@ describe('AppShell', () => {
 
   it('does not render a broken image when no logo is configured', () => {
     render(
-      <TopNavbar
-        product={{ displayName: '集中配置测试名称' }}
-        collapsed={false}
-      />,
+      <MemoryRouter>
+        <TopNavbar
+          product={{ displayName: '集中配置测试名称' }}
+          collapsed={false}
+        />
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('集中配置测试名称')).toBeInTheDocument();

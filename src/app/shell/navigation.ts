@@ -63,14 +63,12 @@ const recordsNavigationItem: NavigationItem = Object.freeze({
 export const navigationGroups: readonly NavigationGroup[] = Object.freeze([
   Object.freeze({
     id: 'product-navigation',
-    label: '功能导航',
+    label: '控制台',
     items: Object.freeze([
-      pageNavigationItem('marketplace', 'MKT-01', 'marketplace'),
       // 云服务器/物理机暂时使用页面内标签关系，不拆成一级菜单，见 OQ-058。
       pageNavigationItem('resources', 'RES-01', 'resources'),
       pageNavigationItem('storage', 'STO-01', 'storage'),
       pageNavigationItem('images', 'IMG-01', 'images'),
-      pageNavigationItem('software', 'SW-01', 'software'),
       pageNavigationItem('network-access', 'NET-01', 'network'),
       recordsNavigationItem,
     ]),

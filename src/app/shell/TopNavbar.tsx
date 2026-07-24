@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { ProductConfig } from '../../config/product';
+import { APP_PATHS } from '../routes';
 import { MessageIcon, UserIcon } from './icons/AppShellIcons';
 
 type TopNavbarProps = Readonly<{
@@ -16,10 +18,11 @@ function BrandIdentity({
   const fallbackMark = product.displayName.trim().slice(0, 1) || '算';
 
   return (
-    <div
+    <Link
       className="app-brand"
       aria-label={product.displayName}
       data-compact={compact ? 'true' : 'false'}
+      to={APP_PATHS.cloudResources}
     >
       {product.logoSrc ? (
         <img className="app-brand__logo" src={product.logoSrc} alt="" />
@@ -29,7 +32,7 @@ function BrandIdentity({
         </span>
       )}
       {!compact && <span className="app-brand__name">{product.displayName}</span>}
-    </div>
+    </Link>
   );
 }
 
@@ -57,6 +60,10 @@ export function TopNavbar({ product, collapsed }: TopNavbarProps) {
         <BrandIdentity product={product} compact={collapsed} />
       </div>
       <div className="top-navbar__adaptive-region" aria-hidden="true" />
+      <nav className="top-navbar__product-links" aria-label="前台产品入口">
+        <Link to={APP_PATHS.marketplace}>资源商城 ↗</Link>
+        <Link to={APP_PATHS.software}>软件中心 ↗</Link>
+      </nav>
       <div className="top-navbar__actions">
         <button
           type="button"

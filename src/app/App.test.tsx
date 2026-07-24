@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { APP_PAGE_ROUTES, DEFAULT_APP_ROUTE } from './routes';
 import { App } from './App';
@@ -12,32 +12,37 @@ function renderRoute(path: string) {
   );
 }
 
+function LocationObserver() {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname}{location.search}</output>;
+}
+
 describe('application routes', () => {
   it('redirects the root to the first formal module', () => {
     renderRoute('/');
 
     expect(DEFAULT_APP_ROUTE.pageId).toBe('MKT-01');
     expect(
-      screen.getByRole('heading', { level: 1, name: '资源商城' }),
+      screen.getByRole('heading', { level: 1, name: '让每一份算力都匹配真实工作负载' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: '发现适合业务的计算资源',
+        name: '选择适合当前工作负载的资源',
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
   });
 
   it.each([
-    ['/marketplace', '资源商城'],
-    ['/resources/cloud-servers', '云服务器列表'],
-    ['/storage', '存储空间列表'],
-    ['/images', '镜像管理'],
-    ['/software', '软件中心'],
-    ['/network-access', '网络与访问'],
-    ['/orders', '订单列表'],
-    ['/operation-records', '操作记录'],
+    ['/marketplace', '让每一份算力都匹配真实工作负载'],
+    ['/console/resources/cloud-servers', '云服务器列表'],
+    ['/console/storage', '存储空间列表'],
+    ['/console/images', '镜像管理'],
+    ['/software', '把合适的软件，装到合适的算力上'],
+    ['/console/network-access', '网络与访问'],
+    ['/console/orders', '订单列表'],
+    ['/console/operation-records', '操作记录'],
   ])('renders formal route %s', (path, title) => {
     renderRoute(path);
 
@@ -47,7 +52,7 @@ describe('application routes', () => {
   });
 
   it('renders the storage management page instead of a service placeholder', async () => {
-    renderRoute('/storage');
+    renderRoute('/console/storage');
 
     expect(await screen.findByRole('table', { name: '存储空间列表' })).toBeInTheDocument();
     expect(screen.queryByText(/服务状态|暂未开放/)).not.toBeInTheDocument();
@@ -71,7 +76,7 @@ describe('application routes', () => {
 
     const pageTitle = screen.getByRole('heading', { level: 1, name: title });
     expect(pageTitle).toBeInTheDocument();
-    expect(pageTitle.closest('.page-title-bar')).toBeInTheDocument();
+    expect(pageTitle.closest('.purchase-page__header')).toBeInTheDocument();
     expect(await screen.findByLabelText('配置说明')).toBeInTheDocument();
     expect(
       screen.getAllByRole('button', { name: '返回资源商城' })[0],
@@ -79,6 +84,38 @@ describe('application routes', () => {
     expect(screen.getByText('配置说明')).toBeInTheDocument();
     expect(document.querySelector('.purchase-guide')).toBeNull();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
+  });
+
+  it('uses independent layouts for the two product areas and the console', () => {
+    const marketplace = renderRoute('/marketplace');
+    expect(screen.getByTestId('marketplace-layout')).toBeInTheDocument();
+    expect(screen.queryByTestId('side-navigation')).not.toBeInTheDocument();
+    marketplace.unmount();
+
+    const software = renderRoute('/software');
+    expect(screen.getByTestId('software-center-layout')).toBeInTheDocument();
+    expect(screen.queryByTestId('side-navigation')).not.toBeInTheDocument();
+    software.unmount();
+
+    renderRoute('/console/resources/cloud-servers');
+    expect(screen.getByTestId('console-layout')).toBeInTheDocument();
+    expect(screen.getByTestId('side-navigation')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['/resources/cloud-servers?q=研发', '/console/resources/cloud-servers?q=研发'],
+    ['/storage', '/console/storage'],
+    ['/orders', '/console/orders'],
+    ['/operation-records', '/console/operation-records'],
+  ])('redirects legacy route %s to %s', async (legacyPath, targetPath) => {
+    render(
+      <MemoryRouter initialEntries={[legacyPath]}>
+        <App />
+        <LocationObserver />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('location')).toHaveTextContent(targetPath);
   });
 
   it('renders the UI specification route', () => {

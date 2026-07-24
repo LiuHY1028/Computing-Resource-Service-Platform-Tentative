@@ -9,7 +9,7 @@ afterEach(() => {
 
 describe('offline hash routing', () => {
   it('opens a formal deep link from the hash', () => {
-    window.location.hash = '#/resources/cloud-servers';
+    window.location.hash = '#/console/resources/cloud-servers';
     render(
       <HashRouter>
         <App />
@@ -33,7 +33,7 @@ describe('offline hash routing', () => {
       expect(window.location.hash).toBe('#/marketplace'),
     );
     expect(
-      screen.getByRole('heading', { level: 1, name: '资源商城' }),
+      screen.getByRole('heading', { level: 1, name: '让每一份算力都匹配真实工作负载' }),
     ).toBeInTheDocument();
   });
 

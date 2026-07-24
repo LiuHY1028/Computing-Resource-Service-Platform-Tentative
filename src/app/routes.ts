@@ -19,6 +19,7 @@ export type PageId =
 
 export type AppPageRoute = Readonly<{
   pageId: PageId;
+  area: 'marketplace' | 'software' | 'console';
   path: string;
   pageTitle: string;
   navigationLabel: string;
@@ -38,6 +39,7 @@ export type DevelopmentShellRoute = Readonly<{
 export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   {
     pageId: 'MKT-01',
+    area: 'marketplace',
     path: '/marketplace',
     pageTitle: '资源商城',
     navigationLabel: '资源商城',
@@ -49,6 +51,7 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'BUY-01',
+    area: 'marketplace',
     path: '/marketplace/cloud-server/purchase',
     pageTitle: '配置云服务器',
     navigationLabel: '云服务器购买配置',
@@ -60,6 +63,7 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'BUY-02',
+    area: 'marketplace',
     path: '/marketplace/physical-machine/purchase',
     pageTitle: '配置物理机',
     navigationLabel: '物理机购买配置',
@@ -71,7 +75,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'RES-01',
-    path: '/resources/cloud-servers',
+    area: 'console',
+    path: '/console/resources/cloud-servers',
     pageTitle: '云服务器列表',
     navigationLabel: '我的资源',
     moduleLabel: '我的资源',
@@ -82,7 +87,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'RES-02',
-    path: '/resources/cloud-servers/:resourceId',
+    area: 'console',
+    path: '/console/resources/cloud-servers/:resourceId',
     pageTitle: '云服务器详情',
     navigationLabel: '云服务器详情',
     moduleLabel: '我的资源',
@@ -93,7 +99,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'RES-03',
-    path: '/resources/physical-machines',
+    area: 'console',
+    path: '/console/resources/physical-machines',
     pageTitle: '物理机列表',
     navigationLabel: '物理机列表',
     moduleLabel: '我的资源',
@@ -104,7 +111,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'RES-04',
-    path: '/resources/physical-machines/:resourceId',
+    area: 'console',
+    path: '/console/resources/physical-machines/:resourceId',
     pageTitle: '物理机详情',
     navigationLabel: '物理机详情',
     moduleLabel: '我的资源',
@@ -115,7 +123,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'STO-01',
-    path: '/storage',
+    area: 'console',
+    path: '/console/storage',
     pageTitle: '存储空间列表',
     navigationLabel: '存储管理',
     moduleLabel: '存储管理',
@@ -126,7 +135,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'STO-02',
-    path: '/storage/:storageId',
+    area: 'console',
+    path: '/console/storage/:storageId',
     pageTitle: '存储空间详情',
     navigationLabel: '存储空间详情',
     moduleLabel: '存储管理',
@@ -137,7 +147,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'IMG-01',
-    path: '/images',
+    area: 'console',
+    path: '/console/images',
     pageTitle: '镜像管理',
     navigationLabel: '镜像管理',
     moduleLabel: '镜像管理',
@@ -148,6 +159,7 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'SW-01',
+    area: 'software',
     path: '/software',
     pageTitle: '软件中心',
     navigationLabel: '软件中心',
@@ -159,7 +171,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'NET-01',
-    path: '/network-access',
+    area: 'console',
+    path: '/console/network-access',
     pageTitle: '网络与访问',
     navigationLabel: '网络与访问',
     moduleLabel: '网络与访问',
@@ -170,7 +183,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'ORD-01',
-    path: '/orders',
+    area: 'console',
+    path: '/console/orders',
     pageTitle: '订单列表',
     navigationLabel: '订单',
     moduleLabel: '订单与记录',
@@ -181,7 +195,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'ORD-02',
-    path: '/orders/:orderId',
+    area: 'console',
+    path: '/console/orders/:orderId',
     pageTitle: '订单详情',
     navigationLabel: '订单详情',
     moduleLabel: '订单与记录',
@@ -192,7 +207,8 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
   },
   {
     pageId: 'OPS-01',
-    path: '/operation-records',
+    area: 'console',
+    path: '/console/operation-records',
     pageTitle: '操作记录',
     navigationLabel: '操作记录',
     moduleLabel: '订单与记录',
@@ -204,6 +220,57 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
 ]);
 
 export const DEFAULT_APP_ROUTE = APP_PAGE_ROUTES[0];
+
+export const LEGACY_ROUTE_REDIRECTS = Object.freeze([
+  { path: '/resources/cloud-servers', pageId: 'RES-01' },
+  { path: '/resources/cloud-servers/:resourceId', pageId: 'RES-02' },
+  { path: '/resources/physical-machines', pageId: 'RES-03' },
+  { path: '/resources/physical-machines/:resourceId', pageId: 'RES-04' },
+  { path: '/storage', pageId: 'STO-01' },
+  { path: '/storage/:storageId', pageId: 'STO-02' },
+  { path: '/images', pageId: 'IMG-01' },
+  { path: '/network-access', pageId: 'NET-01' },
+  { path: '/orders', pageId: 'ORD-01' },
+  { path: '/orders/:orderId', pageId: 'ORD-02' },
+  { path: '/operation-records', pageId: 'OPS-01' },
+] satisfies readonly Readonly<{ path: string; pageId: PageId }>[]);
+
+export const APP_PATHS = Object.freeze({
+  marketplace: '/marketplace',
+  cloudPurchase: '/marketplace/cloud-server/purchase',
+  physicalPurchase: '/marketplace/physical-machine/purchase',
+  software: '/software',
+  cloudResources: '/console/resources/cloud-servers',
+  physicalResources: '/console/resources/physical-machines',
+  storage: '/console/storage',
+  images: '/console/images',
+  networkAccess: '/console/network-access',
+  orders: '/console/orders',
+  operationRecords: '/console/operation-records',
+});
+
+export function resourceListPath(
+  resourceType: 'cloud-server' | 'physical-machine',
+) {
+  return resourceType === 'cloud-server'
+    ? APP_PATHS.cloudResources
+    : APP_PATHS.physicalResources;
+}
+
+export function resourceDetailPath(
+  resourceType: 'cloud-server' | 'physical-machine',
+  resourceId: string,
+) {
+  return `${resourceListPath(resourceType)}/${encodeURIComponent(resourceId)}`;
+}
+
+export function storageDetailPath(storageId: string) {
+  return `${APP_PATHS.storage}/${encodeURIComponent(storageId)}`;
+}
+
+export function orderDetailPath(orderId: string) {
+  return `${APP_PATHS.orders}/${encodeURIComponent(orderId)}`;
+}
 
 const DEVELOPMENT_SHELL_ROUTES: readonly DevelopmentShellRoute[] =
   import.meta.env.DEV

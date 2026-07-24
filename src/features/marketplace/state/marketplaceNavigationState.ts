@@ -91,5 +91,5 @@ export function loadMarketplaceNavigationContext(
 }
 
 export function getMarketplaceScrollRegion() {
-  return document.querySelector<HTMLElement>('.main-content__scroll-region');
+  return document.querySelector<HTMLElement>('.marketplace-layout__content');
 }

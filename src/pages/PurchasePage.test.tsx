@@ -23,12 +23,12 @@ async function waitForPhysical() {
 describe('PurchasePage', () => {
   beforeEach(() => window.sessionStorage.clear());
 
-  it('uses the standard title bar, fixed system disk, and submits without an image', async () => {
+  it('uses the marketplace purchase header, fixed system disk, and submits without an image', async () => {
     const user = renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east');
     await waitForCloud();
 
     const pageTitle = screen.getByRole('heading', { level: 1, name: '配置云服务器' });
-    expect(pageTitle.closest('.page-title-bar')).toBeInTheDocument();
+    expect(pageTitle.closest('.purchase-page__header')).toBeInTheDocument();
     expect(document.querySelector('.purchase-guide')).toBeNull();
     expect(screen.getByLabelText('配置说明')).toBeInTheDocument();
     expect(screen.getAllByText('30 GB').length).toBeGreaterThan(0);
@@ -194,7 +194,7 @@ describe('PurchasePage', () => {
     await waitForPhysical();
 
     const pageTitle = screen.getByRole('heading', { level: 1, name: '配置物理机' });
-    expect(pageTitle.closest('.page-title-bar')).toBeInTheDocument();
+    expect(pageTitle.closest('.purchase-page__header')).toBeInTheDocument();
     expect(document.querySelector('.purchase-guide')).toBeNull();
     expect(screen.getByRole('heading', { name: '交付方式' })).toBeInTheDocument();
     expect(screen.getByText('申请受理后进入资源准备和基础初始化')).toBeInTheDocument();

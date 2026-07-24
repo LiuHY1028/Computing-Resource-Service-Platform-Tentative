@@ -39,7 +39,7 @@ beforeEach(() => {
 
 describe('ResourceDetailPage', () => {
   it('renders cloud overview and keeps cloud fields distinct', async () => {
-    renderDetail('/resources/cloud-servers/cs-east-001');
+    renderDetail('/console/resources/cloud-servers/cs-east-001');
 
     expect(
       await screen.findByRole('heading', { name: '研发计算节点-01' }),
@@ -52,7 +52,7 @@ describe('ResourceDetailPage', () => {
 
   it('shows deterministic applicable monitoring metrics and range selection', async () => {
     const { user, location } = renderDetail(
-      '/resources/cloud-servers/cs-east-002',
+      '/console/resources/cloud-servers/cs-east-002',
     );
     await screen.findByRole('heading', { name: '视觉训练节点-02' });
     await user.click(screen.getByRole('tab', { name: '监控' }));
@@ -69,7 +69,7 @@ describe('ResourceDetailPage', () => {
   });
 
   it('omits GPU metrics for CPU-only resources', async () => {
-    const { user } = renderDetail('/resources/cloud-servers/cs-east-001');
+    const { user } = renderDetail('/console/resources/cloud-servers/cs-east-001');
     await screen.findByRole('heading', { name: '研发计算节点-01' });
     await user.click(screen.getByRole('tab', { name: '监控' }));
 
@@ -80,7 +80,7 @@ describe('ResourceDetailPage', () => {
 
   it('copies an SSH command and displays network rule details', async () => {
     const { user } = renderDetail(
-      '/resources/cloud-servers/cs-east-001?tab=network',
+      '/console/resources/cloud-servers/cs-east-001?tab=network',
     );
     const writeText = vi
       .spyOn(navigator.clipboard, 'writeText')
@@ -105,7 +105,7 @@ describe('ResourceDetailPage', () => {
 
   it('explains no public IP and physical BMC access without cloud fields', async () => {
     const { user } = renderDetail(
-      '/resources/physical-machines/pm-east-002',
+      '/console/resources/physical-machines/pm-east-002',
     );
     await screen.findByRole('heading', { name: '训练物理节点-02' });
     expect(screen.getByText('物理机配置')).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe('ResourceDetailPage', () => {
   });
 
   it('shows type-specific storage and operation records', async () => {
-    const { user } = renderDetail('/resources/cloud-servers/cs-east-002');
+    const { user } = renderDetail('/console/resources/cloud-servers/cs-east-002');
     await screen.findByRole('heading', { name: '视觉训练节点-02' });
     await user.click(screen.getByRole('tab', { name: '存储' }));
     expect(screen.getByText('系统盘与数据盘')).toBeInTheDocument();
@@ -138,20 +138,20 @@ describe('ResourceDetailPage', () => {
 
   it('covers missing resources and recoverable detail errors', async () => {
     const missing = renderDetail(
-      '/resources/cloud-servers/missing-resource',
+      '/console/resources/cloud-servers/missing-resource',
     );
     expect(await screen.findByText('未找到资源')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: '返回资源列表' }),
     ).toBeInTheDocument();
     expect(missing.location()).toBe(
-      '/resources/cloud-servers/missing-resource',
+      '/console/resources/cloud-servers/missing-resource',
     );
   });
 
   it('renames through the detail page and keeps the list in sync', async () => {
     const { user } = renderDetail(
-      '/resources/cloud-servers/cs-east-001',
+      '/console/resources/cloud-servers/cs-east-001',
     );
     await screen.findByRole('heading', { name: '研发计算节点-01' });
     await user.click(screen.getByRole('button', { name: /更多操作/ }));

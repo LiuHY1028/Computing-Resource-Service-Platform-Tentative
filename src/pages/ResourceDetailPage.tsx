@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Button, Container, UnderlineTabs, type TabItem } from '../components/ui';
+import { APP_PATHS, resourceListPath } from '../app/routes';
 import {
   ConnectionInformation,
   getResourceById,
@@ -41,7 +42,7 @@ export function ResourceDetailPage({ resourceType }: Readonly<{ resourceType: Re
     void revision;
     return getResourceById(resourceType, resourceId);
   }, [resourceId, resourceType, revision]);
-  const listPath = resourceType === 'cloud-server' ? '/resources/cloud-servers' : '/resources/physical-machines';
+  const listPath = resourceListPath(resourceType);
   const fromList = (location.state as { fromResourceList?: string } | null)?.fromResourceList;
   const backPath = fromList?.startsWith(listPath) && !fromList.includes('://') ? fromList : listPath;
 
@@ -57,7 +58,7 @@ export function ResourceDetailPage({ resourceType }: Readonly<{ resourceType: Re
     { value: 'storage', label: '存储', panel: <ResourceStorage resource={resource} /> },
     { value: 'network', label: '网络与访问', panel: <ResourceNetwork resource={resource} connectionContent={connection} /> },
     { value: 'image-system', label: '镜像与系统', panel: <ResourceImageSystem resource={resource} /> },
-    { value: 'software', label: '软件环境', panel: <ResourceSoftware resourceId={resource.id} onOpenSoftwareCenter={() => navigate(`/software?resource=${resource.id}`)} /> },
+    { value: 'software', label: '软件环境', panel: <ResourceSoftware resourceId={resource.id} onOpenSoftwareCenter={() => navigate(`${APP_PATHS.software}?resource=${resource.id}`)} /> },
     { value: 'operations', label: '操作记录', panel: <ResourceOperations resourceId={resource.id} /> },
   ];
   const physicalTabs: readonly TabItem[] = [
@@ -68,7 +69,7 @@ export function ResourceDetailPage({ resourceType }: Readonly<{ resourceType: Re
     { value: 'storage', label: '本地存储', panel: <ResourceStorage resource={resource} /> },
     { value: 'network', label: '网络与访问', panel: <ResourceNetwork resource={resource} connectionContent={connection} /> },
     { value: 'delivery', label: '交付与带外管理', panel: <ResourceDelivery resource={resource} /> },
-    { value: 'software', label: '软件环境', panel: <ResourceSoftware resourceId={resource.id} onOpenSoftwareCenter={() => navigate(`/software?resource=${resource.id}`)} /> },
+    { value: 'software', label: '软件环境', panel: <ResourceSoftware resourceId={resource.id} onOpenSoftwareCenter={() => navigate(`${APP_PATHS.software}?resource=${resource.id}`)} /> },
     { value: 'operations', label: '操作记录', panel: <ResourceOperations resourceId={resource.id} /> },
   ];
   const tabs = resource.resourceType === 'cloud-server' ? cloudTabs : physicalTabs;

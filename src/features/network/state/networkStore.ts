@@ -1,4 +1,5 @@
 import { recordOperation } from '../../operations';
+import { resourceDetailPath } from '../../../app/routes';
 import {
   isValidIpOrCidr,
   isValidPort,
@@ -165,7 +166,7 @@ export async function createNetworkRule(input: NetworkRuleInput) {
     targetName: input.resourceName,
     status: 'processing',
     message: '网络变更请求已提交，等待基础设施处理。',
-    targetPath: `/resources/${input.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${input.resourceId}?tab=network`,
+    targetPath: `${resourceDetailPath(input.resourceType, input.resourceId)}?tab=network`,
   });
   return rule;
 }
@@ -191,7 +192,7 @@ export async function updateNetworkRule(ruleId: string, input: NetworkRuleInput)
     targetName: input.resourceName,
     status: 'processing',
     message: '网络变更请求已提交，原规则状态等待基础设施确认。',
-    targetPath: `/resources/${input.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${input.resourceId}?tab=network`,
+    targetPath: `${resourceDetailPath(input.resourceType, input.resourceId)}?tab=network`,
   });
   return updated;
 }
@@ -216,7 +217,7 @@ export async function deleteNetworkRule(ruleId: string) {
     targetName: current.resourceName,
     status: 'processing',
     message: '删除请求已提交，当前规则保留至基础设施处理完成。',
-    targetPath: `/resources/${current.resourceType === 'cloud-server' ? 'cloud-servers' : 'physical-machines'}/${current.resourceId}?tab=network`,
+    targetPath: `${resourceDetailPath(current.resourceType, current.resourceId)}?tab=network`,
   });
   return updated;
 }

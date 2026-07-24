@@ -1,4 +1,5 @@
 import { recordOperation } from '../../operations';
+import { orderDetailPath } from '../../../app/routes';
 import {
   calculateCloudPrice,
   calculatePhysicalPrice,
@@ -205,7 +206,7 @@ export function createPurchaseOrder(input: Readonly<{
     targetName: order.id,
     status: 'submitted',
     message: '资源配置申请已提交，等待处理。',
-    targetPath: `/orders/${order.id}`,
+    targetPath: orderDetailPath(order.id),
     createdAt: submittedAt,
   });
   return order;
@@ -267,7 +268,7 @@ export function createApplicationOrder(input: Readonly<{
     targetName: order.id,
     status: 'submitted',
     message: '申请已提交，等待处理。',
-    targetPath: `/orders/${order.id}`,
+    targetPath: orderDetailPath(order.id),
     createdAt: submittedAt,
   });
   return order;

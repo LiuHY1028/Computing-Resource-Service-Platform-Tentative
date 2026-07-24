@@ -19,10 +19,40 @@
 }
 
 .purchase-config-notice,
-.purchase-workspace {
+.purchase-workspace,
+.purchase-page__header {
   width: 100%;
   max-width: var(--grid-content-width);
   margin-inline: auto;
+}
+
+.purchase-page__header {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-20) 0 var(--space-24);
+}
+
+.purchase-page__header > span {
+  color: var(--purchase-accent);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: .08em;
+}
+
+.purchase-page__header h1 {
+  margin: 0;
+  color: var(--color-text-title);
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 520;
+  letter-spacing: -.035em;
+  line-height: 1.12;
+}
+
+.purchase-page__header p {
+  max-width: 780px;
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-body);
 }
 
 .purchase-config-notice {
