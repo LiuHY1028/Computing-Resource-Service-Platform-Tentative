@@ -1,6 +1,7 @@
 export { MARKETPLACE_CLOUD_SYSTEM_DISK_GB } from './data/marketplaceProducts';
 export {
   getMarketplaceFilterOptions,
+  getDefaultMarketplaceProduct,
   getMarketplaceProductById,
   queryMarketplaceProducts,
 } from './data/marketplaceCatalog';

@@ -7,14 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   EmptyTable,
-  StatusBadge,
   TextButton,
   Tooltip,
   type TableColumn,
   type TableKey,
 } from '../../../components/ui';
 import {
-  getExtensionAvailability,
+  getRentalRenewalAvailability,
   getRenewalAvailability,
   getResourceActionAvailability,
 } from '../state/resourceStore';
@@ -71,10 +70,10 @@ type ResourceTableProps = Readonly<{
   onDensityChange?: (density: 'compact' | 'standard' | 'comfortable') => void;
 }>;
 
-const HEALTH: Readonly<Record<HealthStatus, { label: string; tone: 'success' | 'warning' | 'info' }>> = {
-  normal: { label: '正常', tone: 'success' },
-  warning: { label: '告警', tone: 'warning' },
-  checking: { label: '检查中', tone: 'info' },
+const HEALTH: Readonly<Record<HealthStatus, { label: string }>> = {
+  normal: { label: '健康检查正常' },
+  warning: { label: '存在健康告警' },
+  checking: { label: '健康检查中' },
 };
 
 function expiryText(resource: Resource) {
@@ -92,7 +91,7 @@ function statusCell(resource: Resource) {
   return (
     <div className="resource-table__status-stack">
       <ResourceStatusBadge status={resource.status} />
-      <StatusBadge tone={health.tone}>{health.label}</StatusBadge>
+      <span className="resource-table__auxiliary">{health.label}</span>
     </div>
   );
 }
@@ -142,7 +141,7 @@ export function ResourceActionMenu({ resource, onAction }: Readonly<{ resource: 
       </DropdownMenu>
     );
   }
-  const extension = getExtensionAvailability(resource);
+  const extension = getRentalRenewalAvailability(resource);
   return (
     <DropdownMenu trigger="更多" aria-label={`${resource.name}更多操作`}>
       <DropdownMenuGroup label="电源与运维">
@@ -155,8 +154,8 @@ export function ResourceActionMenu({ resource, onAction }: Readonly<{ resource: 
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuGroup label="交付与管理">
-        <DropdownMenuItem disabled={!extension.enabled} title={extension.reason} onSelect={() => onAction(resource, 'extend')}>申请延期</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onAction(resource, 'os-reinstall')}>重装系统申请</DropdownMenuItem>
+        <DropdownMenuItem disabled={!extension.enabled} title={extension.reason} onSelect={() => onAction(resource, 'extend')}>续租</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onAction(resource, 'os-reinstall')}>重装系统</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onAction(resource, 'network')}>网络与访问</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onAction(resource, 'storage')}>本地存储</DropdownMenuItem>
         <DropdownMenuItem disabled={resource.bmcAccess !== 'authorized'} title={resource.bmcAccess !== 'authorized' ? '当前资源未获得带外管理授权。' : undefined} onSelect={() => onAction(resource, 'bmc')}>带外管理</DropdownMenuItem>
@@ -166,7 +165,7 @@ export function ResourceActionMenu({ resource, onAction }: Readonly<{ resource: 
       <DropdownMenuSeparator />
       <DropdownMenuGroup label="管理">
         <DropdownMenuItem onSelect={() => onAction(resource, 'metadata')}>项目或责任人</DropdownMenuItem>
-        {actionItem('release', '释放申请', true)}
+        {actionItem('release', '释放资源', true)}
       </DropdownMenuGroup>
     </DropdownMenu>
   );
@@ -178,7 +177,7 @@ function cloudCoreColumns(): TableColumn<Resource>[] {
     { key: 'status', title: '状态', width: '9%', multiline: true, render: statusCell },
     { key: 'specification', title: '规格', width: '14%', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.vCpu} vCPU · {resource.memoryGb} GB</strong>{resource.accelerator && <span>{formatAccelerator(resource)}</span>}<span>{resource.instanceSpec}</span></div> },
     { key: 'system-network', title: '系统与网络', width: '18%', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><Truncated value={resource.operatingSystem || resource.image} /><span>内网 {resource.ip.privateIp}</span><span>{resource.ip.publicIp ? `公网 ${resource.ip.publicIp}` : '公网 IP 未分配'}</span></div> },
-    { key: 'billing-expiry', title: '计费与到期', width: '23%', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.billingMode === 'subscription' ? `包月 · ${formatMonthlyPrice(resource.priceSnapshot.unitPrice)}` : `按量 · ${formatHourlyPrice(resource.priceSnapshot.unitPrice)}`}</strong><span>{resource.billingMode === 'subscription' ? `当前周期 ${formatMoney(resource.priceSnapshot.total)} · ${formatDate(resource.expiresAt)}` : '按实际使用时长计费'}</span>{resource.billingMode === 'subscription' && <span>{resource.autoRenewal.enabled ? `自动续费 ${resource.autoRenewal.periodMonths} 个月` : '自动续费未开启'} · {expiryText(resource)}</span>}{resource.lifecycleRequestState === 'renewal-processing' && <StatusBadge tone="info">续费处理中</StatusBadge>}</div> },
+    { key: 'billing-expiry', title: '计费与到期', width: '23%', multiline: true, render: (resource) => resource.resourceType === 'cloud-server' && <div className="resource-table__primary"><strong>{resource.billingMode === 'subscription' ? `包月 · ${formatMonthlyPrice(resource.priceSnapshot.unitPrice)}` : `按量 · ${formatHourlyPrice(resource.priceSnapshot.unitPrice)}`}</strong><span>{resource.billingMode === 'subscription' ? `当前周期 ${formatMoney(resource.priceSnapshot.total)} · ${formatDate(resource.expiresAt)}` : '按实际使用时长计费'}</span>{resource.billingMode === 'subscription' && <span>{resource.autoRenewal.enabled ? `自动续费 ${resource.autoRenewal.periodMonths} 个月` : '自动续费未开启'} · {expiryText(resource)}</span>}</div> },
   ];
 }
 
@@ -188,7 +187,7 @@ function physicalCoreColumns(): TableColumn<Resource>[] {
     { key: 'status', title: '状态', width: '9%', multiline: true, render: statusCell },
     { key: 'hardware', title: '整机配置', width: '19%', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><Truncated value={`${resource.cpuModel} × ${resource.cpuSockets}`} /><span>{resource.memoryGb} GB 内存{resource.accelerator ? ` · ${formatAccelerator(resource)}` : ''}</span><span>{resource.storageSummary}</span></div> },
     { key: 'location-network', title: '位置与网络', width: '17%', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><strong>{resource.site}</strong><span>{resource.room} · {resource.rack} · {resource.rackUnit}</span><span>{resource.hostname || resource.ip.privateIp}</span></div> },
-    { key: 'fee-term', title: '费用与期限', width: '19%', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><strong>按月租用 · {formatMonthlyPrice(resource.priceSnapshot.unitPrice)}</strong><span>当前周期 {formatMoney(resource.priceSnapshot.total)}</span><span>{formatDate(resource.expiresAt)} · {expiryText(resource)}</span>{resource.lifecycleRequestState === 'extension-processing' && <StatusBadge tone="info">延期处理中</StatusBadge>}</div> },
+    { key: 'fee-term', title: '费用与期限', width: '19%', multiline: true, render: (resource) => resource.resourceType === 'physical-machine' && <div className="resource-table__primary"><strong>按月租用 · {formatMonthlyPrice(resource.priceSnapshot.unitPrice)}</strong><span>当前周期 {formatMoney(resource.priceSnapshot.total)}</span><span>{formatDate(resource.expiresAt)} · {expiryText(resource)}</span></div> },
   ];
 }
 

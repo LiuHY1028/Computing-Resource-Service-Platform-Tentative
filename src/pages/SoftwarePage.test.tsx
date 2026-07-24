@@ -47,10 +47,10 @@ describe('SoftwarePage', () => {
 
     expect(card).toBeTruthy();
     await user.click(within(card as HTMLElement).getByRole('button', { name: '安装到资源' }));
-    expect(screen.getByRole('dialog', { name: '提交软件安装任务' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '安装软件' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /目标资源/ })).toHaveTextContent('视觉训练节点-02');
 
-    await user.click(screen.getByRole('button', { name: '提交安装任务' }));
+    await user.click(screen.getByRole('button', { name: '确认安装' }));
     expect(await screen.findByText(/加速计算工具集 12.4 安装任务已提交/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '查看资源软件环境' })).toHaveAttribute(
       'href',
@@ -111,7 +111,7 @@ describe('SoftwarePage', () => {
     await user.click(screen.getByRole('option', { name: '数据处理节点-03 · 兼容' }));
     expect(resourceSelect).toHaveTextContent('数据处理节点-03 · 兼容');
 
-    await user.click(screen.getByRole('button', { name: '提交安装任务' }));
+    await user.click(screen.getByRole('button', { name: '确认安装' }));
     expect(await screen.findByText(/资源监控组件 2.6.1 安装任务已提交/)).toBeInTheDocument();
   });
 });

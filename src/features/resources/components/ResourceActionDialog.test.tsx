@@ -44,7 +44,7 @@ describe('ResourceActionDialog', () => {
   it('explains a state-incompatible action', () => {
     render(<ResourceActionDialog resource={resource('cloud-server', 'cs-east-001')} action="start" open onClose={vi.fn()} onCompleted={vi.fn()} />);
     expect(screen.getByRole('button', { name: '确认启动' })).toBeDisabled();
-    expect(screen.getByText('仅已停止的资源可启动。')).toBeInTheDocument();
+    expect(screen.getByText('仅已停止或已关机的资源可启动。')).toBeInTheDocument();
   });
 
   it('prevents duplicate submission while pending', async () => {

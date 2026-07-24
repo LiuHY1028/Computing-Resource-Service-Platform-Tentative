@@ -12,15 +12,23 @@ import {
   createInitialPhysicalConfiguration,
 } from '../data/initialConfigurations';
 import { getMarketplaceProductById } from '../../marketplace';
-import { queryOrders } from '../../orders';
-import { listOperationRecords } from '../../operations';
+import { queryOrders, resetOrderStore } from '../../orders';
+import { getBillForOrder, resetBillStore } from '../../bills';
+import { listOperationRecords, resetOperationsStore } from '../../operations';
+import { resetResourceStore } from '../../resources';
 import {
   calculateCloudPrice,
   calculatePhysicalPrice,
 } from '../../pricing';
 
 describe('purchase store', () => {
-  beforeEach(() => window.sessionStorage.clear());
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    resetOrderStore();
+    resetBillStore();
+    resetOperationsStore();
+    resetResourceStore();
+  });
 
   it('isolates versioned drafts by product and resource type', () => {
     const product = getMarketplaceProductById('catalog-cloud-cpu-c8-east');
@@ -52,12 +60,18 @@ describe('purchase store', () => {
     expect(isPhysicalDraft(physical)).toBe(true);
   });
 
-  it('returns linked application identifiers without writing session drafts', async () => {
+  it('creates formal purchase orders and matching bills without writing session drafts', async () => {
     const before = { ...window.sessionStorage };
+    const cloudProduct = getMarketplaceProductById('catalog-cloud-cpu-c8-east');
+    const physicalProduct = getMarketplaceProductById('catalog-physical-cpu-p1-east');
+    if (!cloudProduct || cloudProduct.resourceType !== 'cloud-server') throw new Error('Cloud product unavailable.');
+    if (!physicalProduct || physicalProduct.resourceType !== 'physical-machine') throw new Error('Physical product unavailable.');
+    const cloudConfiguration = createInitialCloudConfiguration(cloudProduct);
+    const physicalConfiguration = createInitialPhysicalConfiguration();
     const cloud = await submitConfiguration(
       'cloud-server',
-      '云服务器申请',
-      [],
+      '通用计算',
+      [{ label: '站点', value: cloudProduct.site }, { label: '数量', value: '1' }],
       calculateCloudPrice({
         skuId: 'catalog-cloud-cpu-c8-east',
         billingMode: 'subscription',
@@ -66,23 +80,27 @@ describe('purchase store', () => {
         systemDiskGb: 30,
       }),
       'catalog-cloud-cpu-c8-east',
+      cloudConfiguration,
     );
     const physical = await submitConfiguration(
       'physical-machine',
-      '物理机申请',
-      [],
+      '整机计算',
+      [{ label: '站点', value: physicalProduct.site }, { label: '数量', value: '1' }],
       calculatePhysicalPrice({
         skuId: 'catalog-physical-cpu-p1-east',
         quantity: 1,
         durationMonths: 1,
       }),
       'catalog-physical-cpu-p1-east',
+      physicalConfiguration,
     );
 
-    expect(cloud.applicationId).toMatch(/^REQ-\d{8}-\d{4}$/);
-    expect(physical.applicationId).toMatch(/^REQ-\d{8}-\d{4}$/);
-    expect(cloud.orderId).toBe(cloud.applicationId);
+    expect(cloud.orderId).toMatch(/^ORD-\d{8}-\d{4}$/);
+    expect(physical.orderId).toMatch(/^ORD-\d{8}-\d{4}$/);
+    expect('applicationId' in cloud).toBe(false);
     expect(queryOrders().some((order) => order.id === cloud.orderId)).toBe(true);
+    expect(getBillForOrder(cloud.orderId)?.amount).toEqual(cloud.priceSnapshot.total);
+    expect(getBillForOrder(physical.orderId)?.status).toBe('unpaid');
     expect(
       listOperationRecords().some(
         (record) => record.targetId === physical.orderId,

@@ -1,15 +1,34 @@
 import type { PriceSnapshot } from '../pricing';
 
 export type ResourceType = 'cloud-server' | 'physical-machine';
-export type ResourceStatus = 'preparing' | 'running' | 'stopped' | 'operating' | 'abnormal' | 'expired';
+export type CloudServerStatus =
+  | 'creating'
+  | 'running'
+  | 'stopped'
+  | 'restarting'
+  | 'resizing'
+  | 'expiring'
+  | 'expired'
+  | 'releasing'
+  | 'abnormal';
+export type PhysicalMachineStatus =
+  | 'preparing'
+  | 'running'
+  | 'powered-off'
+  | 'restarting'
+  | 'maintenance'
+  | 'expiring'
+  | 'expired'
+  | 'releasing'
+  | 'abnormal';
+export type ResourceStatus = CloudServerStatus | PhysicalMachineStatus;
 export type ComputeType = 'cpu' | 'gpu';
 export type ExpiryState = 'active' | 'expiring' | 'expired';
 export type HealthStatus = 'normal' | 'warning' | 'checking';
 export type BillingMode = 'subscription' | 'pay-as-you-go';
 export type ResourceAction = 'start' | 'stop' | 'restart' | 'rename' | 'release';
-export type OperationStatus = 'submitted' | 'processing' | 'completed' | 'failed';
+export type OperationStatus = 'waiting' | 'executing' | 'completed' | 'failed' | 'cancelled';
 export type MonitoringRange = '1h' | '24h';
-export type LifecycleRequestState = 'none' | 'renewal-processing' | 'extension-processing' | 'release-processing';
 
 export interface Accelerator {
   readonly model: string;
@@ -87,7 +106,6 @@ interface ResourceBase {
   readonly name: string;
   readonly resourceType: ResourceType;
   readonly site: string;
-  readonly status: ResourceStatus;
   readonly health: HealthCheck;
   readonly computeType: ComputeType;
   readonly cpu: string;
@@ -97,8 +115,6 @@ interface ResourceBase {
   readonly createdAt: string;
   readonly expiresAt: string;
   readonly expiryState: ExpiryState;
-  readonly lifecycleRequestState: LifecycleRequestState;
-  readonly pendingExpiresAt?: string;
   readonly project: string;
   readonly tags: readonly string[];
   readonly purpose: string;
@@ -141,6 +157,7 @@ export interface CloudDataDisk {
 
 export interface CloudServerResource extends ResourceBase {
   readonly resourceType: 'cloud-server';
+  readonly status: CloudServerStatus;
   readonly instanceSpec: string;
   readonly vCpu: number;
   readonly imageId: string;
@@ -169,6 +186,7 @@ export interface PhysicalLocalStorage {
 
 export interface PhysicalMachineResource extends ResourceBase {
   readonly resourceType: 'physical-machine';
+  readonly status: PhysicalMachineStatus;
   readonly assetNumber: string;
   readonly machineModel: string;
   readonly cpuModel: string;
@@ -183,8 +201,6 @@ export interface PhysicalMachineResource extends ResourceBase {
   readonly storageSummary: string;
   readonly localStorage: PhysicalLocalStorage;
   readonly bmcAccess: 'authorized' | 'restricted' | 'not-provided';
-  readonly deliveryStatus: 'preparing' | 'delivered' | 'releasing';
-  readonly extensionStatus: 'none' | 'pending';
 }
 
 export type Resource = CloudServerResource | PhysicalMachineResource;
@@ -246,14 +262,14 @@ export interface ResourceActionAvailability {
   readonly reason?: string;
 }
 
-export interface RenewalRequest {
+export interface RenewalOrderInput {
   readonly resourceIds: readonly string[];
   readonly periodMonths: 1 | 3 | 6 | 12;
   readonly renewStorage: boolean;
   readonly renewNetwork: boolean;
 }
 
-export interface ExtensionRequest {
+export interface RentalRenewalOrderInput {
   readonly resourceIds: readonly string[];
   readonly periodMonths: 1 | 3 | 6 | 12;
   readonly reason: string;

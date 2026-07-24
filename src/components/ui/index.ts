@@ -37,6 +37,7 @@ export {
   type CheckboxGroupProps,
   type CheckboxProps,
 } from './Checkbox/Checkbox';
+export { Switch, type SwitchProps } from './Switch/Switch';
 export {
   MultiSelect,
   Select,

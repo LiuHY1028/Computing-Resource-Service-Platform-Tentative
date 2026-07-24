@@ -147,7 +147,7 @@ export function CloudPurchaseForm({ product, value, errors, onChange, onConfirm,
 
       <FormActions
         className="purchase-form__actions"
-        primaryAction={{ label: '确认配置', type: 'submit' }}
+        primaryAction={{ label: '确认订单', type: 'submit' }}
         secondaryAction={{ label: '返回资源商城', onClick: onReturn }}
       />
     </Form>

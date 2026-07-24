@@ -2,6 +2,7 @@ export {
   getSoftwareById,
   getSoftwareCompatibility,
   getSoftwareForResource,
+  fulfillSoftwareCommerceOrder,
   getSoftwareInstallCount,
   getSoftwareInstallations,
   querySoftware,

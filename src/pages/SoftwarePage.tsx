@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { APP_PATHS, resourceDetailPath } from '../app/routes';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { APP_PATHS, checkoutPath, resourceDetailPath } from '../app/routes';
 import {
   Button,
   Form,
@@ -27,10 +27,13 @@ import {
 } from '../features/resources';
 import {
   getSoftwarePrice,
+  calculateSoftwarePrice,
+  createPriceSnapshot,
   money,
   pricePolicyLabel,
   type PricePolicy,
 } from '../features/pricing';
+import { createCommerceOrder } from '../features/orders';
 import './software-center.css';
 
 const PAGE_SIZE = 6;
@@ -48,14 +51,15 @@ type SoftwareDialogState = Readonly<{
 }>;
 
 const INSTALLATION_STATUS_LABEL: Readonly<Record<InstallationStatus, string>> = {
-  submitted: '已提交',
-  processing: '处理中',
-  installed: '已安装',
-  failed: '未完成',
+  waiting: '等待执行',
+  executing: '执行中',
+  completed: '已完成',
+  failed: '失败',
+  cancelled: '已取消',
 };
 
 function isActiveInstallation(status: InstallationStatus) {
-  return status !== 'failed';
+  return status !== 'failed' && status !== 'cancelled';
 }
 
 function softwarePriceLabel(softwareId: string) {
@@ -77,6 +81,7 @@ function softwareGlyph(item: SoftwareProduct) {
 }
 
 export function SoftwarePage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [dialog, setDialog] = useState<SoftwareDialogState>();
   const [version, setVersion] = useState('');
@@ -112,7 +117,7 @@ export function SoftwarePage() {
     return querySoftware(query).filter((item) => {
       if (feePolicy !== 'all' && softwarePricePolicy(item.id) !== feePolicy) return false;
       const hasInstallation = installedSoftwareIds.has(item.id);
-      if (installState === 'installed' && !hasInstallation) return false;
+      if (installState === 'completed' && !hasInstallation) return false;
       if (installState === 'installable' && hasInstallation) return false;
       return true;
     });
@@ -176,7 +181,7 @@ export function SoftwarePage() {
     return existing
       ? {
           available: false,
-          reason: existing.status === 'installed' ? '已安装' : '安装任务处理中',
+          reason: existing.status === 'completed' ? '已安装' : '安装任务处理中',
         }
       : { available: true, reason: '兼容' };
   }
@@ -205,6 +210,36 @@ export function SoftwarePage() {
     }
     setSubmitting(true);
     try {
+      const price = getSoftwarePrice(selected.id);
+      if (price?.policy === 'monthly') {
+        const order = createCommerceOrder({
+          orderType: 'softwarePurchase',
+          productType: 'software',
+          productName: selected.name,
+          resourceId: resource.id,
+          resourceIds: [resource.id],
+          resourceName: resource.name,
+          site: resource.site,
+          configurationSummary: [
+            { label: '软件', value: selected.name },
+            { label: '版本', value: version },
+            { label: '目标资源', value: `${resource.name}（${resource.id}）` },
+            { label: '计费周期', value: '1 个月' },
+          ],
+          pricingSnapshot: createPriceSnapshot(
+            selected.id,
+            calculateSoftwarePrice({ softwareId: selected.id }),
+          ),
+          fulfillment: {
+            kind: 'software-purchase',
+            softwareId: selected.id,
+            resourceId: resource.id,
+            version,
+          },
+        });
+        navigate(checkoutPath(order.id));
+        return;
+      }
       const task = await submitSoftwareInstallation({
         softwareId: selected.id,
         version,
@@ -302,7 +337,7 @@ export function SoftwarePage() {
           </nav>
           <div className="software-category-rail__note">
             <span aria-hidden="true">↗</span>
-            <p>安装请求会关联目标资源，并同步记录到控制台操作记录。</p>
+            <p>安装任务会关联目标资源，并同步记录到控制台操作记录。</p>
           </div>
         </div>
 
@@ -354,7 +389,7 @@ export function SoftwarePage() {
               onValueChange={(value) => setParam('installation', value)}
               options={[
                 { value: 'all', label: '全部安装状态' },
-                { value: 'installed', label: '已安装或处理中' },
+                { value: 'completed', label: '已安装或处理中' },
                 { value: 'installable', label: '可安装' },
               ]}
             />
@@ -384,7 +419,9 @@ export function SoftwarePage() {
                   isActiveInstallation(installation.status),
                 );
                 const hasPendingInstallation = activeInstallations.some(
-                  (installation) => installation.status !== 'installed',
+                  (installation) =>
+                    installation.status === 'waiting' ||
+                    installation.status === 'executing',
                 );
                 return (
                   <article className="software-card" key={item.id}>
@@ -403,9 +440,9 @@ export function SoftwarePage() {
                     </div>
                     <p className="software-card__description">{item.description}</p>
                     <div className="software-card__badges">
-                      <StatusBadge tone="info">
+                      <span className="software-card__compatibility">
                         {item.compatibleComputeTypes.map((type) => type.toUpperCase()).join(' / ')}
-                      </StatusBadge>
+                      </span>
                       <StatusBadge tone={hasPendingInstallation ? 'info' : activeInstallations.length ? 'success' : 'neutral'}>
                         {hasPendingInstallation ? '安装处理中' : activeInstallations.length ? '已安装' : '可安装'}
                       </StatusBadge>
@@ -482,10 +519,10 @@ export function SoftwarePage() {
 
       <Modal
         open={dialog?.view === 'install'}
-        title="提交软件安装任务"
+        title={selected && softwarePricePolicy(selected.id) === 'monthly' ? '购买并安装软件' : '安装软件'}
         onClose={closeDialog}
         busy={submitting}
-        primaryAction={{ label: '提交安装任务', onClick: () => void submitInstall() }}
+        primaryAction={{ label: selected && softwarePricePolicy(selected.id) === 'monthly' ? '创建订单并支付' : '确认安装', onClick: () => void submitInstall() }}
         secondaryAction={{ label: '取消', onClick: closeDialog }}
       >
         {selected && (
@@ -493,7 +530,7 @@ export function SoftwarePage() {
             <div className="software-install-intro">
               <span>INSTALLATION</span>
               <p>为 <strong>{selected.name}</strong> 选择版本和目标资源。</p>
-              <p>费用：{softwarePriceLabel(selected.id)}。提交后可在控制台查看处理状态。</p>
+              <p>费用：{softwarePriceLabel(selected.id)}。确认安装后可在控制台查看处理进度。</p>
             </div>
             <FormField label="软件版本" required>
               <Select value={version} onValueChange={setVersion} options={selected.versions.map((item) => ({ value: item, label: item }))} />

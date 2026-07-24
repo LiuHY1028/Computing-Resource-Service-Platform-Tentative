@@ -351,7 +351,7 @@ export function MarketplacePage() {
       <section className="marketplace-capability-strip" aria-label="资源购买能力">
         <div><span>01</span><strong>筛选与比较</strong><p>用同一视图核对站点、规格和价格。</p></div>
         <div><span>02</span><strong>完整配置</strong><p>继续选择镜像、存储与网络访问。</p></div>
-        <div><span>03</span><strong>进入控制台</strong><p>提交后统一追踪订单与资源信息。</p></div>
+        <div><span>03</span><strong>进入控制台</strong><p>订单创建后统一追踪付款与资源交付信息。</p></div>
       </section>
 
       <Container className="marketplace-tabs-shell" id="marketplace-catalog">

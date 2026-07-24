@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   APP_PATHS,
+  checkoutPath,
   orderDetailPath,
   resourceDetailPath,
   storageDetailPath,
@@ -27,7 +28,7 @@ import {
   type TableColumn,
 } from '../components/ui';
 import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
-import { queryOrders } from '../features/orders';
+import { ORDER_STATUS_VIEWS, queryOrders } from '../features/orders';
 import { formatMoney } from '../features/pricing';
 import { listResources } from '../features/resources/state/resourceStore';
 import {
@@ -36,11 +37,11 @@ import {
   getStorageSpace,
   queryStorageSpaces,
   renameStorageSpace,
-  requestStorageExpansion,
-  requestStorageMount,
-  requestStorageRelease,
-  requestStorageRenewal,
-  requestStorageUnmount,
+  createStorageExpansionOrder,
+  createStorageRenewalOrder,
+  mountStorage,
+  releaseStorage,
+  unmountStorage,
   setStorageAutoRenew,
   storageAvailableGb,
   type StorageMount,
@@ -69,9 +70,16 @@ function tierLabel(space: StorageSpace) {
 
 function statusView(status: StorageStatus) {
   if (status === 'available') return { label: '可用', tone: 'success' as const };
-  if (status === 'error') return { label: '异常', tone: 'error' as const };
-  if (status === 'preparing') return { label: '准备中', tone: 'warning' as const };
-  return { label: '处理中', tone: 'info' as const };
+  if (status === 'attached') return { label: '已挂载', tone: 'success' as const };
+  if (status === 'creating') return { label: '创建中', tone: 'info' as const };
+  if (status === 'attaching') return { label: '挂载中', tone: 'info' as const };
+  if (status === 'detaching') return { label: '卸载中', tone: 'info' as const };
+  if (status === 'expanding') return { label: '扩容中', tone: 'info' as const };
+  if (status === 'renewing') return { label: '续费中', tone: 'info' as const };
+  if (status === 'expiring') return { label: '即将到期', tone: 'warning' as const };
+  if (status === 'expired') return { label: '已到期', tone: 'error' as const };
+  if (status === 'releasing') return { label: '释放中', tone: 'warning' as const };
+  return { label: '异常', tone: 'error' as const };
 }
 
 function formatDate(value: string) {
@@ -222,7 +230,7 @@ export function StorageListPage() {
   }
 
   return (
-    <main className="storage-workbench">
+    <div className="storage-workbench">
       <section className="storage-overview-band" aria-label="存储资源概览">
         <div><span>存储总数</span><strong>{spaces.length}</strong><small>个独立存储</small></div>
         <div><span>总容量</span><strong>{totalCapacity.toLocaleString('zh-CN')} GB</strong><small>当前筛选范围</small></div>
@@ -238,7 +246,7 @@ export function StorageListPage() {
           <div className="management-filter-grid management-filter-grid--four">
             <SearchInput value={query.search} placeholder="搜索名称、ID或站点" onChange={(event) => setParam('q', event.target.value)} />
             <Select aria-label="存储类型" value={query.type} onValueChange={(value) => setParam('type', value)} options={[{ value: 'all', label: '全部类型' }, { value: 'cloud-disk', label: '云硬盘' }, { value: 'shared', label: '高性能共享存储' }]} />
-            <Select aria-label="状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'available', label: '可用' }, { value: 'preparing', label: '准备中' }, { value: 'processing', label: '处理中' }, { value: 'error', label: '异常' }]} />
+            <Select aria-label="状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'available', label: '可用' }, { value: 'attached', label: '已挂载' }, { value: 'creating', label: '创建中' }, { value: 'attaching', label: '挂载中' }, { value: 'detaching', label: '卸载中' }, { value: 'expanding', label: '扩容中' }, { value: 'renewing', label: '续费中' }, { value: 'expiring', label: '即将到期' }, { value: 'expired', label: '已到期' }, { value: 'releasing', label: '释放中' }, { value: 'abnormal', label: '异常' }]} />
             <Select aria-label="挂载状态" value={query.mounted} onValueChange={(value) => setParam('mounted', value)} options={[{ value: 'all', label: '全部挂载状态' }, { value: 'yes', label: '已挂载' }, { value: 'no', label: '未挂载' }]} />
           </div>
         )}
@@ -262,7 +270,7 @@ export function StorageListPage() {
         onSelectionChange={(keys) => setSelectedKeys(keys.map(String))}
         selectionActions={(
           <>
-            <Button onClick={() => setFeedback(`已为 ${selectedKeys.length} 个存储准备批量续期申请。`)}>批量续期</Button>
+            <Button onClick={() => setFeedback(`已选择 ${selectedKeys.length} 个存储，可逐项确认续费周期与费用。`)}>批量续费</Button>
             <Button onClick={() => setFeedback(`已选择 ${selectedKeys.length} 个存储，可继续导出清单。`)}>导出清单</Button>
           </>
         )}
@@ -289,18 +297,18 @@ export function StorageListPage() {
             <TextButton onClick={() => navigate(storageDetailPath(space.id))}>查看详情</TextButton>
             <DropdownMenu trigger={<span>更多</span>}>
               <DropdownMenuItem onSelect={() => setDialog({ type: 'expand', space })}>扩容</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDialog({ type: 'renew', space })}>续期</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDialog({ type: 'renew', space })}>续费</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => void toggleAutoRenew(space)}>设置自动续费</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setDialog({ type: 'rename', space })}>修改名称</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => navigate(`${APP_PATHS.storagePurchase}?type=${space.type}&tier=${space.performanceTier}`)}>购买同类型</DropdownMenuItem>
-              <DropdownMenuItem danger onSelect={() => setDialog({ type: 'release', space })}>提交释放申请</DropdownMenuItem>
+              <DropdownMenuItem danger onSelect={() => setDialog({ type: 'release', space })}>释放资源</DropdownMenuItem>
             </DropdownMenu>
           </div>
         )}
       />
       {feedback && <Toast title={feedback} onClose={() => setFeedback('')} />}
       <StorageActionDialog key={dialog ? `${dialog.type}-${dialog.space.id}` : 'closed'} dialog={dialog} onClose={() => setDialog(undefined)} onDone={(message) => { setDialog(undefined); setFeedback(message); setRevision((value) => value + 1); }} />
-    </main>
+    </div>
   );
 }
 
@@ -313,11 +321,11 @@ export function StorageDetailPage() {
   void revision;
   const space = getStorageSpace(storageId);
   if (!space) {
-    return <main className="management-page"><PageState tone="error" title="未找到存储" description="该存储可能不可用或地址不正确。" actionLabel="返回存储管理" onAction={() => navigate(APP_PATHS.storage)} /></main>;
+    return <div className="management-page"><PageState tone="error" title="未找到存储" description="该存储可能不可用或地址不正确。" actionLabel="返回存储管理" onAction={() => navigate(APP_PATHS.storage)} /></div>;
   }
-  const relatedOrders = queryOrders({}).filter((order) => order.storageId === space.id);
+  const relatedOrders = queryOrders({}).filter((order) => order.resourceId === space.id);
   return (
-    <main className="management-page">
+    <div className="management-page">
       <Container className="management-detail-header">
         <TextButton onClick={() => navigate(APP_PATHS.storage)}>返回存储管理</TextButton>
         <div className="management-detail-header__main">
@@ -330,7 +338,7 @@ export function StorageDetailPage() {
             : <Button variant="primary" disabled title={space.type === 'cloud-disk' ? '请先挂载并初始化文件系统。' : '当前状态不可用。'}>文件管理</Button>}
           <Button onClick={() => setDialog({ type: 'mount', space })} disabled={space.type === 'cloud-disk' && space.mounts.length > 0}>挂载存储</Button>
           <Button onClick={() => setDialog({ type: 'expand', space })}>扩容存储</Button>
-          <Button onClick={() => setDialog({ type: 'renew', space })}>续期存储</Button>
+          <Button onClick={() => setDialog({ type: 'renew', space })}>续费存储</Button>
           <Button onClick={() => navigate(`${APP_PATHS.storagePurchase}?type=${space.type}&tier=${space.performanceTier}`)}>购买同类型</Button>
         </div>
       </Container>
@@ -378,27 +386,31 @@ export function StorageDetailPage() {
             <div className="management-card-grid">
               {space.mounts.map((mount) => (
                 <article className="management-card" key={mount.id}>
-                  <StatusBadge tone={mount.status === 'effective' ? 'success' : 'warning'}>{mount.status === 'effective' ? '已挂载' : mount.status === 'removing' ? '卸载处理中' : '挂载处理中'}</StatusBadge>
+                  <span className="management-card__eyebrow">{mount.status === 'effective' ? '挂载关系有效' : mount.status === 'removing' ? '正在卸载' : '正在挂载'}</span>
                   <h3><Link to={resourceDetailPath(mount.resourceType, mount.resourceId)}>{mount.resourceName}</Link></h3>
                   <p>{mount.mountPath} · {mount.readOnly ? '只读' : '读写'}{mount.deviceName ? ` · ${mount.deviceName}` : ''}</p>
                   <Button onClick={() => setDialog({ type: 'unmount', space, mount })} disabled={mount.status !== 'effective'}>卸载存储</Button>
                 </article>
               ))}
             </div>
-          ) : <PageState title="暂未挂载" description="选择同站点适用资源并提交挂载申请。" actionLabel="挂载存储" onAction={() => setDialog({ type: 'mount', space })} />}
+          ) : <PageState title="暂未挂载" description="选择同站点适用资源并确认挂载。" actionLabel="挂载存储" onAction={() => setDialog({ type: 'mount', space })} />}
         </Container>
         <Container className="management-detail-section management-detail-section--wide">
-          <div className="management-results__header"><div><h2>关联订单</h2><p>购买、扩容、续期与挂载申请均保留快照。</p></div><Link to={`${APP_PATHS.orders}?related=yes`}>查看全部订单</Link></div>
-          {relatedOrders.length ? <ul className="management-record-list">{relatedOrders.slice(0, 5).map((order) => <li key={order.id}><Link to={orderDetailPath(order.id)}>{order.id}</Link><StatusBadge tone="info">{order.status === 'pending' ? '待处理' : order.status}</StatusBadge><p>{order.productName} · {formatMoney(order.priceSnapshot.total)}</p></li>)}</ul> : <p>暂无关联订单。</p>}
+          <div className="management-results__header"><div><h2>关联订单</h2><p>购买、扩容与续费订单保留各自的成交价格快照。</p></div><Link to={`${APP_PATHS.orders}?related=yes`}>查看全部订单</Link></div>
+          {relatedOrders.length ? <ul className="management-record-list">{relatedOrders.slice(0, 5).map((order) => {
+            const orderStatus = ORDER_STATUS_VIEWS[order.status];
+            return <li key={order.id}><Link to={orderDetailPath(order.id)}>{order.id}</Link><StatusBadge tone={orderStatus.tone}>{orderStatus.label}</StatusBadge><p>{order.items[0]?.name ?? '存储服务'} · {formatMoney(order.pricingSnapshot.total)}</p></li>;
+          })}</ul> : <p>暂无关联订单。</p>}
           <div className="management-related-links"><Link to={`${APP_PATHS.operationRecords}?target=${space.id}`}>查看操作记录</Link></div>
         </Container>
       </div>
       <StorageActionDialog key={dialog ? `${dialog.type}-${dialog.space.id}` : 'closed'} dialog={dialog} onClose={() => setDialog(undefined)} onDone={(message) => { setDialog(undefined); setFeedback(message); setRevision((value) => value + 1); }} />
-    </main>
+    </div>
   );
 }
 
 function StorageActionDialog({ dialog, onClose, onDone }: Readonly<{ dialog?: Dialog; onClose: () => void; onDone: (message: string) => void }>) {
+  const navigate = useNavigate();
   const [value, setValue] = useState('');
   const [targetId, setTargetId] = useState('');
   const [mountPath, setMountPath] = useState('/data/storage');
@@ -414,15 +426,17 @@ function StorageActionDialog({ dialog, onClose, onDone }: Readonly<{ dialog?: Di
         await renameStorageSpace(dialog.space.id, value || dialog.space.name);
         onDone('存储名称已更新。');
       } else if (dialog.type === 'expand') {
-        const order = await requestStorageExpansion(dialog.space.id, Number(value || dialog.space.capacityGb + 100));
-        onDone(`扩容申请 ${order.id} 已提交。`);
+        const order = await createStorageExpansionOrder(dialog.space.id, Number(value || dialog.space.capacityGb + 100));
+        onDone(`扩容订单 ${order.id} 已创建。`);
+        navigate(checkoutPath(order.id));
       } else if (dialog.type === 'renew') {
-        const order = await requestStorageRenewal(dialog.space.id, Number(value || 1) as 1 | 3 | 6 | 12);
-        onDone(`续期申请 ${order.id} 已提交。`);
+        const order = await createStorageRenewalOrder(dialog.space.id, Number(value || 1) as 1 | 3 | 6 | 12);
+        onDone(`续费订单 ${order.id} 已创建。`);
+        navigate(checkoutPath(order.id));
       } else if (dialog.type === 'mount') {
         const resource = targets.find((item) => item.id === targetId);
         if (!resource) throw new Error('请选择挂载资源。');
-        await requestStorageMount(dialog.space.id, {
+        await mountStorage(dialog.space.id, {
           resourceId: resource.id,
           resourceName: resource.name,
           resourceType: resource.resourceType,
@@ -430,13 +444,13 @@ function StorageActionDialog({ dialog, onClose, onDone }: Readonly<{ dialog?: Di
           deviceName: dialog.space.type === 'cloud-disk' ? '/dev/vdb' : undefined,
           readOnly: readOnly === 'true',
         });
-        onDone('挂载申请已提交。');
+        onDone('存储已挂载。');
       } else if (dialog.type === 'unmount') {
-        await requestStorageUnmount(dialog.space.id, dialog.mount.id);
-        onDone('卸载申请已提交。');
+        await unmountStorage(dialog.space.id, dialog.mount.id);
+        onDone('存储已卸载。');
       } else if (dialog.type === 'release') {
-        await requestStorageRelease(dialog.space.id);
-        onDone('释放申请已提交，当前数据保持不变。');
+        await releaseStorage(dialog.space.id);
+        onDone('资源已进入释放流程，完成前数据保持不变。');
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '操作失败。');
@@ -446,10 +460,10 @@ function StorageActionDialog({ dialog, onClose, onDone }: Readonly<{ dialog?: Di
   if (!dialog) return null;
   const title = dialog.type === 'rename' ? '修改存储名称'
     : dialog.type === 'expand' ? '扩容存储'
-    : dialog.type === 'renew' ? '续期存储'
+    : dialog.type === 'renew' ? '续费存储'
     : dialog.type === 'mount' ? '挂载存储'
     : dialog.type === 'unmount' ? '卸载存储'
-    : '提交释放申请';
+    : '释放存储';
   const expansionCapacity = dialog.type === 'expand'
     ? Math.max(dialog.space.capacityGb + 1, Number(value) || dialog.space.capacityGb + 100)
     : 0;
@@ -473,7 +487,7 @@ function StorageActionDialog({ dialog, onClose, onDone }: Readonly<{ dialog?: Di
       })()
     : '';
   return (
-    <Modal open title={title} onClose={onClose} secondaryAction={{ label: '取消', onClick: onClose }} primaryAction={{ label: dialog.type === 'rename' ? '保存名称' : '提交申请', onClick: submit }}>
+    <Modal open title={title} onClose={onClose} secondaryAction={{ label: '取消', onClick: onClose }} primaryAction={{ label: dialog.type === 'rename' ? '保存名称' : dialog.type === 'expand' || dialog.type === 'renew' ? '创建订单并支付' : dialog.type === 'mount' ? '确认挂载' : dialog.type === 'unmount' ? '确认卸载' : '确认释放', onClick: submit }}>
       <div className="storage-dialog-form">
         {dialog.type === 'rename' && <FormField id="storage-name" label="存储名称"><Input id="storage-name" value={value} placeholder={dialog.space.name} onChange={(event) => setValue(event.target.value)} /></FormField>}
         {dialog.type === 'expand' && <>
@@ -484,14 +498,14 @@ function StorageActionDialog({ dialog, onClose, onDone }: Readonly<{ dialog?: Di
             <div><dt>新月度费用</dt><dd>{formatMoney(expandedMonthlyQuote!.total)}</dd></div>
             <div><dt>本次扩容费用</dt><dd>{formatMoney(expansionQuote!.total)}</dd></div>
           </dl>
-          <p>处理完成后需要按提示扩展文件系统；提交前不会改变当前容量。</p>
+          <p>支付完成后进入扩容流程；支付前不会改变当前容量。</p>
         </>}
         {dialog.type === 'renew' && <>
-          <FormField id="storage-renew-period" label="续期周期"><Select id="storage-renew-period" value={value || '1'} onValueChange={setValue} options={[{ value: '1', label: '1 个月' }, { value: '3', label: '3 个月' }, { value: '6', label: '6 个月' }, { value: '12', label: '12 个月' }]} /></FormField>
+          <FormField id="storage-renew-period" label="续费周期"><Select id="storage-renew-period" value={value || '1'} onValueChange={setValue} options={[{ value: '1', label: '1 个月' }, { value: '3', label: '3 个月' }, { value: '6', label: '6 个月' }, { value: '12', label: '12 个月' }]} /></FormField>
           <dl className="storage-dialog-summary">
             <div><dt>当前到期时间</dt><dd>{formatDate(dialog.space.expiresAt)}</dd></div>
             <div><dt>预计新到期时间</dt><dd>{formatDate(expectedExpiry)}</dd></div>
-            <div><dt>续期费用</dt><dd>{formatMoney(renewalQuote!.total)}</dd></div>
+            <div><dt>续费费用</dt><dd>{formatMoney(renewalQuote!.total)}</dd></div>
             <div><dt>自动续费</dt><dd>{dialog.space.autoRenew ? '已开启' : '未开启'}</dd></div>
           </dl>
         </>}
@@ -500,8 +514,8 @@ function StorageActionDialog({ dialog, onClose, onDone }: Readonly<{ dialog?: Di
           <FormField id="storage-mount-path" label="挂载路径"><Input id="storage-mount-path" value={mountPath} onChange={(event) => setMountPath(event.target.value)} /></FormField>
           <FormField id="storage-read-only" label="读写模式"><Select id="storage-read-only" value={readOnly} onValueChange={setReadOnly} options={[{ value: 'false', label: '读写' }, { value: 'true', label: '只读' }]} /></FormField>
         </>}
-        {dialog.type === 'unmount' && <p>将从“{dialog.mount.resourceName}”卸载 {dialog.space.name}。申请处理完成前当前关系仍会保留。</p>}
-        {dialog.type === 'release' && <p>释放申请不会立即删除存储或文件。存在有效挂载关系时必须先卸载。</p>}
+        {dialog.type === 'unmount' && <p>将从“{dialog.mount.resourceName}”卸载 {dialog.space.name}。操作执行期间当前关系仍会保留。</p>}
+        {dialog.type === 'release' && <p>释放不会立即删除存储或文件。存在有效挂载关系时必须先卸载。</p>}
         {error && <p className="storage-dialog-error" role="alert">{error}</p>}
       </div>
     </Modal>

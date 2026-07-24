@@ -49,6 +49,7 @@ import {
   uploadFiles,
   type FileNode,
   type FileSort,
+  type FileTask,
 } from '../features/files';
 import {
   canManageStorageFiles,
@@ -74,6 +75,16 @@ function formatBytes(bytes: number) {
   if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
+
+const FILE_TASK_STATUS_VIEW: Readonly<
+  Record<FileTask['status'], Readonly<{ label: string; tone: 'neutral' | 'info' | 'success' | 'error' }>>
+> = {
+  waiting: { label: '等待执行', tone: 'neutral' },
+  executing: { label: '执行中', tone: 'info' },
+  completed: { label: '已完成', tone: 'success' },
+  failed: { label: '失败', tone: 'error' },
+  cancelled: { label: '已取消', tone: 'neutral' },
+};
 
 function FileTypeIcon({ node }: Readonly<{ node: FileNode }>) {
   const name = node.type === 'folder'
@@ -908,16 +919,19 @@ function TaskDrawer({
       </div>
       {tasks.length ? (
         <ul className="file-workbench-task-list">
-          {tasks.map((task) => (
-            <li key={task.id}>
-              <div><strong>{task.operation} · {task.subject}</strong><span>{task.targetPath ?? '当前目录'}</span></div>
-              <Progress value={task.progress} label={`${task.operation}进度`} />
-              <StatusBadge tone={task.status === 'failed' ? 'error' : task.status === 'completed' ? 'success' : 'info'}>{task.status === 'failed' ? '失败' : task.status === 'completed' ? '已完成' : '进行中'}</StatusBadge>
-              {task.error && <p>{task.error}</p>}
-              {task.status === 'failed' && <Button onClick={() => { retryFileTask(task.id); onChanged('任务已重新处理。'); }}>重试</Button>}
-              <time>{task.completedAt ? new Date(task.completedAt).toLocaleString('zh-CN', { hour12: false }) : '处理中'}</time>
-            </li>
-          ))}
+          {tasks.map((task) => {
+            const statusView = FILE_TASK_STATUS_VIEW[task.status];
+            return (
+              <li key={task.id}>
+                <div><strong>{task.operation} · {task.subject}</strong><span>{task.targetPath ?? '当前目录'}</span></div>
+                <Progress value={task.progress} label={`${task.operation}进度`} />
+                <StatusBadge tone={statusView.tone}>{statusView.label}</StatusBadge>
+                {task.error && <p>{task.error}</p>}
+                {task.status === 'failed' && <Button onClick={() => { retryFileTask(task.id); onChanged('任务已重新处理。'); }}>重试</Button>}
+                <time>{task.completedAt ? new Date(task.completedAt).toLocaleString('zh-CN', { hour12: false }) : statusView.label}</time>
+              </li>
+            );
+          })}
         </ul>
       ) : <PageState title="暂无文件任务" description="上传、复制、移动、删除和下载操作会显示在这里。" />}
     </aside>

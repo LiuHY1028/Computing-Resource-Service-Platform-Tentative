@@ -160,6 +160,16 @@
 .software-card__description { margin: 0; color: var(--software-muted); font-size: 12px; }
 .software-card__description { min-height: 44px; font-size: 13px; line-height: 1.7; }
 .software-card__badges { display: flex; flex-wrap: wrap; gap: 7px; }
+.software-card__compatibility {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0 var(--space-8);
+  border: var(--border-default);
+  border-radius: var(--radius-small);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
 .software-card__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 14px 0; border-top: 1px solid #e4e8f1; border-bottom: 1px solid #e4e8f1; }
 .software-card__facts > div { display: grid; min-width: 0; gap: 3px; }
 .software-card__facts dt { color: #8a94aa; font-size: 10px; }

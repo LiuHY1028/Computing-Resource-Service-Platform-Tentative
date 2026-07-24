@@ -230,14 +230,6 @@ export type PromptModalProps = Omit<ModalProps, 'children' | 'footer' | 'primary
     onConfirm?: () => void;
   }>;
 
-function PromptStatusIcon({ variant }: Readonly<{ variant: PromptModalVariant }>) {
-  return (
-    <span className="ui-prompt-modal__status" data-variant={variant} aria-hidden="true">
-      {variant === 'success' ? '✓' : variant === 'close' ? '×' : '!'}
-    </span>
-  );
-}
-
 export const PromptModal = forwardRef<HTMLDivElement, PromptModalProps>(
   function PromptModal(
     {
@@ -266,9 +258,8 @@ export const PromptModal = forwardRef<HTMLDivElement, PromptModalProps>(
           cancelLabel ? { label: cancelLabel, onClick: onClose } : undefined
         }
       >
-        <div className="ui-prompt-modal__body">
+        <div className="ui-prompt-modal__body" data-variant={variant}>
           <div>{description}</div>
-          <PromptStatusIcon variant={variant} />
         </div>
       </Modal>
     );

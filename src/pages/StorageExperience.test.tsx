@@ -6,6 +6,7 @@ import { App } from '../app/App';
 import { resetFileStore } from '../features/files';
 import { resetOperationsStore } from '../features/operations';
 import { resetOrderStore } from '../features/orders';
+import { resetBillStore } from '../features/bills';
 import { resetStorageStore } from '../features/storage';
 
 function renderRoute(path: string) {
@@ -28,6 +29,7 @@ describe('storage purchase and file management routes', () => {
     vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:local-file'), revokeObjectURL: vi.fn() });
     resetStorageStore();
     resetOrderStore();
+    resetBillStore();
     resetOperationsStore();
     resetFileStore();
   });
@@ -35,13 +37,14 @@ describe('storage purchase and file management routes', () => {
   it('prices and submits a shared-storage purchase without claiming remote delivery', async () => {
     const user = renderRoute('/console/storage/purchase?type=shared&tier=standard');
     expect(screen.getByRole('heading', { level: 1, name: '购买存储' })).toBeInTheDocument();
-    expect(screen.getByText('¥0.80 / GB / 月')).toBeInTheDocument();
-    await user.click(screen.getByRole('combobox', { name: /性能等级/ }));
-    await user.click(screen.getByRole('option', { name: '性能型' }));
-    expect(screen.getByText('¥1.20 / GB / 月')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '提交购买申请' }));
-    expect(await screen.findByRole('heading', { name: '存储购买申请已提交' })).toBeInTheDocument();
-    expect(screen.getByText(/申请已进入受理流程/)).toBeInTheDocument();
+    expect(screen.getAllByText('¥0.80 / GB / 月').length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: /性能型模型与并行训练数据/ }));
+    expect(screen.getAllByText('¥1.20 / GB / 月').length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: '确认订单' }));
+    expect(screen.getByRole('heading', { name: '确认订单' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '创建订单并支付' }));
+    expect(await screen.findByRole('heading', { name: '收银台' })).toBeInTheDocument();
+    expect(screen.getByText(/^ORD-\d{8}-\d{4}$/)).toBeInTheDocument();
   });
 
   it('renders storage as one compact data workspace with filters, selection and utility controls', async () => {
@@ -133,8 +136,8 @@ describe('storage purchase and file management routes', () => {
     expect(screen.getByText('本次扩容费用')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '取消' }));
 
-    await user.click(screen.getByRole('button', { name: '续期存储' }));
+    await user.click(screen.getByRole('button', { name: '续费存储' }));
     expect(screen.getByText('预计新到期时间')).toBeInTheDocument();
-    expect(screen.getByText('续期费用')).toBeInTheDocument();
+    expect(screen.getByText('续费费用')).toBeInTheDocument();
   });
 });

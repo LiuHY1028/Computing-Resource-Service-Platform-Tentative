@@ -52,11 +52,11 @@ describe('pricing consistency across domains', () => {
 
   it('keeps orders and storage on independent valid snapshots', () => {
     queryOrders().forEach((order) => {
-      expectSnapshotTotal(order.priceSnapshot);
-      if (order.priceSnapshot.skuId !== 'not-billable') {
+      expectSnapshotTotal(order.pricingSnapshot);
+      if (order.pricingSnapshot.skuId !== 'not-billable') {
         expect(
-          getComputePrice(order.priceSnapshot.skuId) ??
-            getStoragePrice(order.priceSnapshot.skuId),
+          getComputePrice(order.pricingSnapshot.skuId) ??
+            getStoragePrice(order.pricingSnapshot.skuId),
         ).toBeDefined();
       }
     });

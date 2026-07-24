@@ -14,7 +14,7 @@ export function MarketplaceLayout() {
       </main>
       <footer className="marketplace-layout__footer">
         <span>算力资源购买与配置</span>
-        <span>资源提交后可在控制台追踪订单和交付信息</span>
+        <span>订单创建后可在控制台追踪付款和资源交付信息</span>
       </footer>
     </div>
   );

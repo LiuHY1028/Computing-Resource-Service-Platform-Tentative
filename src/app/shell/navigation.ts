@@ -44,20 +44,20 @@ function pageNavigationItem(
 }
 
 const ordersItem = pageNavigationItem('orders', 'ORD-01', 'orders');
+const billsItem = pageNavigationItem('bills', 'BILL-01', 'orders');
 const operationRecordsItem = pageNavigationItem(
   'operation-records',
   'OPS-01',
   'operations',
 );
 
-// “订单”和“操作记录”共用一级菜单的组织仍是暂定方案，见 OQ-002。
 const recordsNavigationItem: NavigationItem = Object.freeze({
   id: 'records',
-  label: '订单与记录',
+  label: '订单与账单',
   path: ordersItem.path,
   icon: 'orders',
   pageTitle: ordersItem.pageTitle,
-  children: Object.freeze([ordersItem, operationRecordsItem]),
+  children: Object.freeze([ordersItem, billsItem, operationRecordsItem]),
 });
 
 export const navigationGroups: readonly NavigationGroup[] = Object.freeze([

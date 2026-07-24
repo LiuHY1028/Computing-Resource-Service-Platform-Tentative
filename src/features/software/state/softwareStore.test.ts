@@ -31,7 +31,7 @@ describe('softwareStore', () => {
     expect(software && resource ? getSoftwareCompatibility(software, resource).compatible : true).toBe(false);
   });
 
-  it('stores an installation as processing and exposes it to resource detail', async () => {
+  it('stores an installation as executing and exposes it to resource detail', async () => {
     const resource = getResourceById('cloud-server', 'cs-east-002');
     expect(resource).toBeDefined();
     const task = await submitSoftwareInstallation({
@@ -39,7 +39,7 @@ describe('softwareStore', () => {
       version: '12.4',
       resource: resource!,
     });
-    expect(task.status).toBe('processing');
+    expect(task.status).toBe('executing');
     expect(getSoftwareForResource(resource!.id).some((item) => item.id === task.id)).toBe(true);
     expect(getSoftwareInstallCount('software-gpu-toolkit')).toBe(1);
   });

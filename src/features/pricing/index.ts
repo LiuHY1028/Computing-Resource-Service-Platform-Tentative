@@ -2,6 +2,7 @@ export {
   addMoney,
   calculateCloudPrice,
   calculatePhysicalPrice,
+  calculateSoftwarePrice,
   calculateStoragePrice,
   combinePriceQuotes,
   createPriceSnapshot,

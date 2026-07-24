@@ -10,7 +10,14 @@ import type {
 } from '../types';
 
 const STORAGE_KEY = 'computing-platform:operations';
-const VERSION = 1;
+const VERSION = 2;
+const OPERATION_STATUSES = new Set([
+  'waiting',
+  'executing',
+  'completed',
+  'failed',
+  'cancelled',
+]);
 
 const INITIAL_RECORDS: readonly PlatformOperationRecord[] = [
   {
@@ -51,6 +58,7 @@ function isOperation(value: unknown): value is PlatformOperationRecord {
     record.actor === '当前用户' &&
     typeof record.createdAt === 'string' &&
     typeof record.status === 'string' &&
+    OPERATION_STATUSES.has(record.status) &&
     typeof record.message === 'string'
   );
 }

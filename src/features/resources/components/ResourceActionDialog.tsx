@@ -16,7 +16,7 @@ const ACTION_TITLES: Readonly<Record<ResourceAction, string>> = {
   stop: '停止资源',
   restart: '重启资源',
   rename: '修改资源名称',
-  release: '提交资源释放申请',
+  release: '释放资源',
 };
 
 type ResourceActionDialogProps = Readonly<{
@@ -74,7 +74,7 @@ export function ResourceActionDialog({
       busy={busy}
       role={action === 'release' || action === 'stop' || action === 'restart' ? 'alertdialog' : 'dialog'}
       primaryAction={{
-        label: action === 'rename' ? '保存名称' : action === 'release' ? '提交释放申请' : `确认${ACTION_LABELS[action]}`,
+        label: action === 'rename' ? '保存名称' : action === 'release' ? '确认释放' : `确认${ACTION_LABELS[action]}`,
         variant: action === 'stop' || action === 'restart' || action === 'release' ? 'danger' : 'primary',
         disabled: !availability.enabled,
         onClick: () => void submit(),
@@ -99,12 +99,12 @@ export function ResourceActionDialog({
           <div className="resource-action-dialog__confirmation">
             <strong>
               {action === 'release'
-                ? `确认提交“${resource.name}”的释放申请？`
+                ? `确认释放“${resource.name}”？`
                 : `确认对“${resource.name}”执行${ACTION_LABELS[action]}操作？`}
             </strong>
             <p>
               {action === 'release'
-                ? '提交后进入待处理状态，资源不会立即删除。'
+                ? '确认后资源进入释放中，完成前仍可查看历史信息。'
                 : '操作结果将同步到资源状态和操作记录。'}
             </p>
           </div>

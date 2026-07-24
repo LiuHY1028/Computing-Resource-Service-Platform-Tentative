@@ -9,14 +9,18 @@ import {
   resetResourceStore,
   ResourceActionError,
   submitResourceAction,
-  submitExtensionRequest,
-  submitRenewalRequest,
+  createRentalRenewalOrders,
+  createRenewalOrders,
+  createResourceResizeOrder,
   updateAutoRenewal,
   updateResourceMetadata,
 } from './resourceStore';
 import type { ResourceQuery } from '../types';
 import { getOrdersForResource, resetOrderStore } from '../../orders';
+import { getBillForOrder, resetBillStore } from '../../bills';
+import { payAndFulfillOrder } from '../../commerce';
 import { resetOperationsStore } from '../../operations';
+import { createPriceSnapshot, money } from '../../pricing';
 
 const cloudQuery: ResourceQuery = {
   resourceType: 'cloud-server',
@@ -34,11 +38,13 @@ const cloudQuery: ResourceQuery = {
 beforeEach(() => {
   resetResourceStore();
   resetOrderStore();
+  resetBillStore();
   resetOperationsStore();
 });
 afterEach(() => {
   resetResourceStore();
   resetOrderStore();
+  resetBillStore();
   resetOperationsStore();
 });
 
@@ -114,7 +120,7 @@ describe('resourceStore', () => {
     expect(detail?.status).toBe('running');
     expect(list.items[0]?.status).toBe('running');
     expect(records[0]?.action).toBe('启动');
-    expect(records[0]?.status).toBe('submitted');
+    expect(records[0]?.status).toBe('completed');
   });
 
   it('validates rename and leaves data unchanged when submission fails', async () => {
@@ -142,13 +148,13 @@ describe('resourceStore', () => {
     expect(physical?.resourceType === 'physical-machine' && physical.localStorage.raidLevel).toBe('RAID 5');
     expect(cloud?.priceSnapshot.skuId).toBe('catalog-cloud-cpu-c16-west');
     expect(cloud?.priceSnapshot.total.amountFen).toBe(
-      getOrdersForResource('cs-east-001')[0]?.priceSnapshot.total.amountFen,
+      getOrdersForResource('cs-east-001')[0]?.pricingSnapshot.total.amountFen,
     );
   });
 
-  it('submits renewal without changing the formal expiry and creates a linked order', () => {
+  it('creates a renewal order and bill, then updates expiry only after payment', async () => {
     const before = getResourceById('cloud-server', 'cs-east-002');
-    const result = submitRenewalRequest({
+    const result = createRenewalOrders({
       resourceIds: ['cs-east-002'],
       periodMonths: 3,
       renewStorage: true,
@@ -156,17 +162,19 @@ describe('resourceStore', () => {
     });
     const after = getResourceById('cloud-server', 'cs-east-002');
     expect(after?.expiresAt).toBe(before?.expiresAt);
-    expect(after?.lifecycleRequestState).toBe('renewal-processing');
-    expect(after?.pendingExpiresAt).not.toBe(before?.expiresAt);
-    expect(result[0]?.order.applicationType).toBe('cloud-renewal');
-    expect(result[0]?.order.priceSnapshot.total.amountFen).toBeGreaterThan(0);
+    expect(result[0]?.order.orderType).toBe('renewal');
+    expect(result[0]?.order.pricingSnapshot.total.amountFen).toBeGreaterThan(0);
     expect(
-      result[0]?.order.priceSnapshot.lineItems.reduce(
+      result[0]?.order.pricingSnapshot.lineItems.reduce(
         (sum, item) => sum + item.amount.amountFen,
         0,
       ),
-    ).toBe(result[0]?.order.priceSnapshot.total.amountFen);
-    expect(getOrdersForResource('cs-east-002')[0]?.status).toBe('pending');
+    ).toBe(result[0]?.order.pricingSnapshot.total.amountFen);
+    expect(getOrdersForResource('cs-east-002')[0]?.status).toBe('awaiting-payment');
+    expect(getBillForOrder(result[0]!.order.id)?.status).toBe('unpaid');
+    await payAndFulfillOrder(result[0]!.order.id, 'account-balance');
+    expect(getResourceById('cloud-server', 'cs-east-002')?.expiresAt).not.toBe(before?.expiresAt);
+    expect(getOrdersForResource('cs-east-002')[0]?.status).toBe('completed');
   });
 
   it('does not offer renewal to pay-as-you-go resources and saves auto-renewal state', () => {
@@ -175,22 +183,51 @@ describe('resourceStore', () => {
     updateAutoRenewal(['cs-east-001'], true, 6);
     const updated = getResourceById('cloud-server', 'cs-east-001');
     expect(updated?.resourceType === 'cloud-server' && updated.autoRenewal).toEqual({ enabled: true, periodMonths: 6 });
-    expect(getOrdersForResource('cs-east-001')[0]?.applicationType).toBe('auto-renewal');
+    expect(getOrdersForResource('cs-east-001').filter((order) => order.orderType === 'renewal')).toHaveLength(0);
   });
 
-  it('submits a physical extension without changing the formal term', () => {
+  it('creates a physical rental-renewal order without changing the term before payment', () => {
     const before = getResourceById('physical-machine', 'pm-east-001');
-    const result = submitExtensionRequest({
+    const result = createRentalRenewalOrders({
       resourceIds: ['pm-east-001'],
       periodMonths: 6,
       reason: '项目执行周期需要延长',
     });
     const after = getResourceById('physical-machine', 'pm-east-001');
     expect(after?.expiresAt).toBe(before?.expiresAt);
-    expect(after?.resourceType === 'physical-machine' && after.extensionStatus).toBe('pending');
-    expect(result[0]?.order.applicationType).toBe('physical-extension');
-    expect(result[0]?.order.priceSnapshot.duration).toBe(6);
-    expect(result[0]?.order.priceSnapshot.total.amountFen).toBeGreaterThan(0);
+    expect(result[0]?.order.orderType).toBe('rentalRenewal');
+    expect(result[0]?.order.pricingSnapshot.duration).toBe(6);
+    expect(result[0]?.order.pricingSnapshot.total.amountFen).toBeGreaterThan(0);
+    expect(getBillForOrder(result[0]!.order.id)?.status).toBe('unpaid');
+  });
+
+  it('routes a charged configuration change through an adjustment bill', () => {
+    const adjustment = money(12800);
+    const order = createResourceResizeOrder({
+      resourceId: 'cs-east-001',
+      changes: '升级计算规格',
+      pricingSnapshot: createPriceSnapshot('resize-adjustment', {
+        billingMode: 'adjustment',
+        quantity: 1,
+        lineItems: [{
+          id: 'resize-difference',
+          category: 'compute',
+          label: '配置补差价',
+          unitPrice: adjustment,
+          quantity: 1,
+          amount: adjustment,
+          unitLabel: '次',
+        }],
+        subtotal: adjustment,
+        total: adjustment,
+      }),
+    });
+    expect(order.orderType).toBe('resize');
+    expect(getBillForOrder(order.id)).toMatchObject({
+      billType: 'adjustment',
+      status: 'unpaid',
+      amount: adjustment,
+    });
   });
 
   it('synchronizes project and tags into the resource operation record', () => {

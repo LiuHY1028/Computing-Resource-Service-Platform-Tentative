@@ -26,17 +26,22 @@ export function ConfirmationModal({
   return (
     <Modal
       open={open}
-      title="确认配置"
+      title="确认订单"
       onClose={onClose}
       busy={submitting}
-      primaryAction={{ label: '提交配置', onClick: onSubmit }}
+      primaryAction={{
+        label: quote.billingMode === 'pay-as-you-go'
+          ? '确认开通'
+          : '创建订单并支付',
+        onClick: onSubmit,
+      }}
       secondaryAction={{ label: '返回修改', onClick: onClose }}
     >
       <div className="purchase-confirmation">
         <div className="purchase-confirmation__heading">
           <span>{resourceLabel}</span>
           <strong>{productName}</strong>
-          <p>请核对下列配置，提交后将进入处理流程。</p>
+          <p>请核对商品配置与费用，创建后价格快照将保留在订单中。</p>
         </div>
         <dl className="purchase-confirmation__list">
           {items.map((item) => (
@@ -47,7 +52,7 @@ export function ConfirmationModal({
           ))}
         </dl>
         <PricingSummary value={quote} title="预计费用" />
-        <p aria-live="polite">{submitting ? '正在提交配置，请勿重复操作。' : ''}</p>
+        <p aria-live="polite">{submitting ? '正在创建订单，请勿重复操作。' : ''}</p>
       </div>
     </Modal>
   );

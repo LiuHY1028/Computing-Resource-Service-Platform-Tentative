@@ -59,7 +59,7 @@ describe('application routes', () => {
   });
 
   it('registers every stable page route', () => {
-    expect(APP_PAGE_ROUTES).toHaveLength(17);
+    expect(APP_PAGE_ROUTES).toHaveLength(20);
   });
 
   it.each([

@@ -42,25 +42,25 @@ describe('PurchasePage', () => {
     expect(screen.getByRole('radio', { name: /不选择镜像/ })).toBeChecked();
     expect(screen.getByText('未选择（可选）')).toBeInTheDocument();
 
-    await user.click(screen.getAllByRole('button', { name: '确认配置' })[0]!);
+    await user.click(screen.getAllByRole('button', { name: '确认订单' })[0]!);
     expect(screen.getByText('请输入实例名称。')).toBeInTheDocument();
     expect(screen.queryByText(/请选择一个兼容的镜像/)).not.toBeInTheDocument();
     expect(screen.getByText('还有 1 项必填项待完成')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText(/实例名称/)).toHaveFocus());
 
     await user.type(screen.getByLabelText(/实例名称/), 'cloud-resource-01');
-    await user.click(screen.getAllByRole('button', { name: '确认配置' })[0]!);
+    await user.click(screen.getAllByRole('button', { name: '确认订单' })[0]!);
 
-    const confirmation = screen.getByRole('dialog', { name: '确认配置' });
+    const confirmation = screen.getByRole('dialog', { name: '确认订单' });
     expect(confirmation).toBeInTheDocument();
     expect(within(confirmation).getByText('未选择（可选）')).toBeInTheDocument();
-    const submit = screen.getByRole('button', { name: '提交配置' });
+    const submit = screen.getByRole('button', { name: '创建订单并支付' });
     await user.click(submit);
     expect(submit).toBeDisabled();
-    expect(await screen.findByRole('heading', { name: '配置已提交' }, { timeout: 2000 })).toBeInTheDocument();
-    expect(screen.getByText(/^REQ-\d{8}-\d{4}$/)).toBeInTheDocument();
-    expect(screen.getByText('等待资源准备')).toBeInTheDocument();
-    expect(screen.getByText('连接信息将在资源就绪后生成。')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '订单已创建，请完成支付' }, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.getByText(/^ORD-\d{8}-\d{4}$/)).toBeInTheDocument();
+    expect(screen.getByText('待支付')).toBeInTheDocument();
+    expect(screen.getByText('支付完成后将执行资源开通。')).toBeInTheDocument();
   });
 
   it('lets users select an image and switch back to no image', async () => {
@@ -153,7 +153,7 @@ describe('PurchasePage', () => {
 
     await user.click(screen.getByRole('checkbox', { name: '启用 SSH 访问' }));
     await user.type(screen.getByLabelText(/SSH 允许来源/), '999.1.1.1');
-    await user.click(screen.getAllByRole('button', { name: '确认配置' })[0]!);
+    await user.click(screen.getAllByRole('button', { name: '确认订单' })[0]!);
     expect(screen.getByText(/有效的 IPv4 地址或 CIDR/)).toBeInTheDocument();
     await user.clear(screen.getByLabelText(/SSH 允许来源/));
     await user.type(screen.getByLabelText(/SSH 允许来源/), '192.0.2.0/24');
@@ -194,13 +194,13 @@ describe('PurchasePage', () => {
     expect(pageTitle.closest('.purchase-page__header')).toBeInTheDocument();
     expect(document.querySelector('.purchase-guide')).toBeNull();
     expect(screen.getByRole('heading', { name: '交付方式' })).toBeInTheDocument();
-    expect(screen.getByText('申请受理后进入资源准备和基础初始化')).toBeInTheDocument();
+    expect(screen.getByText('支付完成后进入资源准备和基础初始化')).toBeInTheDocument();
     expect(screen.getByText(/资源交付完成后，可在“我的资源”中查看服务器连接信息/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '交付信息' })).toBeInTheDocument();
     expect(screen.getByText(/资源名称、资源 ID、资源状态、所属站点/)).toBeInTheDocument();
     expect(screen.getByText(/内网 IP、公网 IP（按网络策略分配/)).toBeInTheDocument();
     expect(screen.getByText(/开通时间、到期时间/)).toBeInTheDocument();
-    expect(screen.getByText(/BMC\/IPMI 管理地址仅向具备权限的用户展示/)).toBeInTheDocument();
+    expect(screen.getByText(/连接凭据与 BMC\/IPMI 管理信息必须由真实基础设施安全交付/)).toBeInTheDocument();
     expect(screen.queryByText(/交付方式仍待规则确认/)).not.toBeInTheDocument();
     expect(screen.queryByText(/待确认事项：OQ-015/)).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '系统盘' })).not.toBeInTheDocument();
@@ -212,26 +212,22 @@ describe('PurchasePage', () => {
     expect(within(summary).getByRole('heading', { name: '商品摘要' })).toBeInTheDocument();
     expect(within(summary).getByRole('heading', { name: '配置摘要' })).toBeInTheDocument();
     expect(['auto', 'scroll']).not.toContain(getComputedStyle(summary).overflowY);
-    expect(summary).toHaveTextContent('交付方式申请受理后进入资源准备与基础初始化');
+    expect(summary).toHaveTextContent('开通方式支付后进入资源准备与基础初始化');
     expect(summary).toHaveTextContent('认证方式SSH 密钥');
     expect(summary).toHaveTextContent('连接信息资源交付完成后在“我的资源”提供');
 
     await user.type(screen.getByLabelText(/资源名称/), 'physical-resource-01');
     await user.click(screen.getByRole('checkbox', { name: '记录 SSH 访问意向' }));
     await user.type(screen.getByLabelText(/SSH 允许来源/), '192.0.2.0/24');
-    await user.click(screen.getAllByRole('button', { name: '确认配置' })[0]!);
-    const confirmation = screen.getByRole('dialog', { name: '确认配置' });
-    expect(confirmation).toHaveTextContent('交付方式申请受理后进入资源准备与基础初始化');
+    await user.click(screen.getAllByRole('button', { name: '确认订单' })[0]!);
+    const confirmation = screen.getByRole('dialog', { name: '确认订单' });
+    expect(confirmation).toHaveTextContent('开通方式支付后进入资源准备与基础初始化');
     expect(confirmation).toHaveTextContent('认证方式SSH 密钥');
     expect(confirmation).toHaveTextContent('连接信息资源交付完成后在“我的资源”提供');
-    await user.click(screen.getByRole('button', { name: '提交配置' }));
-    expect(await screen.findByText(/^REQ-\d{8}-\d{4}$/, {}, { timeout: 2000 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '交付流程' })).toBeInTheDocument();
-    expect(screen.getByText('申请受理后进入资源准备')).toBeInTheDocument();
-    expect(screen.getByText('部署完成后将在“我的资源”中提供连接信息。')).toBeInTheDocument();
-    expect(screen.getAllByText('等待资源交付').length).toBeGreaterThan(0);
-    expect(screen.getByText('按网络策略分配')).toBeInTheDocument();
-    expect(screen.getAllByText('资源就绪后生成').length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: '创建订单并支付' }));
+    expect(await screen.findByText(/^ORD-\d{8}-\d{4}$/, {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '订单已创建，请完成支付' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '去支付' })).toBeInTheDocument();
   });
 
   it.each([
@@ -241,6 +237,16 @@ describe('PurchasePage', () => {
   ])('covers product state %s', async (path, title) => {
     renderPurchase(path);
     expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['/marketplace/cloud-server/purchase', '配置云服务器'],
+    ['/marketplace/physical-machine/purchase', '配置物理机'],
+  ])('opens the default configurable product at %s', async (path, title) => {
+    renderPurchase(path);
+    expect(
+      await screen.findByRole('heading', { name: title }),
+    ).toBeInTheDocument();
   });
 
   it('shows a leave confirmation for modified drafts and keeps the form when cancelled', async () => {

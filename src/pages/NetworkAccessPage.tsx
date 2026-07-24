@@ -29,7 +29,10 @@ import {
   type NetworkAccessRule,
   type NetworkRuleInput,
 } from '../features/network';
-import { listOperationRecords } from '../features/operations';
+import {
+  listOperationRecords,
+  OPERATION_STATUS_VIEWS,
+} from '../features/operations';
 import {
   queryResources,
   type Resource,
@@ -40,10 +43,7 @@ const PAGE_SIZE = 8;
 
 function statusView(rule: NetworkAccessRule) {
   if (rule.status === 'effective') return { label: '已生效', tone: 'success' as const };
-  if (rule.status === 'failed') return { label: '失败', tone: 'error' as const };
-  if (rule.status === 'submitted') return { label: '变更请求已提交', tone: 'info' as const };
-  const action = rule.change === 'delete' ? '删除处理中' : '处理中';
-  return { label: action, tone: 'warning' as const };
+  return { label: '失败', tone: 'error' as const };
 }
 
 function resourcePath(rule: NetworkAccessRule) {
@@ -176,7 +176,7 @@ export function NetworkAccessPage() {
       const input = buildInput();
       if (editing === 'create') await createNetworkRule(input);
       else if (editing) await updateNetworkRule(editing.id, input);
-      setFeedback('网络变更请求已提交。');
+      setFeedback(editing === 'create' ? '网络访问规则已创建。' : '网络访问规则已更新。');
       setEditing(undefined);
       setRevision((value) => value + 1);
     } catch (nextError) {
@@ -245,19 +245,19 @@ export function NetworkAccessPage() {
             <Select aria-label="资源类型" value={query.resourceType} onValueChange={(value) => setParam('resourceType', value)} options={[{ value: 'all', label: '全部资源类型' }, { value: 'cloud-server', label: '云服务器' }, { value: 'physical-machine', label: '物理机' }]} />
             <Select aria-label="站点" value={query.site} onValueChange={(value) => setParam('site', value)} options={[{ value: 'all', label: '全部站点' }, { value: '东部算力中心', label: '东部算力中心' }, { value: '西部算力中心', label: '西部算力中心' }, { value: '南部算力中心', label: '南部算力中心' }]} />
             <Select aria-label="协议" value={query.protocol} onValueChange={(value) => setParam('protocol', value)} options={[{ value: 'all', label: '全部协议' }, { value: 'TCP', label: 'TCP' }, { value: 'UDP', label: 'UDP' }]} />
-            <Select aria-label="规则状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'effective', label: '已生效' }, { value: 'submitted', label: '变更请求已提交' }, { value: 'processing', label: '处理中' }, { value: 'failed', label: '失败' }]} />
+            <Select aria-label="规则状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, { value: 'effective', label: '已生效' }, { value: 'failed', label: '失败' }]} />
           </div>
         )}
         resultLabel={`共 ${rules.length} 个结果`}
         columns={columns}
         rows={rows}
         getRowKey={(rule) => rule.id}
-        empty={<PageState title={query.search ? '没有匹配的网络规则' : '暂无网络访问规则'} description={query.search ? '请调整搜索或筛选条件。' : '可选择资源并提交新的访问规则。'} />}
+        empty={<PageState title={query.search ? '没有匹配的网络规则' : '暂无网络访问规则'} description={query.search ? '请调整搜索或筛选条件。' : '可选择资源并创建新的访问规则。'} />}
         renderRowActions={(rule) => (
           <div className="management-row-actions">
-            <TextButton disabled={rule.status === 'processing'} onClick={() => openEdit(rule)}>编辑</TextButton>
+            <TextButton onClick={() => openEdit(rule)}>编辑</TextButton>
             <DropdownMenu trigger="更多">
-              <DropdownMenuItem danger disabled={rule.status === 'processing'} onSelect={() => setDeleteTarget(rule)}>删除规则</DropdownMenuItem>
+              <DropdownMenuItem danger onSelect={() => setDeleteTarget(rule)}>删除规则</DropdownMenuItem>
             </DropdownMenu>
           </div>
         )}
@@ -265,10 +265,10 @@ export function NetworkAccessPage() {
       />
       <section className="management-activity-strip">
         <div className="management-results__header"><div><span>最近变更</span><h2>操作记录</h2></div><Link to={`${APP_PATHS.operationRecords}?module=network`}>查看全部</Link></div>
-        {recentOperations.length ? <ul className="management-record-list">{recentOperations.map((record) => <li key={record.id}><span>{record.action} · {record.targetName}</span><StatusBadge tone="info">处理中</StatusBadge><p>{record.message}</p></li>)}</ul> : <PageState title="暂无网络操作记录" />}
+        {recentOperations.length ? <ul className="management-record-list">{recentOperations.map((record) => <li key={record.id}><span>{record.action} · {record.targetName}</span><StatusBadge tone={OPERATION_STATUS_VIEWS[record.status].tone}>{OPERATION_STATUS_VIEWS[record.status].label}</StatusBadge><p>{record.message}</p></li>)}</ul> : <PageState title="暂无网络操作记录" />}
       </section>
 
-      <Modal open={Boolean(editing)} title={editing === 'create' ? '新增网络访问规则' : '编辑网络访问规则'} onClose={() => setEditing(undefined)} primaryAction={{ label: '提交变更请求', onClick: () => void submitRule() }} secondaryAction={{ label: '取消', onClick: () => setEditing(undefined) }}>
+      <Modal open={Boolean(editing)} title={editing === 'create' ? '新增网络访问规则' : '编辑网络访问规则'} onClose={() => setEditing(undefined)} primaryAction={{ label: editing === 'create' ? '确认创建' : '保存修改', onClick: () => void submitRule() }} secondaryAction={{ label: '取消', onClick: () => setEditing(undefined) }}>
         <Form>
           <FormField label="关联资源" required error={error || undefined}><Select value={draft.resourceId} disabled={editing !== 'create'} placeholder="请选择资源" onValueChange={(value) => setDraft({ ...draft, resourceId: value })} options={resources.map((resource) => ({ value: resource.id, label: `${resource.name} · ${resource.site}` }))} /></FormField>
           <FormField label="协议" required><Select value={draft.protocol} onValueChange={(value) => setDraft({ ...draft, protocol: value as 'TCP' | 'UDP' })} options={[{ value: 'TCP', label: 'TCP' }, { value: 'UDP', label: 'UDP' }]} /></FormField>
@@ -281,8 +281,8 @@ export function NetworkAccessPage() {
         </Form>
       </Modal>
 
-      <Modal open={Boolean(deleteTarget)} title="删除网络访问规则" role="alertdialog" onClose={() => setDeleteTarget(undefined)} primaryAction={{ label: '提交删除请求', variant: 'danger', onClick: async () => { if (!deleteTarget) return; try { await deleteNetworkRule(deleteTarget.id); setFeedback('删除请求已提交。'); setDeleteTarget(undefined); setRevision((value) => value + 1); } catch (nextError) { setError(nextError instanceof Error ? nextError.message : '提交失败。'); } } }} secondaryAction={{ label: '取消', onClick: () => setDeleteTarget(undefined) }}>
-        <p>{error || '删除请求提交后，规则将保留为处理中，直至基础设施确认。'}</p>
+      <Modal open={Boolean(deleteTarget)} title="删除网络访问规则" role="alertdialog" onClose={() => setDeleteTarget(undefined)} primaryAction={{ label: '确认删除', variant: 'danger', onClick: async () => { if (!deleteTarget) return; try { await deleteNetworkRule(deleteTarget.id); setFeedback('网络访问规则已删除。'); setDeleteTarget(undefined); setRevision((value) => value + 1); } catch (nextError) { setError(nextError instanceof Error ? nextError.message : '删除失败。'); } } }} secondaryAction={{ label: '取消', onClick: () => setDeleteTarget(undefined) }}>
+        <p>{error || '删除后该规则将不再生效，此操作会写入操作记录。'}</p>
       </Modal>
 
     </div>

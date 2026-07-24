@@ -17,6 +17,9 @@ export type PageId =
   | 'NET-01'
   | 'ORD-01'
   | 'ORD-02'
+  | 'BILL-01'
+  | 'BILL-02'
+  | 'CHK-01'
   | 'OPS-01';
 
 export type AppPageRoute = Readonly<{
@@ -213,11 +216,11 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
     path: '/console/orders',
     pageTitle: '订单列表',
     navigationLabel: '订单',
-    moduleLabel: '订单与记录',
-    purpose: '查看资源购买记录，不展示尚未确认的价格、支付或账务字段。',
+    moduleLabel: '订单与账单',
+    purpose: '查看新购、续费、续租、扩容、变配和软件购买订单。',
     implementationPhase: '阶段 10：订单与操作记录',
     navigationItemId: 'orders',
-    relatedPageIds: ['MKT-01', 'RES-01', 'OPS-01'],
+    relatedPageIds: ['MKT-01', 'RES-01', 'BILL-01', 'OPS-01'],
   },
   {
     pageId: 'ORD-02',
@@ -225,11 +228,47 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
     path: '/console/orders/:orderId',
     pageTitle: '订单详情',
     navigationLabel: '订单详情',
-    moduleLabel: '订单与记录',
-    purpose: '查看单次购买的配置快照、处理反馈与关联资源入口。',
+    moduleLabel: '订单与账单',
+    purpose: '查看订单配置与价格快照、单一主状态、时间线和关联账单。',
     implementationPhase: '阶段 10：订单与操作记录',
     navigationItemId: 'orders',
-    relatedPageIds: ['ORD-01', 'RES-01'],
+    relatedPageIds: ['ORD-01', 'BILL-01', 'RES-01'],
+  },
+  {
+    pageId: 'BILL-01',
+    area: 'console',
+    path: '/console/bills',
+    pageTitle: '账单列表',
+    navigationLabel: '账单',
+    moduleLabel: '订单与账单',
+    purpose: '查看预付费、后付费、续费、调整和退款账单。',
+    implementationPhase: '商业交易体系',
+    navigationItemId: 'bills',
+    relatedPageIds: ['ORD-01', 'BILL-02'],
+  },
+  {
+    pageId: 'BILL-02',
+    area: 'console',
+    path: '/console/bills/:billId',
+    pageTitle: '账单详情',
+    navigationLabel: '账单详情',
+    moduleLabel: '订单与账单',
+    purpose: '查看费用明细、关联订单与资源、支付记录和时间信息。',
+    implementationPhase: '商业交易体系',
+    navigationItemId: 'bills',
+    relatedPageIds: ['BILL-01', 'ORD-02'],
+  },
+  {
+    pageId: 'CHK-01',
+    area: 'console',
+    path: '/checkout/:orderId',
+    pageTitle: '收银台',
+    navigationLabel: '收银台',
+    moduleLabel: '订单与账单',
+    purpose: '支付待支付订单，或取消尚未支付的订单。',
+    implementationPhase: '商业交易体系',
+    navigationItemId: 'orders',
+    relatedPageIds: ['ORD-02', 'BILL-02'],
   },
   {
     pageId: 'OPS-01',
@@ -237,7 +276,7 @@ export const APP_PAGE_ROUTES: readonly AppPageRoute[] = Object.freeze([
     path: '/console/operation-records',
     pageTitle: '操作记录',
     navigationLabel: '操作记录',
-    moduleLabel: '订单与记录',
+    moduleLabel: '订单与账单',
     purpose: '查看资源、存储、网络与软件操作的结果和可追踪信息。',
     implementationPhase: '阶段 10：订单与操作记录',
     navigationItemId: 'operation-records',
@@ -258,6 +297,8 @@ export const LEGACY_ROUTE_REDIRECTS = Object.freeze([
   { path: '/network-access', pageId: 'NET-01' },
   { path: '/orders', pageId: 'ORD-01' },
   { path: '/orders/:orderId', pageId: 'ORD-02' },
+  { path: '/bills', pageId: 'BILL-01' },
+  { path: '/bills/:billId', pageId: 'BILL-02' },
   { path: '/operation-records', pageId: 'OPS-01' },
 ] satisfies readonly Readonly<{ path: string; pageId: PageId }>[]);
 
@@ -273,6 +314,7 @@ export const APP_PATHS = Object.freeze({
   images: '/console/images',
   networkAccess: '/console/network-access',
   orders: '/console/orders',
+  bills: '/console/bills',
   operationRecords: '/console/operation-records',
 });
 
@@ -301,6 +343,14 @@ export function storageFilesPath(storageId: string) {
 
 export function orderDetailPath(orderId: string) {
   return `${APP_PATHS.orders}/${encodeURIComponent(orderId)}`;
+}
+
+export function billDetailPath(billId: string) {
+  return `${APP_PATHS.bills}/${encodeURIComponent(billId)}`;
+}
+
+export function checkoutPath(orderId: string) {
+  return `/checkout/${encodeURIComponent(orderId)}`;
 }
 
 const DEVELOPMENT_SHELL_ROUTES: readonly DevelopmentShellRoute[] =

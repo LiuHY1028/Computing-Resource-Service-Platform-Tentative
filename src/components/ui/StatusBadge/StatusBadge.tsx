@@ -16,15 +16,6 @@ export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(
     { tone = 'neutral', children, className, ...rest },
     ref,
   ) {
-    const mark = tone === 'success'
-      ? '✓'
-      : tone === 'warning'
-        ? '!'
-        : tone === 'error'
-          ? '×'
-          : tone === 'info'
-            ? 'i'
-            : '–';
     return (
       <span
         {...rest}
@@ -33,7 +24,7 @@ export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(
         data-tone={tone}
         data-version="2"
       >
-        <span className="ui-status-badge__mark" aria-hidden="true">{mark}</span>
+        <span className="ui-status-badge__mark" aria-hidden="true" />
         {children}
       </span>
     );

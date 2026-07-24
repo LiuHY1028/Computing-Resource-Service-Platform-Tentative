@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { APP_PATHS, checkoutPath } from '../../../app/routes';
 import {
   Checkbox,
   Form,
@@ -9,12 +11,12 @@ import {
   Textarea,
 } from '../../../components/ui';
 import {
-  submitExtensionRequest,
-  submitRenewalRequest,
-  submitResourceApplication,
+  createRentalRenewalOrders,
+  createRenewalOrders,
+  submitResourceMaintenance,
   updateAutoRenewal,
   updateResourceMetadata,
-  createExtensionQuote,
+  createRentalRenewalQuote,
   createRenewalQuote,
 } from '../state/resourceStore';
 import type { Resource } from '../types';
@@ -34,12 +36,12 @@ export type LifecycleDialogAction =
   | 'os-reinstall';
 
 const TITLES: Readonly<Record<LifecycleDialogAction, string>> = {
-  renew: '提交云服务器续费申请',
+  renew: '云服务器续费',
   'auto-renew': '自动续费设置',
-  extend: '提交物理机延期申请',
+  extend: '物理机续租',
   metadata: '项目与标签管理',
-  'configuration-change': '提交变更配置申请',
-  'os-reinstall': '提交重装系统申请',
+  'configuration-change': '变更配置',
+  'os-reinstall': '重装系统',
 };
 
 function addMonths(value: string, months: number) {
@@ -61,6 +63,7 @@ export function ResourceLifecycleDialog({
   onClose: () => void;
   onCompleted: (message: string) => void;
 }>) {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState<'1' | '3' | '6' | '12'>('3');
   const [renewStorage, setRenewStorage] = useState(true);
   const [renewNetwork, setRenewNetwork] = useState(false);
@@ -85,7 +88,7 @@ export function ResourceLifecycleDialog({
     if (action === 'extend') {
       const quotes = resources
         .filter((resource) => resource.resourceType === 'physical-machine')
-        .map((resource) => createExtensionQuote(resource, months));
+        .map((resource) => createRentalRenewalQuote(resource, months));
       return quotes.length
         ? combinePriceQuotes(quotes, 'monthly-rental', months)
         : undefined;
@@ -99,14 +102,16 @@ export function ResourceLifecycleDialog({
     setError('');
     try {
       if (action === 'renew') {
-        submitRenewalRequest({ resourceIds, periodMonths: months, renewStorage, renewNetwork });
-        onCompleted(`${resources.length} 台云服务器的续费申请已提交。`);
+        const results = createRenewalOrders({ resourceIds, periodMonths: months, renewStorage, renewNetwork });
+        onCompleted(`${resources.length} 台云服务器的续费订单已创建。`);
+        navigate(results.length === 1 ? checkoutPath(results[0].order.id) : `${APP_PATHS.orders}?status=awaiting-payment`);
       } else if (action === 'auto-renew') {
         updateAutoRenewal(resourceIds, autoEnabled, months);
         onCompleted(`${resources.length} 台云服务器的自动续费设置已保存。`);
       } else if (action === 'extend') {
-        submitExtensionRequest({ resourceIds, periodMonths: months, reason });
-        onCompleted(`${resources.length} 台物理机的延期申请已提交。`);
+        const results = createRentalRenewalOrders({ resourceIds, periodMonths: months, reason });
+        onCompleted(`${resources.length} 台物理机的续租订单已创建。`);
+        navigate(results.length === 1 ? checkoutPath(results[0].order.id) : `${APP_PATHS.orders}?status=awaiting-payment`);
       } else if (action === 'metadata') {
         updateResourceMetadata(resourceIds, {
           project,
@@ -114,8 +119,8 @@ export function ResourceLifecycleDialog({
         });
         onCompleted(`${resources.length} 个资源的项目与标签已更新。`);
       } else {
-        submitResourceApplication(resourceIds, action, reason);
-        onCompleted(`${resources.length} 个资源的${action === 'configuration-change' ? '变更配置' : '重装系统'}申请已提交。`);
+        submitResourceMaintenance(resourceIds, action, reason);
+        onCompleted(`${resources.length} 个资源的${action === 'configuration-change' ? '变更配置' : '重装系统'}操作已开始。`);
       }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : '提交失败。');
@@ -124,7 +129,7 @@ export function ResourceLifecycleDialog({
   }
 
   const periodField = (
-    <FormField label={action === 'extend' ? '申请延期时长' : '周期'} required>
+    <FormField label={action === 'extend' ? '续租周期' : '续费周期'} required>
       <Select
         value={period}
         onValueChange={(value) => setPeriod(value as typeof period)}
@@ -144,7 +149,16 @@ export function ResourceLifecycleDialog({
       title={TITLES[action]}
       onClose={() => !busy && onClose()}
       busy={busy}
-      primaryAction={{ label: action === 'auto-renew' || action === 'metadata' ? '保存设置' : '提交申请', onClick: () => void submit() }}
+      primaryAction={{
+        label: action === 'auto-renew' || action === 'metadata'
+          ? '保存设置'
+          : action === 'renew' || action === 'extend'
+            ? '创建订单并支付'
+            : action === 'configuration-change'
+              ? '确认变配'
+              : '确认重装',
+        onClick: () => void submit(),
+      }}
       secondaryAction={{ label: '取消', onClick: onClose }}
     >
       <Form onSubmit={(event) => { event.preventDefault(); void submit(); }}>
@@ -163,13 +177,13 @@ export function ResourceLifecycleDialog({
               <div><dt>{first.resourceType === 'cloud-server' ? '计费模式' : '责任人'}</dt><dd>{first.resourceType === 'cloud-server' ? '包年包月' : first.owner}</dd></div>
             </dl>
             {periodField}
-            {priceQuote && <PricingSummary value={priceQuote} title={action === 'renew' ? '续费费用明细' : '延期费用明细'} />}
+            {priceQuote && <PricingSummary value={priceQuote} title={action === 'renew' ? '续费费用明细' : '续租费用明细'} />}
           </>
         )}
         {action === 'renew' && (
           <div className="resource-lifecycle-checks">
-            <Checkbox checked={renewStorage} onCheckedChange={setRenewStorage}>同步提交关联存储续期</Checkbox>
-            <Checkbox checked={renewNetwork} onCheckedChange={setRenewNetwork}>同步提交公网 IP 或网络资源续期</Checkbox>
+            <Checkbox checked={renewStorage} onCheckedChange={setRenewStorage}>同步续费关联存储</Checkbox>
+            <Checkbox checked={renewNetwork} onCheckedChange={setRenewNetwork}>同步续费公网 IP 或网络资源</Checkbox>
           </div>
         )}
         {action === 'auto-renew' && (
@@ -187,7 +201,7 @@ export function ResourceLifecycleDialog({
           </>
         )}
         {action === 'extend' && (
-          <FormField label="延期原因" required>
+          <FormField label="续租说明" help="可填写续租用途，不影响价格计算。">
             <Textarea value={reason} maxLength={200} onChange={(event) => setReason(event.target.value)} />
           </FormField>
         )}
@@ -198,9 +212,14 @@ export function ResourceLifecycleDialog({
           </>
         )}
         {(action === 'configuration-change' || action === 'os-reinstall') && (
-          <FormField label="申请说明" required help="申请提交后等待处理，不会立即修改资源配置。">
-            <Textarea value={reason} maxLength={300} onChange={(event) => setReason(event.target.value)} />
-          </FormField>
+          <>
+            <FormField label="操作说明" required help="确认后将开始执行资源配置操作。">
+              <Textarea value={reason} maxLength={300} onChange={(event) => setReason(event.target.value)} />
+            </FormField>
+            <p className="resource-lifecycle-note">
+              当前操作不涉及收费项目，将直接执行并写入操作记录；存在补差价的规格变更会先创建订单和账单。
+            </p>
+          </>
         )}
         {error && <p className="resource-action-dialog__error" role="alert">{error}</p>}
       </Form>

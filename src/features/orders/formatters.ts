@@ -1,28 +1,26 @@
-import type { ApplicationType, OrderStatus } from './types';
+import type { OrderStatus, OrderType } from './types';
 
-export const APPLICATION_TYPE_LABELS: Readonly<Record<ApplicationType, string>> = {
-  'new-purchase': '新购资源',
-  'cloud-renewal': '云服务器续费',
-  'auto-renewal': '自动续费设置',
-  'physical-extension': '物理机延期',
-  'configuration-change': '变更配置',
-  'storage-purchase': '购买存储',
-  'storage-expansion': '存储扩容',
-  'storage-renewal': '存储续期',
-  'storage-mount': '挂载申请',
-  'storage-unmount': '卸载申请',
-  'storage-release': '释放申请',
-  'os-reinstall': '重装系统',
-  'resource-release': '资源释放',
+export const ORDER_TYPE_LABELS: Readonly<Record<OrderType, string>> = {
+  purchase: '新购',
+  renewal: '续费',
+  rentalRenewal: '续租',
+  resize: '变更配置',
+  storageExpansion: '存储扩容',
+  softwarePurchase: '软件购买',
+  refund: '退款',
 };
 
 export const ORDER_STATUS_VIEWS: Readonly<Record<OrderStatus, {
   label: string;
   tone: 'neutral' | 'info' | 'success' | 'warning' | 'error';
 }>> = {
-  pending: { label: '待处理', tone: 'neutral' },
-  preparing: { label: '资源准备中', tone: 'info' },
-  delivered: { label: '已交付', tone: 'success' },
-  cancelled: { label: '已取消', tone: 'warning' },
-  failed: { label: '处理失败', tone: 'error' },
+  'awaiting-payment': { label: '待支付', tone: 'warning' },
+  paying: { label: '支付中', tone: 'info' },
+  paid: { label: '已支付', tone: 'success' },
+  provisioning: { label: '开通中', tone: 'info' },
+  completed: { label: '已完成', tone: 'success' },
+  cancelled: { label: '已取消', tone: 'neutral' },
+  'payment-failed': { label: '支付失败', tone: 'error' },
+  refunding: { label: '退款中', tone: 'info' },
+  refunded: { label: '已退款', tone: 'neutral' },
 };

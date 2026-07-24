@@ -20,6 +20,8 @@
     "verify:storage": "node scripts/verify-storage.mjs",
     "verify:ui": "node scripts/verify-ui.mjs",
     "verify:visual-structure": "node scripts/verify-visual-structure.mjs",
+    "verify:status": "node scripts/verify-status.mjs",
+    "verify:commerce": "node scripts/verify-commerce.mjs",
     "verify:offline": "node scripts/verify-offline.mjs",
     "preview": "vite preview"
   },

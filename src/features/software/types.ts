@@ -1,9 +1,10 @@
 export type SoftwareComputeType = 'cpu' | 'gpu';
 export type InstallationStatus =
-  | 'submitted'
-  | 'processing'
-  | 'installed'
-  | 'failed';
+  | 'waiting'
+  | 'executing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
 
 export type SoftwareProduct = Readonly<{
   id: string;

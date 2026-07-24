@@ -206,10 +206,10 @@ export async function createCustomImage(input: Readonly<{
     action: input.sourceFile ? '导入镜像' : '创建自定义镜像记录',
     targetId: image.id,
     targetName: image.name,
-    status: input.sourceFile ? 'processing' : 'submitted',
+    status: input.sourceFile ? 'executing' : 'waiting',
     message: input.sourceFile
-      ? '镜像导入任务已提交，当前仅记录文件元数据。'
-      : '自定义镜像记录已提交。',
+      ? '镜像导入任务正在执行，当前仅记录文件元数据。'
+      : '自定义镜像记录已创建。',
     targetPath: APP_PATHS.images,
   });
   return image;

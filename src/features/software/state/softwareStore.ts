@@ -12,9 +12,10 @@ import type {
   SoftwareProduct,
   SoftwareQuery,
 } from '../types';
+import type { CommerceOrder } from '../../orders';
 
 const STORAGE_KEY = 'computing-platform:software-installations';
-const VERSION = 1;
+const VERSION = 2;
 
 const SOFTWARE_CATALOG: readonly SoftwareProduct[] = [
   {
@@ -71,7 +72,7 @@ const INITIAL_INSTALLATIONS: readonly SoftwareInstallation[] = [
     version: '2.6.1',
     resourceId: 'cs-east-001',
     resourceName: '研发计算节点-01',
-    status: 'installed',
+    status: 'completed',
     submittedAt: '2026-07-10T01:30:00.000Z',
   },
   {
@@ -81,7 +82,7 @@ const INITIAL_INSTALLATIONS: readonly SoftwareInstallation[] = [
     version: '1.29.2',
     resourceId: 'cs-east-001',
     resourceName: '研发计算节点-01',
-    status: 'installed',
+    status: 'completed',
     submittedAt: '2026-07-12T06:20:00.000Z',
   },
   {
@@ -91,7 +92,7 @@ const INITIAL_INSTALLATIONS: readonly SoftwareInstallation[] = [
     version: '1.8.0',
     resourceId: 'pm-east-001',
     resourceName: '研发物理节点-01',
-    status: 'installed',
+    status: 'completed',
     submittedAt: '2026-07-12T06:20:00.000Z',
   },
 ];
@@ -103,9 +104,9 @@ function isInstallation(value: unknown): value is SoftwareInstallation {
     typeof item.id === 'string' &&
     typeof item.softwareId === 'string' &&
     typeof item.resourceId === 'string' &&
-    (item.status === 'submitted' ||
-      item.status === 'processing' ||
-      item.status === 'installed' ||
+    (item.status === 'waiting' ||
+      item.status === 'executing' ||
+      item.status === 'completed' ||
       item.status === 'failed')
   );
 }
@@ -185,7 +186,7 @@ export function getSoftwareCompatibility(
   return { compatible: true };
 }
 
-export async function submitSoftwareInstallation(input: Readonly<{
+export function submitSoftwareInstallation(input: Readonly<{
   softwareId: string;
   version: string;
   resource: Resource;
@@ -212,7 +213,7 @@ export async function submitSoftwareInstallation(input: Readonly<{
     version: input.version,
     resourceId: input.resource.id,
     resourceName: input.resource.name,
-    status: 'processing',
+    status: 'executing',
     submittedAt,
   };
   writeInstallations([task, ...readInstallations()]);
@@ -221,11 +222,24 @@ export async function submitSoftwareInstallation(input: Readonly<{
     action: '安装软件',
     targetId: input.resource.id,
     targetName: input.resource.name,
-    status: 'processing',
+    status: 'executing',
     message: `${software.name} ${input.version} 安装任务已提交。`,
     targetPath: `${resourceDetailPath(input.resource.resourceType, input.resource.id)}?tab=software`,
   });
   return task;
+}
+
+export function fulfillSoftwareCommerceOrder(order: CommerceOrder) {
+  const fulfillment = order.fulfillment;
+  if (!fulfillment || fulfillment.kind !== 'software-purchase') return [];
+  const resource = getResourceByAnyId(fulfillment.resourceId);
+  if (!resource) throw new Error('未找到软件安装目标资源。');
+  submitSoftwareInstallation({
+    softwareId: fulfillment.softwareId,
+    version: fulfillment.version,
+    resource,
+  });
+  return [resource.id];
 }
 
 export function resetSoftwareStore() {

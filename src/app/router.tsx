@@ -25,6 +25,8 @@ import {
   OrderDetailPage,
   OrderListPage,
 } from '../pages/OrdersPage';
+import { BillDetailPage, BillListPage } from '../pages/BillsPage';
+import { CheckoutPage } from '../pages/CheckoutPage';
 import { ConsoleLayout } from './layouts/ConsoleLayout';
 import { MarketplaceLayout } from './layouts/MarketplaceLayout';
 import { SoftwareCenterLayout } from './layouts/SoftwareCenterLayout';
@@ -85,6 +87,12 @@ function appPageElement(route: AppPageRoute) {
       return <OrderListPage />;
     case 'ORD-02':
       return <OrderDetailPage />;
+    case 'BILL-01':
+      return <BillListPage />;
+    case 'BILL-02':
+      return <BillDetailPage />;
+    case 'CHK-01':
+      return <CheckoutPage />;
     case 'OPS-01':
       return <OperationRecordsPage />;
     default: {

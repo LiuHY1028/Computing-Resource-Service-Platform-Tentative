@@ -46,7 +46,7 @@ export function ConfigurationSummary({
           <h3 id="purchase-summary-title">{title}</h3>
         </div>
         <span className="purchase-draft-status" data-dirty={dirty}>
-          {dirty ? '未保存草稿' : '草稿已同步'}
+          {dirty ? '配置已保存' : '当前配置'}
         </span>
       </div>
       <section className="purchase-summary__group" aria-labelledby="purchase-product-summary-title">
@@ -77,9 +77,9 @@ export function ConfigurationSummary({
         {!complete && <span>{missingItems.join('、')}</span>}
       </div>
       <div className="purchase-summary__actions">
-        <Button variant="primary" onClick={onConfirm}>确认配置</Button>
+        <Button variant="primary" onClick={onConfirm}>确认订单</Button>
         <Button variant="secondary" onClick={onReturn}>返回资源商城</Button>
-        <TextButton onClick={onClearDraft}>清除当前草稿</TextButton>
+        <TextButton onClick={onClearDraft}>恢复默认配置</TextButton>
       </div>
     </Container>
   );

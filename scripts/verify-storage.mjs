@@ -90,11 +90,24 @@ sizeByStorage.forEach((bytes, storageId) => {
   require(Number.isFinite(capacityGb) && bytes <= capacityGb * 1024 ** 3, `文件大小超过存储容量：${storageId}`);
 });
 
-require(storageSource.includes("applicationType: 'storage-purchase'"), '购买存储必须创建关联订单。');
-require(storageSource.includes("applicationType: 'storage-expansion'"), '扩容必须创建关联订单。');
-require(storageSource.includes("applicationType: 'storage-renewal'"), '续期必须创建关联订单。');
-require(storageSource.includes("applicationType: 'storage-mount'"), '挂载必须创建关联订单。');
-require(storageSource.includes("applicationType: 'storage-unmount'"), '卸载必须创建关联订单。');
+require(storageSource.includes("orderType: 'purchase'"), '购买存储必须创建关联订单。');
+require(storageSource.includes("orderType: 'storageExpansion'"), '收费扩容必须创建关联订单。');
+require(storageSource.includes("orderType: 'renewal'"), '存储续费必须创建关联订单。');
+const mountBlock = storageSource.slice(
+  storageSource.indexOf('export async function mountStorage'),
+  storageSource.indexOf('export async function unmountStorage'),
+);
+const unmountBlock = storageSource.slice(
+  storageSource.indexOf('export async function unmountStorage'),
+  storageSource.indexOf('export async function releaseStorage'),
+);
+require(
+  !mountBlock.includes('createCommerceOrder') &&
+    !unmountBlock.includes('createCommerceOrder') &&
+    mountBlock.includes("status: 'completed'") &&
+    unmountBlock.includes("status: 'completed'"),
+  '免费挂载与卸载必须直接执行并写入操作记录，不得创建订单或账单。',
+);
 require(storageSource.includes("space.type === 'cloud-disk' && space.mounts.length"), '云硬盘必须限制为单资源挂载。');
 require(storageSource.includes('resource.site !== space.site'), '挂载必须校验站点一致性。');
 require(fileSource.includes('updateStorageUsage('), '文件操作必须同步存储容量。');
@@ -109,4 +122,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`存储完整性验证通过：${storageIds.size} 个初始存储、${nodes.length} 个文件节点；价格、订单、挂载、目录、容量、路径与入口约束有效。`);
+console.log(`存储完整性验证通过：${storageIds.size} 个初始存储、${nodes.length} 个文件节点；价格、购买/续费/扩容订单、免费挂载、目录、容量、路径与入口约束有效。`);

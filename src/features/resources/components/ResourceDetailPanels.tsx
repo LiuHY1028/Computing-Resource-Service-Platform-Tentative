@@ -13,7 +13,6 @@ import {
   EmptyTable,
   getUsageState,
   Modal,
-  StatusBadge,
   UsageMeter,
   type TableColumn,
 } from '../../../components/ui';
@@ -26,8 +25,8 @@ import {
 import { getSoftwareForResource, type SoftwareInstallation } from '../../software';
 import { getNetworkRulesForResource, type NetworkAccessRule } from '../../network';
 import {
-  APPLICATION_TYPE_LABELS,
   ORDER_STATUS_VIEWS,
+  ORDER_TYPE_LABELS,
   getOrdersForResource,
 } from '../../orders';
 import { getOperationsForTarget, type PlatformOperationRecord } from '../../operations';
@@ -42,18 +41,16 @@ import {
   formatAccelerator,
   formatDateTime,
   OPERATION_STATUS_LABELS,
+  RESOURCE_STATUS_LABELS,
 } from '../formatters';
 import type { CloudDataDisk, Resource } from '../types';
 import { ResourceStatusBadge } from './ResourceStatusBadge';
 import { ResourceActionMenu, type ResourceMenuAction } from './ResourceTable';
-import { createExtensionQuote, createRenewalQuote } from '../state/resourceStore';
+import { createRentalRenewalQuote, createRenewalQuote } from '../state/resourceStore';
 
 function capacityStatus(percent: number) {
   const state = getUsageState(percent);
-  return {
-    ...state,
-    badge: state.tone === 'critical' ? 'error' as const : state.tone === 'warning' ? 'warning' as const : 'success' as const,
-  };
+  return state;
 }
 
 function DefinitionSection({ title, eyebrow, fields }: Readonly<{
@@ -76,7 +73,7 @@ export function ResourceOverview({ resource }: Readonly<{ resource: Resource }>)
   const identity: readonly (readonly [string, ReactNode])[] = [
     [resource.resourceType === 'cloud-server' ? '实例 ID' : '资源 ID', resource.id],
     ['资源名称', resource.name],
-    ['运行状态', <ResourceStatusBadge status={resource.status} />],
+    ['运行状态', RESOURCE_STATUS_LABELS[resource.status]],
     [resource.resourceType === 'cloud-server' ? '实例健康' : '硬件健康', resource.health.summary],
     ['所属站点', resource.site],
     ['项目归属', resource.project],
@@ -117,8 +114,8 @@ export function ResourceOverview({ resource }: Readonly<{ resource: Resource }>)
       <DefinitionSection eyebrow={resource.resourceType === 'cloud-server' ? '云实例身份' : '物理资产身份'} title="基础信息" fields={identity} />
       <DefinitionSection eyebrow={resource.resourceType === 'cloud-server' ? '虚拟化与云资源' : '整机硬件与位置'} title={resource.resourceType === 'cloud-server' ? '云服务器配置' : '物理机配置'} fields={specific} />
       <Container as="section" className="resource-section">
-        <div className="resource-section__heading"><div><span>生命周期申请</span><h3>相关申请</h3></div></div>
-        {relatedOrders.length ? <div className="management-related-links">{relatedOrders.map((order) => <Link to={orderDetailPath(order.id)} key={order.id}>{order.id} · {APPLICATION_TYPE_LABELS[order.applicationType]} · {ORDER_STATUS_VIEWS[order.status].label}</Link>)}</div> : <EmptyTable title="暂无相关申请" />}
+        <div className="resource-section__heading"><div><span>商业交易</span><h3>相关订单</h3></div></div>
+        {relatedOrders.length ? <div className="management-related-links">{relatedOrders.map((order) => <Link to={orderDetailPath(order.id)} key={order.id}>{order.id} · {ORDER_TYPE_LABELS[order.orderType]} · {ORDER_STATUS_VIEWS[order.status].label}</Link>)}</div> : <EmptyTable title="暂无相关订单" />}
       </Container>
     </div>
   );
@@ -137,7 +134,7 @@ export function ResourceBilling({
   const latestQuote = canRenew
     ? isCloud
       ? createRenewalQuote(resource, 1)
-      : createExtensionQuote(resource, 1)
+      : createRentalRenewalQuote(resource, 1)
     : undefined;
   const fields: readonly (readonly [string, ReactNode])[] = isCloud
     ? [
@@ -155,9 +152,8 @@ export function ResourceBilling({
         ['当前使用周期', `${resource.priceSnapshot.duration ?? 1} 个月`],
         ['当前周期费用', formatMoney(resource.priceSnapshot.total)],
         ['到期时间', formatDateTime(resource.expiresAt)],
-        ['延期状态', resource.extensionStatus === 'pending' ? '处理中' : '无待处理申请'],
         ['价格生成时间', formatDateTime(resource.priceSnapshot.generatedAt)],
-        ['最近申请', latestOrder ? <Link to={orderDetailPath(latestOrder.id)}>{latestOrder.id}</Link> : '暂无'],
+        ['最近订单', latestOrder ? <Link to={orderDetailPath(latestOrder.id)}>{latestOrder.id}</Link> : '暂无'],
       ];
   return (
     <div className="resource-detail-stack">
@@ -169,8 +165,8 @@ export function ResourceBilling({
       {latestQuote && (
         <Container as="section" className="resource-section">
           <div className="resource-section__heading">
-            <div><span>使用当前价目</span><h3>{isCloud ? '续费价格参考' : '延期价格参考'}</h3></div>
-            <Button onClick={onLifecycle}>{isCloud ? '提交续费申请' : '提交延期申请'}</Button>
+            <div><span>使用当前价目</span><h3>{isCloud ? '续费价格参考' : '续租价格参考'}</h3></div>
+            <Button onClick={onLifecycle}>{isCloud ? '续费' : '续租'}</Button>
           </div>
           <PricingSummary value={latestQuote} title="1 个月费用参考" />
         </Container>
@@ -196,7 +192,7 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
     return (
       <div className="resource-detail-stack">
         <Container as="section" className="resource-section resource-capacity-overview">
-          <div className="resource-section__heading"><div><span>整机本地存储</span><h3>容量与磁盘健康</h3></div><StatusBadge tone={state.badge}>{state.label}</StatusBadge></div>
+          <div className="resource-section__heading"><div><span>整机本地存储</span><h3>容量与磁盘健康</h3></div><span className="resource-section__auxiliary">{state.label}</span></div>
           <div className="resource-capacity-metrics">
             <div><span>总容量</span><strong>{storage.totalCapacityGb} GB</strong></div>
             <div><span>已使用</span><strong>{storage.usedCapacityGb} GB</strong></div>
@@ -248,7 +244,7 @@ export function ResourceStorage({ resource }: Readonly<{ resource: Resource }>) 
 export function ResourceHealth({ resource }: Readonly<{ resource: Resource }>) {
   const columns: readonly TableColumn<Resource['health']['items'][number]>[] = [
     { key: 'name', title: '检查项', render: (item) => item.name },
-    { key: 'status', title: '状态', render: (item) => <StatusBadge tone={item.status === 'normal' ? 'success' : item.status === 'warning' ? 'warning' : 'info'}>{item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '检查中'}</StatusBadge> },
+    { key: 'status', title: '检查结果', render: (item) => <span className={`resource-health-result resource-health-result--${item.status}`}>{item.status === 'normal' ? '正常' : item.status === 'warning' ? '告警' : '检查中'}</span> },
     { key: 'message', title: '说明', render: (item) => item.message },
   ];
   return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>{resource.resourceType === 'cloud-server' ? '实例检查' : 'CPU、内存、GPU、磁盘、电源与温度'}</span><h3>{resource.resourceType === 'cloud-server' ? '实例健康' : '硬件与健康'}</h3></div></div><DataTable title="健康检查项" embedded enableDensity={false} enableColumnSettings={false} aria-label="健康检查项" columns={columns} rows={resource.health.items} getRowKey={(item) => item.name} /></Container>;
@@ -268,7 +264,7 @@ export function ResourceImageSystem({ resource }: Readonly<{ resource: Resource 
 export function ResourceDelivery({ resource }: Readonly<{ resource: Resource }>) {
   if (resource.resourceType !== 'physical-machine') return null;
   return <DefinitionSection eyebrow="交付与带外管理" title="交付和管理网络" fields={[
-    ['交付状态', resource.deliveryStatus === 'delivered' ? '已交付' : resource.deliveryStatus === 'preparing' ? '准备中' : '释放处理中'],
+    ['资源状态', RESOURCE_STATUS_LABELS[resource.status]],
     ['资产编号', resource.assetNumber],
     ['物理位置', `${resource.room} · ${resource.rack} · ${resource.rackUnit}`],
     ['管理网络', resource.managementNetwork],
@@ -307,7 +303,7 @@ export function ResourceSoftware({ resourceId, onOpenSoftwareCenter }: Readonly<
   const columns: readonly TableColumn<SoftwareInstallation>[] = [
     { key: 'name', title: '软件', render: (item) => item.softwareName },
     { key: 'version', title: '版本', render: (item) => item.version },
-    { key: 'status', title: '状态', render: (item) => item.status === 'installed' ? '已安装' : item.status === 'failed' ? '失败' : '处理中' },
+    { key: 'status', title: '状态', render: (item) => item.status === 'completed' ? '已安装' : item.status === 'failed' ? '失败' : item.status === 'cancelled' ? '已取消' : item.status === 'waiting' ? '等待执行' : '执行中' },
     { key: 'installedAt', title: '安装时间', render: (item) => formatDateTime(item.submittedAt) },
   ];
   return <Container as="section" className="resource-section"><div className="resource-section__heading"><div><span>软件与运行环境</span><h3>已安装软件</h3></div><Button onClick={onOpenSoftwareCenter}>前往软件中心</Button></div><DataTable title="已安装软件列表" embedded enableDensity={false} enableColumnSettings={false} aria-label="已安装软件列表" columns={columns} rows={software} getRowKey={(item) => item.id} /></Container>;
@@ -337,16 +333,15 @@ export function ResourceDetailHeader({ resource, onBack, onConnection, onPurchas
     <Container as="section" className="resource-detail-header">
       <div className="resource-detail-header__navigation"><Button variant="ghost" onClick={onBack}>返回资源列表</Button></div>
       <div className="resource-detail-header__main">
-        <div><span>{resource.resourceType === 'cloud-server' ? '☁ 云服务器' : '▤ 物理机资产'}</span><h2>{resource.name}</h2><p>{resource.resourceType === 'physical-machine' ? resource.assetNumber : resource.id} · {resource.site} · {resource.project}</p></div>
+        <div><span>{resource.resourceType === 'cloud-server' ? '云服务器' : '物理机资产'}</span><h2>{resource.name}</h2><p>{resource.resourceType === 'physical-machine' ? resource.assetNumber : resource.id} · {resource.site} · {resource.project}</p></div>
         <div className="resource-detail-header__actions">
           <ResourceStatusBadge status={resource.status} />
-          <StatusBadge tone={resource.health.status === 'normal' ? 'success' : resource.health.status === 'warning' ? 'warning' : 'info'}>{resource.health.status === 'normal' ? '健康正常' : resource.health.status === 'warning' ? '健康告警' : '健康检查中'}</StatusBadge>
           <Button variant="primary" onClick={onPurchaseSimilar}>{resource.resourceType === 'cloud-server' ? '购买同规格' : '购买同类整机'}</Button>
           {resource.resourceType === 'cloud-server'
             ? <Button variant="secondary" onClick={() => onAction('configuration-change')}>变更配置</Button>
             : <Button variant="secondary" onClick={() => onAction('hardware-health')}>硬件健康</Button>}
           <Button variant="secondary" onClick={onConnection}>{resource.resourceType === 'cloud-server' ? '连接' : '连接信息'}</Button>
-          <Button variant="secondary" onClick={() => onAction(resource.resourceType === 'cloud-server' ? 'renew' : 'extend')}>{resource.resourceType === 'cloud-server' ? '续费' : '申请延期'}</Button>
+          <Button variant="secondary" onClick={() => onAction(resource.resourceType === 'cloud-server' ? 'renew' : 'extend')}>{resource.resourceType === 'cloud-server' ? '续费' : '续租'}</Button>
           <Button onClick={() => onAction(isRunning ? 'stop' : 'start')}>{isRunning ? (resource.resourceType === 'cloud-server' ? '停止' : '关机') : '启动'}</Button>
           <ResourceActionMenu resource={resource} onAction={(_, action) => onAction(action)} />
         </div>

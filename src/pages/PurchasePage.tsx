@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PromptModal } from '../components/ui';
-import { APP_PATHS, orderDetailPath } from '../app/routes';
+import { APP_PATHS, checkoutPath, orderDetailPath } from '../app/routes';
 import {
   CloudPurchaseForm,
   ConfigurationSummary,
@@ -29,7 +29,10 @@ import {
   type PhysicalPurchaseConfiguration,
   type PurchaseFieldErrors,
 } from '../features/purchase';
-import type { MarketplaceResourceType } from '../features/marketplace';
+import {
+  getDefaultMarketplaceProduct,
+  type MarketplaceResourceType,
+} from '../features/marketplace';
 import {
   calculateCloudPrice,
   calculatePhysicalPrice,
@@ -67,7 +70,10 @@ function focusFirstInvalid(fieldId?: string) {
 
 export function PurchasePage({ resourceType }: PurchasePageProps) {
   const [searchParams] = useSearchParams();
-  const productId = searchParams.get('product')?.trim() ?? '';
+  const productId =
+    searchParams.get('product')?.trim() ||
+    getDefaultMarketplaceProduct(resourceType)?.id ||
+    '';
 
   return (
     <PurchasePageContent
@@ -264,7 +270,7 @@ function PurchasePageContent({
   async function submitPurchase() {
     if (!product || submitting) return;
     setSubmitting(true);
-    setLiveMessage('正在提交配置。');
+    setLiveMessage('正在创建订单。');
     try {
       const quote = product.resourceType === 'cloud-server' ? cloudQuote : physicalQuote;
       if (!quote) throw new Error('无法生成当前配置的费用明细。');
@@ -274,12 +280,19 @@ function PurchasePageContent({
         product.resourceType === 'cloud-server' ? cloudSummary : physicalSummary,
         quote,
         product.skuId,
+        product.resourceType === 'cloud-server'
+          ? cloudConfiguration!
+          : physicalConfiguration!,
       );
       clearPurchaseDraft(product.id);
       setDirty(false);
       setConfirmationOpen(false);
       setResult(nextResult);
-      setLiveMessage('配置已提交。');
+      setLiveMessage(
+        nextResult.orderStatus === 'awaiting-payment'
+          ? '订单已创建，请完成支付。'
+          : '按量订单已开通。',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -303,6 +316,7 @@ function PurchasePageContent({
         onViewOrder={(orderId) =>
           navigate(orderDetailPath(orderId))
         }
+        onPay={(orderId) => navigate(checkoutPath(orderId))}
       />
     );
   }
@@ -324,7 +338,7 @@ function PurchasePageContent({
         <PurchasePageLayout
           resourceType="cloud-server"
           title="配置云服务器"
-          description="配置镜像、系统盘、数据存储与网络访问，并核对提交信息。"
+          description="配置镜像、系统盘、数据存储与网络访问，确认价格后创建订单。"
           anchors={[
             { id: 'purchase-selected-product', label: '已选资源' },
             { id: 'purchase-billing', label: '计费配置' },
@@ -353,7 +367,7 @@ function PurchasePageContent({
         <PurchasePageLayout
           resourceType="physical-machine"
           title="配置物理机"
-          description="确认整机规格、用途、交付流程和访问意向。操作系统配置以交付确认结果为准。"
+          description="确认整机规格、使用周期和访问意向，核对价格后创建订单。"
           anchors={[
             { id: 'purchase-selected-product', label: '已选整机' },
             { id: 'purchase-basic-information', label: '使用信息' },

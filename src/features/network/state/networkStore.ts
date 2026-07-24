@@ -17,7 +17,7 @@ import type {
 import { getResourceByAnyId } from '../../resources/state/resourceStore';
 
 const STORAGE_KEY = 'computing-platform:network';
-const VERSION = 1;
+const VERSION = 2;
 
 const INITIAL_RULES: readonly NetworkAccessRule[] = [
   {
@@ -119,7 +119,7 @@ function validateInput(input: NetworkRuleInput, editingId?: string) {
         rule.protocol === input.protocol &&
         (rule.servicePort === input.servicePort ||
           rule.mappedPort === input.mappedPort) &&
-        rule.change !== 'delete',
+        rule.change === 'none',
     )
   ) {
     throw new Error('同一资源和协议下存在明显重复的端口规则。');
@@ -154,8 +154,8 @@ export async function createNetworkRule(input: NetworkRuleInput) {
   const rule: NetworkAccessRule = {
     ...input,
     id: `network-rule-${updatedAt.replace(/\D/g, '').slice(0, 14)}`,
-    status: 'processing',
-    change: 'create',
+    status: 'effective',
+    change: 'none',
     updatedAt,
   };
   writeRules([rule, ...readRules()]);
@@ -164,8 +164,8 @@ export async function createNetworkRule(input: NetworkRuleInput) {
     action: '新增网络访问规则',
     targetId: input.resourceId,
     targetName: input.resourceName,
-    status: 'processing',
-    message: '网络变更请求已提交，等待基础设施处理。',
+    status: 'completed',
+    message: '网络访问规则已保存。',
     targetPath: `${resourceDetailPath(input.resourceType, input.resourceId)}?tab=network`,
   });
   return rule;
@@ -176,12 +176,11 @@ export async function updateNetworkRule(ruleId: string, input: NetworkRuleInput)
   const rules = readRules();
   const index = rules.findIndex((rule) => rule.id === ruleId);
   if (index < 0) throw new Error('未找到网络规则。');
-  if (rules[index].status === 'processing') throw new Error('规则已有变更正在处理中。');
   const updated: NetworkAccessRule = {
     ...rules[index],
     ...input,
-    status: 'processing',
-    change: 'update',
+    status: 'effective',
+    change: 'none',
     updatedAt: new Date().toISOString(),
   };
   writeRules([...rules.slice(0, index), updated, ...rules.slice(index + 1)]);
@@ -190,8 +189,8 @@ export async function updateNetworkRule(ruleId: string, input: NetworkRuleInput)
     action: '编辑网络访问规则',
     targetId: input.resourceId,
     targetName: input.resourceName,
-    status: 'processing',
-    message: '网络变更请求已提交，原规则状态等待基础设施确认。',
+    status: 'completed',
+    message: '网络访问规则已更新。',
     targetPath: `${resourceDetailPath(input.resourceType, input.resourceId)}?tab=network`,
   });
   return updated;
@@ -202,24 +201,17 @@ export async function deleteNetworkRule(ruleId: string) {
   const index = rules.findIndex((rule) => rule.id === ruleId);
   if (index < 0) throw new Error('未找到网络规则。');
   const current = rules[index];
-  if (current.status === 'processing') throw new Error('规则已有变更正在处理中。');
-  const updated: NetworkAccessRule = {
-    ...current,
-    status: 'processing',
-    change: 'delete',
-    updatedAt: new Date().toISOString(),
-  };
-  writeRules([...rules.slice(0, index), updated, ...rules.slice(index + 1)]);
+  writeRules([...rules.slice(0, index), ...rules.slice(index + 1)]);
   recordOperation({
     module: 'network',
     action: '删除网络访问规则',
     targetId: current.resourceId,
     targetName: current.resourceName,
-    status: 'processing',
-    message: '删除请求已提交，当前规则保留至基础设施处理完成。',
+    status: 'completed',
+    message: '网络访问规则已删除。',
     targetPath: `${resourceDetailPath(current.resourceType, current.resourceId)}?tab=network`,
   });
-  return updated;
+  return current;
 }
 
 export function resetNetworkStore() {

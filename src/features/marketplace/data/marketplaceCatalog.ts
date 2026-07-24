@@ -137,3 +137,11 @@ export function getMarketplaceProductById(
 ): MarketplaceProduct | undefined {
   return MARKETPLACE_CATALOG_PRODUCTS.find((product) => product.id === id);
 }
+
+export function getDefaultMarketplaceProduct(
+  resourceType: MarketplaceResourceType,
+): MarketplaceProduct | undefined {
+  return MARKETPLACE_CATALOG_PRODUCTS.find(
+    (product) => product.resourceType === resourceType && product.configurable,
+  );
+}

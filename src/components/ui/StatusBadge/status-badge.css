@@ -13,16 +13,12 @@
   white-space: nowrap;
 }
 .ui-status-badge__mark {
-  display: inline-grid;
-  width: var(--status-badge-mark-size);
-  height: var(--status-badge-mark-size);
-  border-radius: var(--status-badge-mark-radius);
-  color: var(--color-surface-default);
+  display: inline-block;
+  width: var(--space-6);
+  height: var(--space-6);
+  flex: 0 0 var(--space-6);
+  border-radius: var(--radius-pill);
   background: var(--color-text-secondary);
-  font-size: var(--status-badge-mark-font-size);
-  font-weight: var(--font-weight-bold);
-  line-height: 1;
-  place-items: center;
 }
 .ui-status-badge[data-tone='info'] { border-color: var(--color-primary-disabled); background: var(--color-primary-background); }
 .ui-status-badge[data-tone='info'] .ui-status-badge__mark { background: var(--color-primary); }

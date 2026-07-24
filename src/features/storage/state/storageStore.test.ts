@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetOperationsStore } from '../../operations';
-import { queryOrders, resetOrderStore } from '../../orders';
+import { getOrder, resetOrderStore } from '../../orders';
+import { getBillForOrder, resetBillStore } from '../../bills';
+import { payAndFulfillOrder } from '../../commerce';
 import {
   storageAvailableGb,
   storageCapacityState,
@@ -10,9 +12,9 @@ import {
   getStorageMountsForResource,
   purchaseStorage,
   queryStorageSpaces,
-  requestStorageExpansion,
-  requestStorageMount,
-  requestStorageRelease,
+  createStorageExpansionOrder,
+  mountStorage,
+  releaseStorage,
   resetStorageStore,
 } from './storageStore';
 
@@ -32,6 +34,7 @@ describe('storageStore', () => {
     resetStorageStore();
     resetOperationsStore();
     resetOrderStore();
+    resetBillStore();
   });
 
   it('filters independent storage and exposes canonical resource mounts', () => {
@@ -47,7 +50,7 @@ describe('storageStore', () => {
     expect(space.iops).toBeGreaterThan(0);
   });
 
-  it('creates purchase and expansion orders while keeping remote state pending', async () => {
+  it('creates purchase and expansion bills and applies changes only after payment', async () => {
     const result = await purchaseStorage({
       name: '项目共享空间',
       type: 'shared',
@@ -61,29 +64,38 @@ describe('storageStore', () => {
       protocol: 'NFS',
       mounts: [],
     });
-    const created = result.spaces[0]!;
-    expect(created.status).toBe('preparing');
-    expect(created.priceSnapshot.total.amountFen).toBe(64000);
-    expect(queryOrders({ applicationType: 'storage-purchase' })[0]?.storageId).toBe(created.id);
-
-    await requestStorageExpansion(created.id, 1000);
-    expect(queryStorageSpaces({ search: created.id })[0]?.capacityGb).toBe(800);
-    expect(queryOrders({ applicationType: 'storage-expansion' })[0]).toMatchObject({
-      resourceType: 'storage',
-      storageId: created.id,
-      status: 'pending',
-      priceSnapshot: { total: { amountFen: 16000, currency: 'CNY' } },
+    expect(result.spaces).toHaveLength(0);
+    expect(result.order.status).toBe('awaiting-payment');
+    expect(result.order.pricingSnapshot.total.amountFen).toBe(64000);
+    expect(getBillForOrder(result.order.id)).toMatchObject({
+      status: 'unpaid',
+      amount: { amountFen: 64000, currency: 'CNY' },
     });
+
+    const completedPurchase = await payAndFulfillOrder(result.order.id, 'account-balance');
+    const createdId = completedPurchase.resourceId!;
+    expect(queryStorageSpaces({ search: createdId })[0]?.capacityGb).toBe(800);
+    const expansion = await createStorageExpansionOrder(createdId, 1000);
+    expect(queryStorageSpaces({ search: createdId })[0]?.capacityGb).toBe(800);
+    expect(getOrder(expansion.id)).toMatchObject({
+      orderType: 'storageExpansion',
+      resourceId: createdId,
+      status: 'awaiting-payment',
+      pricingSnapshot: { total: { amountFen: 16000, currency: 'CNY' } },
+    });
+    await payAndFulfillOrder(expansion.id, 'enterprise-account');
+    expect(queryStorageSpaces({ search: createdId })[0]?.capacityGb).toBe(1000);
+    expect(getBillForOrder(expansion.id)?.status).toBe('paid');
   });
 
   it('enforces cloud disk single-resource mounting and release safety', async () => {
-    await expect(requestStorageMount('storage-cloud-east-001', {
+    await expect(mountStorage('storage-cloud-east-001', {
       resourceId: 'cs-west-003',
       resourceName: '西部计算节点',
       resourceType: 'cloud-server',
       mountPath: '/data/disk',
       readOnly: false,
     })).rejects.toThrow();
-    await expect(requestStorageRelease('storage-cloud-east-001')).rejects.toThrow('先卸载');
+    await expect(releaseStorage('storage-cloud-east-001')).rejects.toThrow('先卸载');
   });
 });

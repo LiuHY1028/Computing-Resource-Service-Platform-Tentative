@@ -1,9 +1,5 @@
-export type NetworkRuleStatus =
-  | 'effective'
-  | 'submitted'
-  | 'processing'
-  | 'failed';
-export type NetworkRuleChange = 'none' | 'create' | 'update' | 'delete';
+export type NetworkRuleStatus = 'effective' | 'failed';
+export type NetworkRuleChange = 'none';
 
 export type NetworkAccessRule = Readonly<{
   id: string;

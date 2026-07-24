@@ -7,12 +7,18 @@ import type {
 } from './types';
 
 export const RESOURCE_STATUS_LABELS: Readonly<Record<ResourceStatus, string>> = {
+  creating: '创建中',
   preparing: '准备中',
   running: '运行中',
   stopped: '已停止',
-  operating: '操作中',
+  'powered-off': '已关机',
+  restarting: '重启中',
+  resizing: '变配中',
+  maintenance: '维护中',
+  expiring: '即将到期',
   abnormal: '异常',
   expired: '已到期',
+  releasing: '释放中',
 };
 
 export const COMPUTE_TYPE_LABELS: Readonly<Record<ComputeType, string>> = {
@@ -27,10 +33,11 @@ export const EXPIRY_STATE_LABELS: Readonly<Record<ExpiryState, string>> = {
 };
 
 export const OPERATION_STATUS_LABELS: Readonly<Record<OperationStatus, string>> = {
-  submitted: '已提交',
-  processing: '处理中',
+  waiting: '等待执行',
+  executing: '执行中',
   completed: '已完成',
   failed: '失败',
+  cancelled: '已取消',
 };
 
 export function formatDateTime(value: string) {

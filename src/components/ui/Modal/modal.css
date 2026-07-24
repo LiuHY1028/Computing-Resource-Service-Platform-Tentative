@@ -61,32 +61,20 @@
 }
 
 .ui-prompt-modal__body {
-  display: grid;
   min-height: var(--height-control-radio-card);
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-12);
+  padding-inline-start: var(--space-12);
+  border-inline-start: var(--border-width-control-temporary) solid var(--color-primary);
 }
 
-.ui-prompt-modal__status {
-  display: inline-grid;
-  width: var(--size-icon-shell);
-  height: var(--size-icon-shell);
-  border-radius: 50%;
-  color: var(--color-surface-default);
-  background: var(--color-primary);
-  font-weight: var(--font-weight-table-header);
-  place-items: center;
+.ui-prompt-modal__body[data-variant='warning'] {
+  border-inline-start-color: var(--color-warning);
 }
 
-.ui-prompt-modal__status[data-variant='warning'] {
-  background: var(--color-warning);
+.ui-prompt-modal__body[data-variant='danger'],
+.ui-prompt-modal__body[data-variant='close'] {
+  border-inline-start-color: var(--color-error);
 }
 
-.ui-prompt-modal__status[data-variant='danger'],
-.ui-prompt-modal__status[data-variant='close'] {
-  background: var(--color-error);
-}
-
-.ui-prompt-modal__status[data-variant='success'] {
-  background: var(--color-success);
+.ui-prompt-modal__body[data-variant='success'] {
+  border-inline-start-color: var(--color-success);
 }

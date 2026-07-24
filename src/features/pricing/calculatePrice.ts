@@ -1,6 +1,7 @@
 import {
   getComputePrice,
   getImagePrice,
+  getSoftwarePrice,
   getStoragePrice,
 } from './pricingStore';
 import type {
@@ -260,6 +261,35 @@ export function calculateStoragePrice(input: Readonly<{
         quantity,
         duration,
         unitLabel: 'GB/月',
+      }),
+    ],
+    duration,
+  );
+}
+
+export function calculateSoftwarePrice(input: Readonly<{
+  softwareId: string;
+  durationMonths?: number;
+}>): PriceQuote {
+  const software = getSoftwarePrice(input.softwareId);
+  if (!software || software.policy === 'requires-license') {
+    throw new Error(`未找到可购买的软件价格：${input.softwareId}`);
+  }
+  const duration = positiveInteger(input.durationMonths ?? 1, '计费周期');
+  const included = software.policy !== 'monthly';
+  return quote(
+    'monthly-software',
+    1,
+    [
+      line({
+        id: `${input.softwareId}:software`,
+        category: 'software',
+        label: software.name,
+        unitPriceFen: software.monthlyPriceFen,
+        quantity: 1,
+        duration,
+        included,
+        unitLabel: included ? '服务已包含' : '月',
       }),
     ],
     duration,

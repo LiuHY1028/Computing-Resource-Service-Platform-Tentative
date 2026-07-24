@@ -3,6 +3,7 @@ import {
   type MarketplaceResourceType,
 } from '../../marketplace';
 import { createPurchaseOrder } from '../../orders';
+import { fulfillPostpaidOrder } from '../../commerce';
 import {
   createPriceSnapshot,
   type PriceQuote,
@@ -29,6 +30,7 @@ export async function submitConfiguration(
   summary: readonly PurchaseSummaryItem[],
   quote: PriceQuote,
   skuId: string,
+  configuration: PurchaseConfiguration,
 ): Promise<PurchaseSubmissionResult> {
   const priceSnapshot = createPriceSnapshot(skuId, quote);
   const order = await createPurchaseOrder({
@@ -36,10 +38,21 @@ export async function submitConfiguration(
     productName,
     summary,
     priceSnapshot,
+    fulfillment: {
+      kind: 'resource-purchase',
+      resourceType,
+      skuId,
+      configuration: structuredClone(configuration) as unknown as Readonly<Record<string, unknown>>,
+    },
   });
+  const completedOrder =
+    priceSnapshot.billingMode === 'pay-as-you-go'
+      ? await fulfillPostpaidOrder(order.id)
+      : order;
   return {
-    applicationId: order.id,
     orderId: order.id,
+    orderStatus:
+      completedOrder.status === 'completed' ? 'completed' : 'awaiting-payment',
     resourceType,
     productName,
     summary,

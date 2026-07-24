@@ -1,19 +1,25 @@
-import { createApplicationOrder } from '../../orders';
 import { resourceDetailPath } from '../../../app/routes';
+import { createCommerceOrder, type CommerceOrder } from '../../orders';
 import { recordOperation } from '../../operations';
 import {
   calculateCloudPrice,
   calculatePhysicalPrice,
   createPriceSnapshot,
+  type PriceSnapshot,
   type PriceQuote,
 } from '../../pricing';
+import {
+  readVersionedState,
+  removeVersionedState,
+  writeVersionedState,
+} from '../../platform/persistence';
 import { createInitialResourceCatalog } from '../data/resourceCatalog';
 import type {
   CloudServerResource,
-  ExtensionRequest,
+  RentalRenewalOrderInput,
   OperationRecord,
   PhysicalMachineResource,
-  RenewalRequest,
+  RenewalOrderInput,
   Resource,
   ResourceAction,
   ResourceActionAvailability,
@@ -25,8 +31,32 @@ import type {
   ResourceType,
 } from '../types';
 
-let resources = createInitialResourceCatalog();
+const STORAGE_KEY = 'computing-platform:resources';
+const VERSION = 2;
 let operationSequence = 100;
+
+const CLOUD_STATUSES = new Set([
+  'creating',
+  'running',
+  'stopped',
+  'restarting',
+  'resizing',
+  'expiring',
+  'expired',
+  'releasing',
+  'abnormal',
+]);
+const PHYSICAL_STATUSES = new Set([
+  'preparing',
+  'running',
+  'powered-off',
+  'restarting',
+  'maintenance',
+  'expiring',
+  'expired',
+  'releasing',
+  'abnormal',
+]);
 
 export class ResourceActionError extends Error {
   constructor(message: string) {
@@ -39,8 +69,41 @@ function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
+function isResource(value: unknown): value is Resource {
+  if (!value || typeof value !== 'object') return false;
+  const resource = value as Partial<Resource>;
+  return (
+    typeof resource.id === 'string' &&
+    (resource.resourceType === 'cloud-server' ||
+      resource.resourceType === 'physical-machine') &&
+    typeof resource.status === 'string' &&
+    (resource.resourceType === 'cloud-server'
+      ? CLOUD_STATUSES.has(resource.status)
+      : PHYSICAL_STATUSES.has(resource.status)) &&
+    typeof resource.expiresAt === 'string' &&
+    typeof resource.health === 'object' &&
+    Array.isArray(resource.operationRecords)
+  );
+}
+
+function readResources() {
+  return readVersionedState(
+    STORAGE_KEY,
+    VERSION,
+    (value): value is Resource[] =>
+      Array.isArray(value) && value.every(isResource),
+    () => createInitialResourceCatalog(),
+  );
+}
+
+function writeResources(resources: readonly Resource[]) {
+  writeVersionedState(STORAGE_KEY, VERSION, resources);
+}
+
 function unique(values: readonly string[]) {
-  return [...new Set(values)].sort((left, right) => left.localeCompare(right, 'zh-CN'));
+  return [...new Set(values)].sort((left, right) =>
+    left.localeCompare(right, 'zh-CN'),
+  );
 }
 
 function pathFor(resource: Resource) {
@@ -83,78 +146,138 @@ function matchesQuery(resource: Resource, query: ResourceQuery) {
 }
 
 export function queryResources(query: ResourceQuery): ResourceQueryResult {
-  const typed = resources.filter((resource) => resource.resourceType === query.resourceType);
+  const typed = readResources().filter(
+    (resource) => resource.resourceType === query.resourceType,
+  );
   const items = typed.filter((resource) => matchesQuery(resource, query));
   return { items: clone(items), total: items.length, catalogTotal: typed.length };
 }
 
 export function listResources(resourceType?: ResourceType): readonly Resource[] {
-  return clone(resourceType ? resources.filter((resource) => resource.resourceType === resourceType) : resources);
+  const resources = readResources();
+  return clone(
+    resourceType
+      ? resources.filter((resource) => resource.resourceType === resourceType)
+      : resources,
+  );
 }
 
 export function getResourceByAnyId(resourceId: string): Resource | undefined {
-  const resource = resources.find((candidate) => candidate.id === resourceId);
+  const resource = readResources().find((candidate) => candidate.id === resourceId);
   return resource ? clone(resource) : undefined;
 }
 
-export function getResourceById(resourceType: ResourceType, resourceId: string): Resource | undefined {
-  const resource = resources.find((candidate) => candidate.resourceType === resourceType && candidate.id === resourceId);
+export function getResourceById(
+  resourceType: ResourceType,
+  resourceId: string,
+): Resource | undefined {
+  const resource = readResources().find(
+    (candidate) =>
+      candidate.resourceType === resourceType && candidate.id === resourceId,
+  );
   return resource ? clone(resource) : undefined;
 }
 
-export function getOperationRecords(resourceType: ResourceType, resourceId: string): readonly OperationRecord[] {
+export function getOperationRecords(
+  resourceType: ResourceType,
+  resourceId: string,
+): readonly OperationRecord[] {
   return getResourceById(resourceType, resourceId)?.operationRecords ?? [];
 }
 
-export function getResourceFilterOptions(resourceType: ResourceType): ResourceFilterOptions {
-  const items = resources.filter((resource) => resource.resourceType === resourceType);
+export function getResourceFilterOptions(
+  resourceType: ResourceType,
+): ResourceFilterOptions {
+  const items = readResources().filter(
+    (resource) => resource.resourceType === resourceType,
+  );
   return {
     sites: unique(items.map((resource) => resource.site)),
-    rooms: unique(items.flatMap((resource) => resource.resourceType === 'physical-machine' ? [resource.room] : [])),
+    rooms: unique(items.flatMap((resource) =>
+      resource.resourceType === 'physical-machine' ? [resource.room] : [])),
     statuses: [...new Set(items.map((resource) => resource.status))],
     healthStatuses: [...new Set(items.map((resource) => resource.health.status))],
-    acceleratorModels: unique(items.flatMap((resource) => resource.accelerator ? [resource.accelerator.model] : [])),
+    acceleratorModels: unique(items.flatMap((resource) =>
+      resource.accelerator ? [resource.accelerator.model] : [])),
     scopes: unique(items.flatMap((resource) => [resource.project, resource.owner])),
     tags: unique(items.flatMap((resource) => resource.tags)),
-    images: unique(items.flatMap((resource) => resource.resourceType === 'cloud-server' ? [resource.image] : [])),
+    images: unique(items.flatMap((resource) =>
+      resource.resourceType === 'cloud-server' ? [resource.image] : [])),
     operatingSystems: unique(items.map((resource) => resource.operatingSystem)),
   };
 }
 
-export function getResourceActionAvailability(resource: Resource, action: ResourceAction): ResourceActionAvailability {
-  if (resource.lifecycleRequestState === 'release-processing') return { enabled: false, reason: '资源释放申请正在处理中。' };
-  if (resource.status === 'preparing') return { enabled: false, reason: '资源正在准备中，暂时无法提交该操作。' };
-  if (resource.status === 'operating') return { enabled: false, reason: '已有操作正在处理中，请稍后再试。' };
+export function getResourceActionAvailability(
+  resource: Resource,
+  action: ResourceAction,
+): ResourceActionAvailability {
+  if (['creating', 'preparing', 'restarting', 'resizing', 'maintenance', 'releasing'].includes(resource.status)) {
+    return { enabled: false, reason: '资源正在执行生命周期操作，请稍后再试。' };
+  }
   if (action === 'release') {
-    return resource.status === 'expired' || resource.status === 'stopped'
+    const stopped =
+      resource.status === 'expired' ||
+      resource.status === 'stopped' ||
+      resource.status === 'powered-off';
+    return stopped
       ? { enabled: true }
-      : { enabled: false, reason: '请先停止资源，再提交释放申请。' };
+      : { enabled: false, reason: '请先停止或关闭资源，再确认释放。' };
   }
   if (action === 'rename') return { enabled: true };
-  if (resource.status === 'expired') return { enabled: false, reason: '资源已到期，当前仅可处理有效期或释放申请。' };
-  if (resource.status === 'abnormal') return { enabled: false, reason: '资源状态异常，请先核对健康情况。' };
-  if (action === 'start') return resource.status === 'stopped' ? { enabled: true } : { enabled: false, reason: '仅已停止的资源可启动。' };
-  if (action === 'stop' || action === 'restart') return resource.status === 'running' ? { enabled: true } : { enabled: false, reason: '仅运行中的资源可执行该操作。' };
+  if (resource.status === 'expired') {
+    return { enabled: false, reason: '资源已到期，当前仅可续费、续租或释放。' };
+  }
+  if (resource.status === 'abnormal') {
+    return { enabled: false, reason: '资源存在严重故障，请先处理健康告警。' };
+  }
+  if (action === 'start') {
+    const stopped =
+      resource.status === 'stopped' || resource.status === 'powered-off';
+    return stopped
+      ? { enabled: true }
+      : { enabled: false, reason: '仅已停止或已关机的资源可启动。' };
+  }
+  if (action === 'stop' || action === 'restart') {
+    return resource.status === 'running'
+      ? { enabled: true }
+      : { enabled: false, reason: '仅运行中的资源可执行该操作。' };
+  }
   return { enabled: false, reason: '当前操作不可用。' };
 }
 
-export function getRenewalAvailability(resource: Resource): ResourceActionAvailability {
-  if (resource.resourceType !== 'cloud-server') return { enabled: false, reason: '物理机使用延期申请。' };
-  if (resource.billingMode !== 'subscription') return { enabled: false, reason: '按量计费资源无需续费。' };
-  if (resource.lifecycleRequestState === 'release-processing') return { enabled: false, reason: '释放申请处理中，不能续费。' };
+export function getRenewalAvailability(
+  resource: Resource,
+): ResourceActionAvailability {
+  if (resource.resourceType !== 'cloud-server') {
+    return { enabled: false, reason: '物理机使用续租。' };
+  }
+  if (resource.billingMode !== 'subscription') {
+    return { enabled: false, reason: '按量资源按账期出账，无需续费。' };
+  }
+  if (resource.status === 'releasing') {
+    return { enabled: false, reason: '释放中的资源不能续费。' };
+  }
   return { enabled: true };
 }
 
-export function getExtensionAvailability(resource: Resource): ResourceActionAvailability {
-  if (resource.resourceType !== 'physical-machine') return { enabled: false, reason: '云服务器使用续费申请。' };
-  if (resource.health.status === 'warning' || resource.deliveryStatus === 'releasing') return { enabled: false, reason: '硬件告警或释放中的资源不可申请延期。' };
-  return resource.extensionStatus === 'pending'
-    ? { enabled: false, reason: '已有延期申请正在处理。' }
-    : { enabled: true };
+export function getRentalRenewalAvailability(
+  resource: Resource,
+): ResourceActionAvailability {
+  if (resource.resourceType !== 'physical-machine') {
+    return { enabled: false, reason: '云服务器使用续费。' };
+  }
+  if (resource.status === 'releasing' || resource.status === 'abnormal') {
+    return { enabled: false, reason: '释放中或异常的物理机不能续租。' };
+  }
+  return { enabled: true };
 }
 
 function actionLabel(action: ResourceAction) {
-  return action === 'start' ? '启动' : action === 'stop' ? '停止' : action === 'restart' ? '重启' : action === 'rename' ? '修改名称' : '资源释放申请';
+  if (action === 'start') return '启动';
+  if (action === 'stop') return '停止';
+  if (action === 'restart') return '重启';
+  if (action === 'rename') return '修改名称';
+  return '释放资源';
 }
 
 function addMonths(value: string, months: number) {
@@ -171,10 +294,6 @@ export function createRenewalQuote(
   const dataDisk = renewStorage
     ? resource.dataDisks.find((disk) => disk.role === 'data')
     : undefined;
-  const snapshotStorage = renewStorage && !dataDisk
-    ? resource.priceSnapshot.lineItems.find((item) => item.category === 'dataStorage')
-    : undefined;
-  const snapshotStorageSku = snapshotStorage?.id.split(':storage')[0];
   return calculateCloudPrice({
     skuId: resource.skuId,
     billingMode: 'subscription',
@@ -190,18 +309,11 @@ export function createRenewalQuote(
           capacityGb: dataDisk.capacityGb,
           label: dataDisk.displayType,
         }
-      : snapshotStorage && snapshotStorageSku
-        ? {
-            skuId: snapshotStorageSku,
-            capacityGb: snapshotStorage.quantity,
-            label: snapshotStorage.label,
-            included: snapshotStorage.included,
-          }
       : undefined,
   });
 }
 
-export function createExtensionQuote(
+export function createRentalRenewalQuote(
   resource: PhysicalMachineResource,
   periodMonths: 1 | 3 | 6 | 12,
 ): PriceQuote {
@@ -212,22 +324,35 @@ export function createExtensionQuote(
   });
 }
 
-function updateResource(resourceId: string, update: (resource: Resource) => Resource) {
+function updateResource(
+  resourceId: string,
+  update: (resource: Resource) => Resource,
+) {
+  const resources = readResources();
   const index = resources.findIndex((resource) => resource.id === resourceId);
   if (index < 0) throw new ResourceActionError(`未找到目标资源：${resourceId}`);
   const next = update(resources[index]);
-  resources = [...resources.slice(0, index), next, ...resources.slice(index + 1)];
+  writeResources([
+    ...resources.slice(0, index),
+    next,
+    ...resources.slice(index + 1),
+  ]);
   return next;
 }
 
-function operation(resource: Resource, action: string, message: string): OperationRecord {
+function operation(
+  resource: Resource,
+  action: string,
+  message: string,
+  status: OperationRecord['status'] = 'completed',
+): OperationRecord {
   operationSequence += 1;
   const record: OperationRecord = {
     id: `operation-local-${operationSequence}`,
     action,
     actor: '当前用户',
     createdAt: new Date().toISOString(),
-    status: 'submitted',
+    status,
     message,
   };
   recordOperation({
@@ -235,7 +360,7 @@ function operation(resource: Resource, action: string, message: string): Operati
     action,
     targetId: resource.id,
     targetName: resource.name,
-    status: 'submitted',
+    status,
     message,
     targetPath: pathFor(resource),
     createdAt: record.createdAt,
@@ -243,174 +368,184 @@ function operation(resource: Resource, action: string, message: string): Operati
   return record;
 }
 
-export async function submitResourceAction(request: ResourceActionRequest): Promise<ResourceActionResult> {
+export async function submitResourceAction(
+  request: ResourceActionRequest,
+): Promise<ResourceActionResult> {
   const current = getResourceById(request.resourceType, request.resourceId);
   if (!current) throw new ResourceActionError('未找到目标资源。');
   const availability = getResourceActionAvailability(current, request.action);
-  if (!availability.enabled) throw new ResourceActionError(availability.reason ?? '当前操作不可用。');
+  if (!availability.enabled) {
+    throw new ResourceActionError(availability.reason ?? '当前操作不可用。');
+  }
   if (request.action === 'rename') {
     const nextName = request.nextName?.trim() ?? '';
     if (!nextName) throw new ResourceActionError('请输入资源名称。');
     if (nextName.length > 48) throw new ResourceActionError('资源名称不能超过 48 个字符。');
     if (nextName === current.name) throw new ResourceActionError('请输入与当前名称不同的资源名称。');
   }
-  if (request.action === 'release') {
-    const record = operation(current, '资源释放申请', '释放申请已提交，资源在处理完成前保持可追踪。');
-    const updated = updateResource(current.id, (resource) => ({
+  const isRelease = request.action === 'release';
+  const record = operation(
+    current,
+    actionLabel(request.action),
+    isRelease
+      ? '资源正在释放，完成前仍可查看历史信息。'
+      : request.action === 'rename'
+        ? '资源名称已更新。'
+        : `${actionLabel(request.action)}操作已完成。`,
+    isRelease ? 'executing' : 'completed',
+  );
+  const updated = updateResource(current.id, (resource) => {
+    if (resource.resourceType === 'cloud-server') {
+      const status =
+        request.action === 'start' || request.action === 'restart'
+          ? 'running'
+          : request.action === 'stop'
+            ? 'stopped'
+            : request.action === 'release'
+              ? 'releasing'
+              : resource.status;
+      return {
+        ...resource,
+        name: request.action === 'rename' ? request.nextName!.trim() : resource.name,
+        status,
+        lastOperatedAt: record.createdAt,
+        operationRecords: [record, ...resource.operationRecords],
+      };
+    }
+    const status =
+      request.action === 'start' || request.action === 'restart'
+        ? 'running'
+        : request.action === 'stop'
+          ? 'powered-off'
+          : request.action === 'release'
+            ? 'releasing'
+            : resource.status;
+    return {
       ...resource,
-      lifecycleRequestState: 'release-processing',
+      name: request.action === 'rename' ? request.nextName!.trim() : resource.name,
+      status,
       lastOperatedAt: record.createdAt,
       operationRecords: [record, ...resource.operationRecords],
-      ...(resource.resourceType === 'physical-machine' ? { deliveryStatus: 'releasing' as const } : {}),
-    }));
-    createApplicationOrder({
-      applicationType: 'resource-release',
-      resourceType: current.resourceType,
-      resourceId: current.id,
-      resourceName: current.name,
-      site: current.site,
-      summary: [
-        { label: '申请类型', value: '资源释放' },
-        { label: '关联资源', value: `${current.name}（${current.id}）` },
-        { label: '处理说明', value: '申请处理完成前资源保持可追踪' },
-      ],
-    });
-    return { resource: clone(updated), record: clone(record) };
-  }
-  const record = operation(current, actionLabel(request.action), request.action === 'rename' ? '资源名称已更新。' : `${actionLabel(request.action)}操作已提交。`);
-  const updated = updateResource(current.id, (resource) => ({
-    ...resource,
-    name: request.action === 'rename' ? request.nextName!.trim() : resource.name,
-    status: request.action === 'start' ? 'running' : request.action === 'stop' ? 'stopped' : request.action === 'restart' ? 'running' : resource.status,
-    lastOperatedAt: record.createdAt,
-    operationRecords: [record, ...resource.operationRecords],
-  }));
+    };
+  });
   return { resource: clone(updated), record: clone(record) };
 }
 
-export function submitRenewalRequest(input: RenewalRequest) {
+export function createRenewalOrders(input: RenewalOrderInput) {
   if (!input.resourceIds.length) throw new ResourceActionError('请选择需要续费的云服务器。');
   return input.resourceIds.map((resourceId) => {
     const current = getResourceByAnyId(resourceId);
-    if (!current || current.resourceType !== 'cloud-server') throw new ResourceActionError(`续费申请关联的云服务器不存在：${resourceId}`);
+    if (!current || current.resourceType !== 'cloud-server') {
+      throw new ResourceActionError(`未找到续费云服务器：${resourceId}`);
+    }
     const availability = getRenewalAvailability(current);
     if (!availability.enabled) throw new ResourceActionError(`${current.name}：${availability.reason}`);
-    const pendingExpiresAt = addMonths(current.expiresAt, input.periodMonths);
-    const record = operation(current, '云服务器续费', `已提交 ${input.periodMonths} 个月续费申请，正式到期时间将在处理完成后更新。`);
-    const updated = updateResource(current.id, (resource) => ({
-      ...resource,
-      lifecycleRequestState: 'renewal-processing',
-      pendingExpiresAt,
-      lastOperatedAt: record.createdAt,
-      operationRecords: [record, ...resource.operationRecords],
-    })) as CloudServerResource;
+    const expectedExpiresAt = addMonths(current.expiresAt, input.periodMonths);
     const priceSnapshot = createPriceSnapshot(
       current.skuId,
       createRenewalQuote(current, input.periodMonths, input.renewStorage),
     );
-    const order = createApplicationOrder({
-      applicationType: 'cloud-renewal',
-      resourceType: 'cloud-server',
+    const order = createCommerceOrder({
+      orderType: 'renewal',
+      productType: 'cloud-server',
+      productName: `${current.name}续费`,
+      site: current.site,
       resourceId: current.id,
       resourceIds: [current.id],
       resourceName: current.name,
-      site: current.site,
-      expectedExpiresAt: pendingExpiresAt,
-      summary: [
-        { label: '申请类型', value: '云服务器续费' },
+      configurationSummary: [
         { label: '关联资源', value: `${current.name}（${current.id}）` },
         { label: '续费周期', value: `${input.periodMonths} 个月` },
-        { label: '预计新到期时间', value: new Date(pendingExpiresAt).toLocaleDateString('zh-CN') },
-        { label: '关联存储', value: input.renewStorage ? '同步提交续期' : '保持当前期限' },
-        { label: '网络资源', value: input.renewNetwork ? '同步提交续期' : '保持当前期限' },
+        { label: '新到期时间', value: new Date(expectedExpiresAt).toLocaleDateString('zh-CN') },
+        { label: '关联存储', value: input.renewStorage ? '同步续费' : '保持当前期限' },
+        { label: '网络资源', value: input.renewNetwork ? '同步续费' : '保持当前期限' },
       ],
-      priceSnapshot,
+      pricingSnapshot: priceSnapshot,
+      fulfillment: {
+        kind: 'resource-renewal',
+        resourceId: current.id,
+        periodMonths: input.periodMonths,
+      },
     });
-    return { resource: clone(updated), order };
+    return { resource: clone(current), order };
   });
 }
 
-export function updateAutoRenewal(resourceIds: readonly string[], enabled: boolean, periodMonths: 1 | 3 | 6 | 12) {
+export function updateAutoRenewal(
+  resourceIds: readonly string[],
+  enabled: boolean,
+  periodMonths: 1 | 3 | 6 | 12,
+) {
   if (!resourceIds.length) throw new ResourceActionError('请选择需要设置自动续费的云服务器。');
   return resourceIds.map((resourceId) => {
     const current = getResourceByAnyId(resourceId);
-    if (!current || current.resourceType !== 'cloud-server') throw new ResourceActionError(`自动续费关联的云服务器不存在：${resourceId}`);
-    const availability = getRenewalAvailability(current);
-    if (!availability.enabled) throw new ResourceActionError(`${current.name}：${availability.reason}`);
-    const record = operation(current, '自动续费设置', `自动续费已${enabled ? `开启，周期为 ${periodMonths} 个月` : '关闭'}。`);
-    const updated = updateResource(current.id, (resource) => ({
-      ...resource,
-      autoRenewal: { enabled, periodMonths },
-      lastOperatedAt: record.createdAt,
-      operationRecords: [record, ...resource.operationRecords],
-    })) as CloudServerResource;
-    createApplicationOrder({
-      applicationType: 'auto-renewal',
-      resourceType: 'cloud-server',
-      resourceId: current.id,
-      resourceIds: [current.id],
-      resourceName: current.name,
-      site: current.site,
-      summary: [
-        { label: '申请类型', value: '自动续费设置' },
-        { label: '当前状态', value: enabled ? '已开启' : '已关闭' },
-        { label: '自动续费周期', value: `${periodMonths} 个月` },
-      ],
-      priceSnapshot: createPriceSnapshot(
-        current.skuId,
-        createRenewalQuote(current, periodMonths),
-      ),
-    });
-    return clone(updated);
+    if (!current || current.resourceType !== 'cloud-server') {
+      throw new ResourceActionError(`未找到云服务器：${resourceId}`);
+    }
+    const record = operation(
+      current,
+      '自动续费设置',
+      `自动续费已${enabled ? `开启，周期为 ${periodMonths} 个月` : '关闭'}。`,
+    );
+    return clone(updateResource(current.id, (resource) => {
+      if (resource.resourceType !== 'cloud-server') return resource;
+      return {
+        ...resource,
+        autoRenewal: { enabled, periodMonths },
+        lastOperatedAt: record.createdAt,
+        operationRecords: [record, ...resource.operationRecords],
+      };
+    }));
   });
 }
 
-export function submitExtensionRequest(input: ExtensionRequest) {
-  if (!input.resourceIds.length) throw new ResourceActionError('请选择需要延期的物理机。');
-  if (!input.reason.trim()) throw new ResourceActionError('请输入延期原因。');
+export function createRentalRenewalOrders(input: RentalRenewalOrderInput) {
+  if (!input.resourceIds.length) throw new ResourceActionError('请选择需要续租的物理机。');
   return input.resourceIds.map((resourceId) => {
     const current = getResourceByAnyId(resourceId);
-    if (!current || current.resourceType !== 'physical-machine') throw new ResourceActionError(`延期申请关联的物理机不存在：${resourceId}`);
-    const availability = getExtensionAvailability(current);
+    if (!current || current.resourceType !== 'physical-machine') {
+      throw new ResourceActionError(`未找到续租物理机：${resourceId}`);
+    }
+    const availability = getRentalRenewalAvailability(current);
     if (!availability.enabled) throw new ResourceActionError(`${current.name}：${availability.reason}`);
-    const pendingExpiresAt = addMonths(current.expiresAt, input.periodMonths);
-    const record = operation(current, '物理机延期', `已提交 ${input.periodMonths} 个月延期申请，等待处理。`);
-    const updated = updateResource(current.id, (resource) => ({
-      ...resource,
-      lifecycleRequestState: 'extension-processing',
-      extensionStatus: 'pending',
-      pendingExpiresAt,
-      lastOperatedAt: record.createdAt,
-      operationRecords: [record, ...resource.operationRecords],
-    })) as PhysicalMachineResource;
+    const expectedExpiresAt = addMonths(current.expiresAt, input.periodMonths);
     const priceSnapshot = createPriceSnapshot(
       current.skuId,
-      createExtensionQuote(current, input.periodMonths),
+      createRentalRenewalQuote(current, input.periodMonths),
     );
-    const order = createApplicationOrder({
-      applicationType: 'physical-extension',
-      resourceType: 'physical-machine',
+    const order = createCommerceOrder({
+      orderType: 'rentalRenewal',
+      productType: 'physical-machine',
+      productName: `${current.name}续租`,
+      site: current.site,
       resourceId: current.id,
       resourceIds: [current.id],
       resourceName: current.name,
-      site: current.site,
-      expectedExpiresAt: pendingExpiresAt,
-      summary: [
-        { label: '申请类型', value: '物理机延期' },
+      configurationSummary: [
         { label: '关联资源', value: `${current.name}（${current.assetNumber}）` },
-        { label: '延期时长', value: `${input.periodMonths} 个月` },
-        { label: '预计新到期时间', value: new Date(pendingExpiresAt).toLocaleDateString('zh-CN') },
-        { label: '延期原因', value: input.reason.trim() },
-        { label: '项目', value: current.project },
-        { label: '责任人', value: current.owner },
+        { label: '续租周期', value: `${input.periodMonths} 个月` },
+        { label: '新到期时间', value: new Date(expectedExpiresAt).toLocaleDateString('zh-CN') },
+        ...(input.reason.trim() ? [{ label: '用途说明', value: input.reason.trim() }] : []),
       ],
-      priceSnapshot,
+      pricingSnapshot: priceSnapshot,
+      fulfillment: {
+        kind: 'resource-rental-renewal',
+        resourceId: current.id,
+        periodMonths: input.periodMonths,
+      },
     });
-    return { resource: clone(updated), order };
+    return { resource: clone(current), order };
   });
 }
 
-export function updateResourceMetadata(resourceIds: readonly string[], input: Readonly<{ project?: string; tagsToAdd?: readonly string[]; tagsToRemove?: readonly string[] }>) {
+export function updateResourceMetadata(
+  resourceIds: readonly string[],
+  input: Readonly<{
+    project?: string;
+    tagsToAdd?: readonly string[];
+    tagsToRemove?: readonly string[];
+  }>,
+) {
   if (!resourceIds.length) throw new ResourceActionError('请选择资源。');
   return resourceIds.map((resourceId) => {
     const current = getResourceByAnyId(resourceId);
@@ -419,9 +554,12 @@ export function updateResourceMetadata(resourceIds: readonly string[], input: Re
       ...current.tags.filter((tag) => !input.tagsToRemove?.includes(tag)),
       ...(input.tagsToAdd ?? []).map((tag) => tag.trim()).filter(Boolean),
     ]);
-    const action = input.project && input.project !== current.project ? '修改项目归属' : '更新资源标签';
     const project = input.project?.trim() || current.project;
-    const record = operation(current, action, `项目归属：${project}；标签：${tags.join('、') || '无'}。`);
+    const record = operation(
+      current,
+      '更新资源信息',
+      `项目归属：${project}；标签：${tags.join('、') || '无'}。`,
+    );
     return clone(updateResource(current.id, (resource) => ({
       ...resource,
       project,
@@ -432,53 +570,206 @@ export function updateResourceMetadata(resourceIds: readonly string[], input: Re
   });
 }
 
-export async function submitBatchPowerAction(resourceIds: readonly string[], action: 'start' | 'stop' | 'restart') {
+export async function submitBatchPowerAction(
+  resourceIds: readonly string[],
+  action: 'start' | 'stop' | 'restart',
+) {
   if (!resourceIds.length) throw new ResourceActionError('请选择资源。');
   const selected = resourceIds.map((id) => getResourceByAnyId(id));
-  if (selected.some((resource) => !resource)) throw new ResourceActionError('选择中包含不存在的资源。');
-  const invalid = selected.find((resource) => resource && !getResourceActionAvailability(resource, action).enabled);
-  if (invalid) throw new ResourceActionError(`${invalid.name}：${getResourceActionAvailability(invalid, action).reason}`);
-  return Promise.all(selected.map((resource) => submitResourceAction({ resourceType: resource!.resourceType, resourceId: resource!.id, action })));
+  if (selected.some((resource) => !resource)) {
+    throw new ResourceActionError('选择中包含不存在的资源。');
+  }
+  const invalid = selected.find(
+    (resource) =>
+      resource && !getResourceActionAvailability(resource, action).enabled,
+  );
+  if (invalid) {
+    throw new ResourceActionError(
+      `${invalid.name}：${getResourceActionAvailability(invalid, action).reason}`,
+    );
+  }
+  return Promise.all(selected.map((resource) =>
+    submitResourceAction({
+      resourceType: resource!.resourceType,
+      resourceId: resource!.id,
+      action,
+    })));
 }
 
-export function submitResourceApplication(
+export function submitResourceMaintenance(
   resourceIds: readonly string[],
-  applicationType: 'configuration-change' | 'os-reinstall',
+  operationType: 'configuration-change' | 'os-reinstall',
   details: string,
 ) {
   if (!resourceIds.length) throw new ResourceActionError('请选择资源。');
-  if (!details.trim()) throw new ResourceActionError('请填写申请说明。');
+  if (!details.trim()) throw new ResourceActionError('请填写操作说明。');
   return resourceIds.map((resourceId) => {
     const current = getResourceByAnyId(resourceId);
     if (!current) throw new ResourceActionError(`未找到资源：${resourceId}`);
-    if (current.status === 'preparing' || current.lifecycleRequestState === 'release-processing') {
-      throw new ResourceActionError(`${current.name} 当前不可提交该申请。`);
+    if (['creating', 'preparing', 'releasing'].includes(current.status)) {
+      throw new ResourceActionError(`${current.name} 当前不可执行该操作。`);
     }
-    const action = applicationType === 'configuration-change' ? '变更配置申请' : '重装系统申请';
-    const record = operation(current, action, `${action}已提交，等待处理。`);
-    const updated = updateResource(current.id, (resource) => ({
-      ...resource,
-      lastOperatedAt: record.createdAt,
-      operationRecords: [record, ...resource.operationRecords],
-    }));
-    const order = createApplicationOrder({
-      applicationType,
-      resourceType: current.resourceType,
-      resourceId: current.id,
-      resourceName: current.name,
-      site: current.site,
-      configurationChanges: details.trim(),
-      summary: [
-        { label: '申请类型', value: applicationType === 'configuration-change' ? '变更配置' : '重装系统' },
-        { label: '关联资源', value: `${current.name}（${current.id}）` },
-        { label: '申请说明', value: details.trim() },
-      ],
+    const action = operationType === 'configuration-change' ? '变更配置' : '重装系统';
+    const record = operation(current, action, `${action}已确认并开始执行。`, 'executing');
+    const updated = updateResource(current.id, (resource) => {
+      const status = operationType === 'configuration-change'
+        ? resource.resourceType === 'cloud-server'
+          ? 'resizing' as const
+          : 'maintenance' as const
+        : resource.resourceType === 'cloud-server'
+          ? 'restarting' as const
+          : 'maintenance' as const;
+      return {
+        ...resource,
+        status,
+        lastOperatedAt: record.createdAt,
+        operationRecords: [record, ...resource.operationRecords],
+      } as Resource;
     });
-    return { resource: clone(updated), order };
+    return { resource: clone(updated), order: undefined };
   });
 }
 
+export function createResourceResizeOrder(input: Readonly<{
+  resourceId: string;
+  changes: string;
+  pricingSnapshot: PriceSnapshot;
+}>) {
+  const current = getResourceByAnyId(input.resourceId);
+  if (!current) throw new ResourceActionError('未找到需要变配的资源。');
+  if (!input.changes.trim()) {
+    throw new ResourceActionError('请说明目标配置。');
+  }
+  if (input.pricingSnapshot.total.amountFen <= 0) {
+    throw new ResourceActionError('免费配置变更应直接确认，不创建交易订单。');
+  }
+  return createCommerceOrder({
+    orderType: 'resize',
+    productType: current.resourceType,
+    productName: `${current.name}变更配置`,
+    site: current.site,
+    resourceId: current.id,
+    resourceIds: [current.id],
+    resourceName: current.name,
+    configurationSummary: [
+      { label: '关联资源', value: `${current.name}（${current.id}）` },
+      { label: '配置变化', value: input.changes.trim() },
+    ],
+    pricingSnapshot: input.pricingSnapshot,
+    fulfillment: {
+      kind: 'resource-resize',
+      resourceId: current.id,
+      changes: input.changes.trim(),
+    },
+  });
+}
+
+export function fulfillResourceCommerceOrder(order: CommerceOrder) {
+  const fulfillment = order.fulfillment;
+  if (!fulfillment) return [];
+  if (
+    fulfillment.kind === 'resource-renewal' ||
+    fulfillment.kind === 'resource-rental-renewal'
+  ) {
+    const updated = updateResource(fulfillment.resourceId, (resource) => ({
+      ...resource,
+      expiresAt: addMonths(resource.expiresAt, fulfillment.periodMonths),
+      expiryState: 'active',
+      status: resource.resourceType === 'cloud-server' ? 'running' : 'running',
+      lastOperatedAt: new Date().toISOString(),
+    } as Resource));
+    operation(
+      updated,
+      fulfillment.kind === 'resource-renewal' ? '续费完成' : '续租完成',
+      '支付已完成，资源使用期限已更新。',
+    );
+    return [updated.id];
+  }
+  if (fulfillment.kind === 'resource-resize') {
+    updateResource(fulfillment.resourceId, (resource) => ({
+      ...resource,
+      status:
+        resource.resourceType === 'cloud-server' ? 'resizing' : 'maintenance',
+      lastOperatedAt: new Date().toISOString(),
+    } as Resource));
+    const updated = updateResource(fulfillment.resourceId, (resource) => ({
+      ...resource,
+      status: resource.resourceType === 'cloud-server' ? 'running' : 'running',
+      lastOperatedAt: new Date().toISOString(),
+    } as Resource));
+    operation(updated, '变更配置完成', fulfillment.changes);
+    return [updated.id];
+  }
+  if (fulfillment.kind !== 'resource-purchase') return [];
+
+  const resources = readResources();
+  const template = resources.find(
+    (resource) => resource.resourceType === fulfillment.resourceType,
+  );
+  if (!template) throw new ResourceActionError('缺少可用的资源规格模板。');
+  const now = new Date().toISOString();
+  const quantity = Math.max(1, order.quantity);
+  const name =
+    order.configurationSummary.find((item) =>
+      item.label === '资源名称' || item.label === '实例名称')?.value ??
+    order.productName;
+  const created = Array.from({ length: quantity }, (_, index) => {
+    const id = `${fulfillment.resourceType === 'cloud-server' ? 'cs' : 'pm'}-${now.replace(/\D/g, '').slice(0, 14)}-${index + 1}`;
+    const expiresAt = addMonths(
+      now,
+      order.pricingSnapshot.duration ?? 1,
+    );
+    if (template.resourceType === 'cloud-server') {
+      const next: CloudServerResource = {
+        ...clone(template),
+        id,
+        skuId: fulfillment.skuId,
+        name: quantity > 1 ? `${name}-${index + 1}` : name,
+        site: order.site,
+        status: 'running',
+        ip: { privateIp: '待分配' },
+        connection: {
+          available: false,
+          notes: '连接信息将在基础设施接入后提供。',
+        },
+        createdAt: now,
+        expiresAt,
+        expiryState: 'active',
+        lastOperatedAt: now,
+        priceSnapshot: clone(order.pricingSnapshot),
+        operationRecords: [],
+      };
+      return next;
+    }
+    const next: PhysicalMachineResource = {
+      ...clone(template),
+      id,
+      skuId: fulfillment.skuId,
+      name: quantity > 1 ? `${name}-${index + 1}` : name,
+      site: order.site,
+      status: 'running',
+      assetNumber: `等待分配-${id}`,
+      ip: { privateIp: '待分配' },
+      connection: {
+        available: false,
+        notes: '连接信息将在基础设施接入后提供。',
+      },
+      createdAt: now,
+      expiresAt,
+      expiryState: 'active',
+      lastOperatedAt: now,
+      priceSnapshot: clone(order.pricingSnapshot),
+      operationRecords: [],
+    };
+    return next;
+  });
+  writeResources([...created, ...resources]);
+  created.forEach((resource) =>
+    operation(resource, '资源开通', '订单已完成，资源已加入当前账户。'));
+  return created.map((resource) => resource.id);
+}
+
 export function resetResourceStore() {
-  resources = createInitialResourceCatalog();
+  removeVersionedState(STORAGE_KEY);
   operationSequence = 100;
 }

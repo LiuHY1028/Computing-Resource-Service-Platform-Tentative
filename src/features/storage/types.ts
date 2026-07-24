@@ -2,7 +2,18 @@ import type { PriceSnapshot } from '../pricing';
 
 export type StorageType = 'cloud-disk' | 'shared';
 export type StoragePerformanceTier = 'standard' | 'performance';
-export type StorageStatus = 'available' | 'preparing' | 'processing' | 'error';
+export type StorageStatus =
+  | 'creating'
+  | 'available'
+  | 'attaching'
+  | 'attached'
+  | 'detaching'
+  | 'expanding'
+  | 'renewing'
+  | 'expiring'
+  | 'expired'
+  | 'releasing'
+  | 'abnormal';
 export type MountStatus = 'effective' | 'processing' | 'removing';
 
 export type StorageMount = Readonly<{
@@ -63,7 +74,7 @@ export function storageCapacityState(space: Pick<StorageSpace, 'capacityGb' | 'u
 export function canManageStorageFiles(
   space: Pick<StorageSpace, 'type' | 'status' | 'mounts' | 'initialized'>,
 ) {
-  if (space.status !== 'available') return false;
+  if (space.status !== 'available' && space.status !== 'attached') return false;
   return space.type === 'shared' || (space.initialized && space.mounts.length > 0);
 }
 

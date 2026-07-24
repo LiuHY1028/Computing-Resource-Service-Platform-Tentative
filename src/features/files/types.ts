@@ -24,7 +24,7 @@ export type FileTask = Readonly<{
   subject: string;
   targetPath?: string;
   progress: number;
-  status: 'running' | 'completed' | 'failed';
+  status: 'waiting' | 'executing' | 'completed' | 'failed' | 'cancelled';
   completedAt?: string;
   error?: string;
 }>;

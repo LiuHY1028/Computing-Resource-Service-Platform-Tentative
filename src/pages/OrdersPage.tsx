@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Button,
   Container,
   DataTable,
+  DropdownMenu,
+  DropdownMenuItem,
   Input,
   PageState,
   Pagination,
+  PromptModal,
   SearchInput,
   Select,
   StatusBadge,
@@ -16,118 +19,189 @@ import {
 import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
 import {
   APP_PATHS,
+  billDetailPath,
+  checkoutPath,
   orderDetailPath,
   resourceDetailPath,
   storageDetailPath,
 } from '../app/routes';
 import {
+  cancelCommerceOrder,
   getOrder,
   queryOrders,
-  APPLICATION_TYPE_LABELS,
   ORDER_STATUS_VIEWS,
-  type ApplicationType,
+  ORDER_TYPE_LABELS,
+  type CommerceOrder,
+  type OrderProductType,
   type OrderStatus,
-  type PurchaseOrder,
+  type OrderType,
 } from '../features/orders';
+import { getBillForOrder } from '../features/bills';
 import { getResourceByAnyId } from '../features/resources';
+import { getStorageSpace } from '../features/storage';
 import {
   listOperationRecords,
+  OPERATION_STATUS_VIEWS,
   type OperationModule,
   type OperationStatus,
   type PlatformOperationRecord,
 } from '../features/operations';
-import {
-  formatMoney,
-  PricingSummary,
-} from '../features/pricing';
+import { formatMoney, PricingSummary } from '../features/pricing';
 import '../styles/management.css';
 
 const PAGE_SIZE = 8;
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('zh-CN', { hour12: false });
+function formatDate(value?: string) {
+  return value
+    ? new Date(value).toLocaleString('zh-CN', { hour12: false })
+    : '—';
 }
 
-function resourcePath(order: PurchaseOrder) {
-  if (order.storageId) {
-    return storageDetailPath(order.storageId);
-  }
+function productTypeLabel(type: OrderProductType) {
+  if (type === 'cloud-server') return '云服务器';
+  if (type === 'physical-machine') return '物理机';
+  if (type === 'storage') return '存储';
+  return '软件';
+}
+
+function relatedPath(order: CommerceOrder) {
   if (!order.resourceId) return undefined;
-  if (!order.resourceType || order.resourceType === 'storage') return undefined;
-  return resourceDetailPath(order.resourceType, order.resourceId);
-}
-
-function resourceTypeLabel(order: PurchaseOrder) {
-  return order.resourceType === 'cloud-server'
-    ? '云服务器'
-    : order.resourceType === 'physical-machine'
-      ? '物理机'
-      : '存储空间';
+  if (order.productType === 'storage') {
+    return getStorageSpace(order.resourceId)
+      ? storageDetailPath(order.resourceId)
+      : undefined;
+  }
+  if (
+    order.productType === 'cloud-server' ||
+    order.productType === 'physical-machine'
+  ) {
+    return getResourceByAnyId(order.resourceId)
+      ? resourceDetailPath(order.productType, order.resourceId)
+      : undefined;
+  }
+  return undefined;
 }
 
 function billingModeLabel(mode: string) {
   if (mode === 'subscription') return '包月';
   if (mode === 'pay-as-you-go') return '按量';
   if (mode === 'monthly-rental') return '按月租用';
-  if (mode === 'monthly-capacity') return '按月计费';
-  return '不计费';
+  if (mode === 'monthly-capacity') return '按容量计费';
+  return mode;
 }
 
 export function OrderListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [cancelTarget, setCancelTarget] = useState<CommerceOrder>();
   const pageHeader = useMemo(() => ({
-    description: '追踪资源与存储的购买、扩容、续期和挂载申请。',
+    description: '查看新购、续费、续租、扩容、变配和软件购买交易。',
     actions: (
       <>
-        <Button variant="primary" onClick={() => navigate(APP_PATHS.marketplace)}>购买资源</Button>
-        <Button onClick={() => navigate(APP_PATHS.storagePurchase)}>购买存储</Button>
+        <Button variant="primary" onClick={() => navigate(APP_PATHS.marketplace)}>
+          购买资源
+        </Button>
+        <Button onClick={() => navigate(APP_PATHS.storagePurchase)}>
+          购买存储
+        </Button>
       </>
     ),
   }), [navigate]);
   useConsolePageHeader(pageHeader);
-  const page = Math.max(1, Number(searchParams.get('page')) || 1);
-  const query = useMemo(
-    () => ({
-      search: searchParams.get('q') ?? '',
-      resourceType: (searchParams.get('resourceType') ?? 'all') as
-        | 'all'
-        | 'cloud-server'
-        | 'physical-machine'
-        | 'storage',
-      applicationType: (searchParams.get('applicationType') ?? 'all') as
-        | 'all'
-        | ApplicationType,
-      status: (searchParams.get('status') ?? 'all') as 'all' | OrderStatus,
-      site: searchParams.get('site') ?? 'all',
-      submittedAfter: searchParams.get('after') ?? '',
-      related: (searchParams.get('related') ?? 'all') as 'all' | 'yes' | 'no',
-    }),
-    [searchParams],
-  );
 
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const query = useMemo(() => ({
+    search: searchParams.get('q') ?? '',
+    productType: (searchParams.get('productType') ?? 'all') as
+      | 'all'
+      | OrderProductType,
+    orderType: (searchParams.get('orderType') ?? 'all') as 'all' | OrderType,
+    status: (searchParams.get('status') ?? 'all') as 'all' | OrderStatus,
+    site: searchParams.get('site') ?? 'all',
+    createdAfter: searchParams.get('after') ?? '',
+    related: (searchParams.get('related') ?? 'all') as 'all' | 'yes' | 'no',
+  }), [searchParams]);
   const orders = useMemo(() => queryOrders(query), [query]);
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key);
     else next.set(key, value);
-    next.delete('page');
+    if (key !== 'page') next.delete('page');
     setSearchParams(next);
   }
 
   const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const rows = orders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  const columns: readonly TableColumn<PurchaseOrder>[] = [
-    { key: 'type-resource', title: '类型与资源', sortable: true, sortValue: (order) => `${APPLICATION_TYPE_LABELS[order.applicationType]}-${order.productName}`, hideable: false, width: '22%', multiline: true, render: (order) => <div className="management-primary-cell"><Link to={orderDetailPath(order.id)}>{order.id}</Link><strong>{APPLICATION_TYPE_LABELS[order.applicationType]} · {resourceTypeLabel(order)}</strong><span>{order.productName} · 数量 {order.quantity}</span></div> },
-    { key: 'spec', title: '配置与站点', width: '21%', multiline: true, render: (order) => <div className="management-primary-cell"><strong>{order.specificationSummary || order.productName}</strong><span>{order.site}</span></div> },
-    { key: 'billing-amount', title: '计费与金额', sortable: true, sortValue: (order) => order.priceSnapshot.total.amountFen, width: '18%', multiline: true, render: (order) => <div className="management-primary-cell"><strong>{billingModeLabel(order.priceSnapshot.billingMode)} · {formatMoney(order.priceSnapshot.total)}</strong><span>{order.priceSnapshot.duration ? `${order.priceSnapshot.duration} 个月` : order.priceSnapshot.billingMode === 'pay-as-you-go' ? '按小时计费' : '当前申请'}</span></div> },
-    { key: 'status-time', title: '状态与时间', sortable: true, sortValue: (order) => order.submittedAt, width: '15%', multiline: true, render: (order) => <div className="management-primary-cell"><StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>{ORDER_STATUS_VIEWS[order.status].label}</StatusBadge><span>{formatDate(order.submittedAt)}</span></div> },
-    { key: 'resource', title: '关联对象', width: '14%', render: (order) => {
-      const current = order.resourceId ? getResourceByAnyId(order.resourceId) : undefined;
-      return resourcePath(order) ? <Link to={resourcePath(order)!}>{order.storageId ? order.resourceName : current?.name ?? order.resourceName ?? order.resourceId}</Link> : '等待资源准备';
-    } },
+  const columns: readonly TableColumn<CommerceOrder>[] = [
+    {
+      key: 'order',
+      title: '订单与类型',
+      hideable: false,
+      width: '22%',
+      multiline: true,
+      sortable: true,
+      sortValue: (order) => order.createdAt,
+      render: (order) => (
+        <div className="management-primary-cell">
+          <Link to={orderDetailPath(order.id)}>{order.id}</Link>
+          <strong>{ORDER_TYPE_LABELS[order.orderType]} · {productTypeLabel(order.productType)}</strong>
+          <span>{formatDate(order.createdAt)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'product',
+      title: '商品或资源',
+      width: '22%',
+      multiline: true,
+      render: (order) => (
+        <div className="management-primary-cell">
+          <strong>{order.resourceName ?? order.productName}</strong>
+          <span>{order.site} · 数量 {order.quantity}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'configuration',
+      title: '配置摘要',
+      width: '23%',
+      multiline: true,
+      render: (order) => (
+        <div className="management-primary-cell">
+          {order.configurationSummary.slice(0, 2).map((item) => (
+            <span key={item.label}>{item.label}：{item.value}</span>
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: 'amount',
+      title: '金额',
+      width: '15%',
+      sortable: true,
+      sortValue: (order) => order.pricingSnapshot.total.amountFen,
+      multiline: true,
+      render: (order) => (
+        <div className="management-primary-cell">
+          <strong>{formatMoney(order.pricingSnapshot.total)}</strong>
+          <span>{billingModeLabel(order.billingMode)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      title: '主状态',
+      width: '12%',
+      sortable: true,
+      sortValue: (order) => order.status,
+      render: (order) => (
+        <StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>
+          {ORDER_STATUS_VIEWS[order.status].label}
+        </StatusBadge>
+      ),
+    },
   ];
 
   return (
@@ -135,18 +209,55 @@ export function OrderListPage() {
       <DataTable
         className="management-table"
         aria-label="订单列表"
-        eyebrow="资源配置申请"
-        title="申请记录"
-        description="追踪资源与存储的购买、扩容、续期和挂载申请。"
+        eyebrow="交易订单"
+        title="订单"
+        description="订单只显示当前交易或履约阶段；支付与开通历史保留在详情时间线。"
         toolbar={(
           <div className="management-filter-grid management-filter-grid--orders">
-            <SearchInput aria-label="搜索申请" value={query.search} placeholder="搜索申请编号或关联资源" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
-            <Select aria-label="申请类型" value={query.applicationType} onValueChange={(value) => setParam('applicationType', value)} options={[{ value: 'all', label: '全部申请类型' }, ...Object.entries(APPLICATION_TYPE_LABELS).map(([value, label]) => ({ value, label }))]} />
-            <Select aria-label="资源类型" value={query.resourceType} onValueChange={(value) => setParam('resourceType', value)} options={[{ value: 'all', label: '全部资源类型' }, { value: 'cloud-server', label: '云服务器' }, { value: 'physical-machine', label: '物理机' }, { value: 'storage', label: '存储空间' }]} />
-            <Select aria-label="申请状态" value={query.status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, ...Object.entries(ORDER_STATUS_VIEWS).map(([value, view]) => ({ value, label: view.label }))]} />
-            <Select aria-label="站点" value={query.site} onValueChange={(value) => setParam('site', value)} options={[{ value: 'all', label: '全部站点' }, { value: '东部算力中心', label: '东部算力中心' }, { value: '西部算力中心', label: '西部算力中心' }]} />
-            <Select aria-label="关联资源" value={query.related} onValueChange={(value) => setParam('related', value)} options={[{ value: 'all', label: '全部关联状态' }, { value: 'yes', label: '已关联资源' }, { value: 'no', label: '等待关联资源' }]} />
-            <Input aria-label="提交日期起始" type="date" value={query.submittedAfter} onChange={(event) => setParam('after', event.target.value)} />
+            <SearchInput
+              aria-label="搜索订单"
+              value={query.search}
+              placeholder="搜索订单编号、商品或资源"
+              onChange={(event) => setParam('q', event.target.value)}
+              clearable
+              onClear={() => setParam('q', '')}
+            />
+            <Select
+              aria-label="订单类型"
+              value={query.orderType}
+              onValueChange={(value) => setParam('orderType', value)}
+              options={[
+                { value: 'all', label: '全部订单类型' },
+                ...Object.entries(ORDER_TYPE_LABELS).map(([value, label]) => ({ value, label })),
+              ]}
+            />
+            <Select
+              aria-label="商品类型"
+              value={query.productType}
+              onValueChange={(value) => setParam('productType', value)}
+              options={[
+                { value: 'all', label: '全部商品类型' },
+                { value: 'cloud-server', label: '云服务器' },
+                { value: 'physical-machine', label: '物理机' },
+                { value: 'storage', label: '存储' },
+                { value: 'software', label: '软件' },
+              ]}
+            />
+            <Select
+              aria-label="订单状态"
+              value={query.status}
+              onValueChange={(value) => setParam('status', value)}
+              options={[
+                { value: 'all', label: '全部状态' },
+                ...Object.entries(ORDER_STATUS_VIEWS).map(([value, view]) => ({ value, label: view.label })),
+              ]}
+            />
+            <Input
+              aria-label="创建日期起始"
+              type="date"
+              value={query.createdAfter}
+              onChange={(event) => setParam('after', event.target.value)}
+            />
           </div>
         )}
         resultLabel={`共 ${orders.length} 个结果`}
@@ -154,11 +265,61 @@ export function OrderListPage() {
         rows={rows}
         getRowKey={(order) => order.id}
         layout="fixed"
-        minWidth="980px"
-        actionsWidth="88px"
-        empty={<PageState title={query.search ? '没有匹配的申请记录' : '暂无申请记录'} description={query.search ? '请调整搜索或筛选条件。' : '从资源商城提交配置后可在此查看处理进度。'} />}
-        renderRowActions={(order) => <Link to={orderDetailPath(order.id)}>查看详情</Link>}
-        pagination={orders.length > 0 ? <Pagination page={safePage} totalPages={totalPages} totalItems={orders.length} onPageChange={(next) => setParam('page', String(next))} /> : undefined}
+        minWidth="1050px"
+        actionsWidth="92px"
+        renderRowActions={(order) => (
+          <DropdownMenu
+            trigger="更多"
+            aria-label={`${order.id} 更多操作`}
+          >
+            <DropdownMenuItem onSelect={() => navigate(orderDetailPath(order.id))}>
+              查看订单
+            </DropdownMenuItem>
+            {(order.status === 'awaiting-payment' || order.status === 'payment-failed') && (
+              <DropdownMenuItem onSelect={() => navigate(checkoutPath(order.id))}>
+                去支付
+              </DropdownMenuItem>
+            )}
+            {relatedPath(order) && (
+              <DropdownMenuItem onSelect={() => navigate(relatedPath(order)!)}>
+                查看资源
+              </DropdownMenuItem>
+            )}
+            {(order.status === 'awaiting-payment' || order.status === 'payment-failed') && (
+              <DropdownMenuItem danger onSelect={() => setCancelTarget(order)}>
+                取消订单
+              </DropdownMenuItem>
+            )}
+          </DropdownMenu>
+        )}
+        empty={(
+          <PageState
+            title={query.search ? '没有匹配的订单' : '暂无订单'}
+            description={query.search ? '请调整搜索条件。' : '从资源商城或存储购买页创建订单。'}
+          />
+        )}
+        pagination={orders.length ? (
+          <Pagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={orders.length}
+            onPageChange={(next) => setParam('page', String(next))}
+          />
+        ) : undefined}
+      />
+      <PromptModal
+        open={Boolean(cancelTarget)}
+        title="取消订单"
+        description={`确认取消订单 ${cancelTarget?.id ?? ''}？关联待支付账单将同步取消，且不会创建或变更资源。`}
+        variant="danger"
+        confirmLabel="确认取消"
+        cancelLabel="保留订单"
+        onClose={() => setCancelTarget(undefined)}
+        onConfirm={() => {
+          if (cancelTarget) cancelCommerceOrder(cancelTarget.id);
+          setCancelTarget(undefined);
+          setSearchParams(new URLSearchParams(searchParams));
+        }}
       />
     </div>
   );
@@ -167,83 +328,111 @@ export function OrderListPage() {
 export function OrderDetailPage() {
   const { orderId = '' } = useParams();
   const navigate = useNavigate();
+  const [, setRevision] = useState(0);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const order = getOrder(orderId);
 
-  if (!order) return <div className="management-page"><PageState title="未找到申请记录" description="该申请不存在或记录已移除。" actionLabel="返回申请列表" onAction={() => navigate(APP_PATHS.orders)} /></div>;
-  const relatedPath = resourcePath(order);
-  const currentResource = order.resourceId
-    ? getResourceByAnyId(order.resourceId)
-    : undefined;
-  const operations = listOperationRecords().filter((record) => record.targetId === order.id || record.targetId === order.resourceId);
-  const operationColumns: readonly TableColumn<PlatformOperationRecord>[] = [
-    { key: 'action', title: '操作', render: (record) => record.action },
-    { key: 'time', title: '时间', render: (record) => formatDate(record.createdAt) },
-    { key: 'status', title: '状态', render: (record) => <StatusBadge tone={record.status === 'completed' ? 'success' : record.status === 'failed' ? 'error' : 'info'}>{record.status === 'completed' ? '已完成' : record.status === 'failed' ? '失败' : '处理中'}</StatusBadge> },
-    { key: 'message', title: '结果说明', render: (record) => record.message, multiline: true },
-  ];
+  if (!order) {
+    return (
+      <div className="management-page">
+        <PageState
+          title="未找到订单"
+          description="该订单不存在或记录已移除。"
+          actionLabel="返回订单列表"
+          onAction={() => navigate(APP_PATHS.orders)}
+        />
+      </div>
+    );
+  }
+  const bill = getBillForOrder(order.id);
+  const path = relatedPath(order);
 
   return (
     <div className="management-page">
       <Container className="management-detail-header">
-        <TextButton onClick={() => navigate(APP_PATHS.orders)}>返回申请列表</TextButton>
+        <TextButton onClick={() => navigate(APP_PATHS.orders)}>返回订单列表</TextButton>
         <div className="management-detail-header__main">
-          <div><span>申请编号</span><h2>{order.id}</h2><p>{resourceTypeLabel(order)} · {order.site}</p></div>
-          <StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>{ORDER_STATUS_VIEWS[order.status].label}</StatusBadge>
+          <div>
+            <span>订单编号</span>
+            <h2>{order.id}</h2>
+            <p>{ORDER_TYPE_LABELS[order.orderType]} · {productTypeLabel(order.productType)} · {order.site}</p>
+          </div>
+          <StatusBadge tone={ORDER_STATUS_VIEWS[order.status].tone}>
+            {ORDER_STATUS_VIEWS[order.status].label}
+          </StatusBadge>
+        </div>
+        <div className="management-detail-actions">
+          {(order.status === 'awaiting-payment' || order.status === 'payment-failed') && (
+            <>
+              <Button variant="primary" onClick={() => navigate(checkoutPath(order.id))}>
+                去支付
+              </Button>
+              <Button onClick={() => setCancelOpen(true)}>取消订单</Button>
+            </>
+          )}
+          {path && <Button onClick={() => navigate(path)}>查看资源</Button>}
         </div>
       </Container>
       <div className="management-detail-grid">
         <Container as="section" className="management-detail-section">
-          <h3>提交信息</h3>
+          <h3>订单信息</h3>
           <dl className="management-definition-grid">
-            <div><dt>申请编号</dt><dd>{order.id}</dd></div>
-            <div><dt>申请人</dt><dd>{order.applicant}</dd></div>
-            <div><dt>提交时间</dt><dd>{formatDate(order.submittedAt)}</dd></div>
-            <div><dt>当前状态</dt><dd>{ORDER_STATUS_VIEWS[order.status].label}</dd></div>
-            <div><dt>申请类型</dt><dd>{APPLICATION_TYPE_LABELS[order.applicationType]}</dd></div>
-            <div><dt>资源类型</dt><dd>{resourceTypeLabel(order)}</dd></div>
+            <div><dt>订单类型</dt><dd>{ORDER_TYPE_LABELS[order.orderType]}</dd></div>
+            <div><dt>商品类型</dt><dd>{productTypeLabel(order.productType)}</dd></div>
+            <div><dt>商品或资源</dt><dd>{order.resourceName ?? order.productName}</dd></div>
+            <div><dt>创建时间</dt><dd>{formatDate(order.createdAt)}</dd></div>
+            <div><dt>计费模式</dt><dd>{billingModeLabel(order.billingMode)}</dd></div>
             <div><dt>数量</dt><dd>{order.quantity}</dd></div>
           </dl>
         </Container>
         <Container as="section" className="management-detail-section">
-          <h3>关联资源</h3>
-          {relatedPath ? (
-            <div className="management-related-card">
-              <strong>{order.storageId ? order.resourceName : currentResource?.name ?? order.resourceName ?? order.resourceId}</strong>
-              <span>{order.storageId ?? order.resourceId}</span>
-              {currentResource && <span>{currentResource.project} · {currentResource.tags.join(' · ') || '暂无标签'}</span>}
-              <Link to={relatedPath}>{order.storageId ? '查看存储详情' : '查看资源详情'}</Link>
-            </div>
-          ) : <PageState title="等待资源准备" description="当前申请尚未关联可访问的计算资源。" />}
-        </Container>
-        <Container as="section" className="management-detail-section">
-          <h3>资源配置</h3>
+          <h3>关联信息</h3>
           <dl className="management-definition-grid">
-            {order.summary.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
-            {order.expectedExpiresAt && <div><dt>预计到期时间</dt><dd>{formatDate(order.expectedExpiresAt)}</dd></div>}
-            {order.configurationChanges && <div><dt>配置变化</dt><dd>{order.configurationChanges}</dd></div>}
+            <div><dt>关联账单</dt><dd>{bill ? <Link to={billDetailPath(bill.id)}>{bill.id}</Link> : '按账期出账'}</dd></div>
+            <div><dt>关联资源</dt><dd>{path ? <Link to={path}>{order.resourceId}</Link> : '开通完成后关联'}</dd></div>
+            <div><dt>支付时间</dt><dd>{formatDate(order.paidAt)}</dd></div>
+            <div><dt>完成时间</dt><dd>{formatDate(order.completedAt)}</dd></div>
           </dl>
         </Container>
         <Container as="section" className="management-detail-section">
-          <h3>价格快照</h3>
+          <h3>配置快照</h3>
           <dl className="management-definition-grid">
-            <div><dt>SKU</dt><dd>{order.priceSnapshot.skuId}</dd></div>
-            <div><dt>计费模式</dt><dd>{billingModeLabel(order.priceSnapshot.billingMode)}</dd></div>
-            <div><dt>数量</dt><dd>{order.priceSnapshot.quantity}</dd></div>
-            <div><dt>周期</dt><dd>{order.priceSnapshot.duration ? `${order.priceSnapshot.duration} 个月` : '按实际用量'}</dd></div>
-            <div><dt>总额</dt><dd>{formatMoney(order.priceSnapshot.total)}</dd></div>
-            <div><dt>价格生成时间</dt><dd>{formatDate(order.priceSnapshot.generatedAt)}</dd></div>
+            {order.configurationSummary.map((item) => (
+              <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>
+            ))}
           </dl>
-          <PricingSummary value={order.priceSnapshot} title="费用明细" />
         </Container>
         <Container as="section" className="management-detail-section">
-          <h3>处理进度</h3>
-          <ol className="management-timeline">{order.timeline.map((item) => <li key={`${item.label}-${item.time}`} data-status={item.status}><strong>{item.label}</strong><time>{formatDate(item.time)}</time><p>{item.description}</p></li>)}</ol>
+          <h3>费用明细</h3>
+          <PricingSummary value={order.pricingSnapshot} title="订单价格快照" />
         </Container>
         <Container as="section" className="management-detail-section management-detail-section--wide">
-          <h3>操作记录</h3>
-          <DataTable title="申请操作记录" embedded enableDensity={false} enableColumnSettings={false} aria-label="申请操作记录" columns={operationColumns} rows={operations} getRowKey={(record) => record.id} />
+          <h3>订单时间线</h3>
+          <ol className="management-timeline">
+            {order.timeline.map((item) => (
+              <li key={`${item.label}-${item.time}`} data-status={item.status}>
+                <strong>{item.label}</strong>
+                <time>{formatDate(item.time)}</time>
+                <p>{item.description}</p>
+              </li>
+            ))}
+          </ol>
         </Container>
       </div>
+      <PromptModal
+        open={cancelOpen}
+        title="取消订单"
+        description="关联待支付账单将同步取消，且不会创建或变更资源。"
+        variant="danger"
+        confirmLabel="确认取消"
+        cancelLabel="保留订单"
+        onClose={() => setCancelOpen(false)}
+        onConfirm={() => {
+          cancelCommerceOrder(order.id);
+          setCancelOpen(false);
+          setRevision((value) => value + 1);
+        }}
+      />
     </div>
   );
 }
@@ -254,55 +443,50 @@ const MODULE_LABELS: Readonly<Record<OperationModule, string>> = {
   image: '镜像',
   software: '软件',
   network: '网络',
-  order: '申请',
-};
-
-const OPERATION_LABELS: Readonly<Record<OperationStatus, string>> = {
-  submitted: '已提交',
-  processing: '处理中',
-  completed: '已完成',
-  failed: '失败',
+  order: '订单',
+  bill: '账单',
 };
 
 export function OperationRecordsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const pageHeader = useMemo(() => ({
-    description: '跨模块追踪提交、处理、完成和失败的操作。',
-  }), []);
-  useConsolePageHeader(pageHeader);
+  useConsolePageHeader(useMemo(() => ({
+    description: '跨模块追踪等待执行、执行中、已完成、失败和已取消的操作。',
+  }), []));
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const search = searchParams.get('q')?.toLocaleLowerCase() ?? '';
   const module = (searchParams.get('module') ?? 'all') as 'all' | OperationModule;
   const status = (searchParams.get('status') ?? 'all') as 'all' | OperationStatus;
-  const after = searchParams.get('after') ?? '';
   const records = listOperationRecords().filter((record) => {
     if (search && ![record.action, record.targetId, record.targetName, record.message].join(' ').toLocaleLowerCase().includes(search)) return false;
     if (module !== 'all' && record.module !== module) return false;
     if (status !== 'all' && record.status !== status) return false;
-    if (after && record.createdAt.slice(0, 10) < after) return false;
     return true;
   });
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key);
     else next.set(key, value);
-    next.delete('page');
+    if (key !== 'page') next.delete('page');
     setSearchParams(next);
   }
   const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const rows = records.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const columns: readonly TableColumn<PlatformOperationRecord>[] = [
-    { key: 'action', title: '操作类型', sortable: true, sortValue: (record) => record.action, hideable: false, render: (record) => <strong>{record.action}</strong> },
-    { key: 'module', title: '模块', sortable: true, sortValue: (record) => MODULE_LABELS[record.module], render: (record) => MODULE_LABELS[record.module] },
-    { key: 'target', title: '操作对象', render: (record) => {
-      const current = getResourceByAnyId(record.targetId);
-      return record.targetPath ? <Link to={record.targetPath}>{current?.name ?? record.targetName}</Link> : <div className="management-primary-cell"><span>{record.targetName}</span><span>{record.targetId}</span></div>;
-    } },
-    { key: 'actor', title: '操作人', sortable: true, sortValue: (record) => record.actor, render: (record) => record.actor },
+    { key: 'action', title: '操作类型', hideable: false, render: (record) => <strong>{record.action}</strong> },
+    { key: 'module', title: '模块', render: (record) => MODULE_LABELS[record.module] },
+    { key: 'target', title: '操作对象', render: (record) => record.targetPath ? <Link to={record.targetPath}>{record.targetName}</Link> : record.targetName },
     { key: 'time', title: '时间', sortable: true, sortValue: (record) => record.createdAt, render: (record) => formatDate(record.createdAt) },
-    { key: 'status', title: '执行状态', sortable: true, sortValue: (record) => record.status, render: (record) => <StatusBadge tone={record.status === 'completed' ? 'success' : record.status === 'failed' ? 'error' : 'info'}>{OPERATION_LABELS[record.status]}</StatusBadge> },
-    { key: 'message', title: '结果说明', render: (record) => record.message, multiline: true },
+    {
+      key: 'status',
+      title: '主状态',
+      render: (record) => (
+        <StatusBadge tone={OPERATION_STATUS_VIEWS[record.status].tone}>
+          {OPERATION_STATUS_VIEWS[record.status].label}
+        </StatusBadge>
+      ),
+    },
+    { key: 'message', title: '结果说明', multiline: true, render: (record) => record.message },
   ];
   return (
     <div className="management-page">
@@ -310,22 +494,53 @@ export function OperationRecordsPage() {
         className="management-table"
         aria-label="操作记录列表"
         eyebrow="跨模块操作追踪"
-        title="记录明细"
-        description="快速定位失败、处理中和已完成的资源操作。"
+        title="操作记录"
+        description="免费运维操作在此追踪，不生成订单或账单。"
         toolbar={(
           <div className="management-filter-grid management-filter-grid--four">
-            <SearchInput aria-label="搜索操作记录" value={searchParams.get('q') ?? ''} placeholder="搜索操作、对象或结果" onChange={(event) => setParam('q', event.target.value)} clearable onClear={() => setParam('q', '')} />
-            <Select aria-label="操作模块" value={module} onValueChange={(value) => setParam('module', value)} options={[{ value: 'all', label: '全部模块' }, ...Object.entries(MODULE_LABELS).map(([value, label]) => ({ value, label }))]} />
-            <Select aria-label="执行状态" value={status} onValueChange={(value) => setParam('status', value)} options={[{ value: 'all', label: '全部状态' }, ...Object.entries(OPERATION_LABELS).map(([value, label]) => ({ value, label }))]} />
-            <Input aria-label="操作日期起始" type="date" value={after} onChange={(event) => setParam('after', event.target.value)} />
+            <SearchInput
+              aria-label="搜索操作记录"
+              value={searchParams.get('q') ?? ''}
+              placeholder="搜索操作、对象或结果"
+              onChange={(event) => setParam('q', event.target.value)}
+              clearable
+              onClear={() => setParam('q', '')}
+            />
+            <Select
+              aria-label="操作模块"
+              value={module}
+              onValueChange={(value) => setParam('module', value)}
+              options={[
+                { value: 'all', label: '全部模块' },
+                ...Object.entries(MODULE_LABELS).map(([value, label]) => ({ value, label })),
+              ]}
+            />
+            <Select
+              aria-label="执行状态"
+              value={status}
+              onValueChange={(value) => setParam('status', value)}
+              options={[
+                { value: 'all', label: '全部状态' },
+                ...Object.entries(OPERATION_STATUS_VIEWS).map(
+                  ([value, view]) => ({ value, label: view.label }),
+                ),
+              ]}
+            />
           </div>
         )}
         resultLabel={`共 ${records.length} 个结果`}
         columns={columns}
         rows={rows}
         getRowKey={(record) => record.id}
-        empty={<PageState title={search ? '没有匹配的操作记录' : '暂无操作记录'} description={search ? '请调整搜索或筛选条件。' : '资源、存储、镜像、软件、网络和配置提交操作将在此汇总。'} />}
-        pagination={records.length > 0 ? <Pagination page={safePage} totalPages={totalPages} totalItems={records.length} onPageChange={(next) => setParam('page', String(next))} /> : undefined}
+        empty={<PageState title="暂无操作记录" />}
+        pagination={records.length ? (
+          <Pagination
+            page={safePage}
+            totalPages={totalPages}
+            totalItems={records.length}
+            onPageChange={(next) => setParam('page', String(next))}
+          />
+        ) : undefined}
       />
     </div>
   );

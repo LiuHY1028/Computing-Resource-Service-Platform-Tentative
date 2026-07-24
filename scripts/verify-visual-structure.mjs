@@ -16,6 +16,8 @@ const fileStyles = read('src/styles/file-manager.css');
 const dataTable = read('src/components/ui/DataTable/DataTable.tsx');
 const usageMeter = read('src/components/ui/UsageMeter/UsageMeter.tsx');
 const statusBadge = read('src/components/ui/StatusBadge/StatusBadge.tsx');
+const storagePurchase = read('src/pages/StoragePurchasePage.tsx');
+const storagePurchaseStyles = read('src/styles/storage-purchase.css');
 const packageJson = JSON.parse(read('package.json'));
 
 check(
@@ -108,6 +110,7 @@ const formalTableOwners = [
   'src/pages/NetworkAccessPage.tsx',
   'src/pages/ImagesPage.tsx',
   'src/pages/OrdersPage.tsx',
+  'src/pages/BillsPage.tsx',
   'src/features/resources/components/ResourceTable.tsx',
   'src/features/resources/components/ResourceDetailPanels.tsx',
   'src/features/purchase/components/NetworkRulesEditor.tsx',
@@ -125,6 +128,36 @@ check(
     && storageActions.includes('!space.mounts.length')
     && storageActions.includes('<DropdownMenu'),
   '存储操作列必须按资源状态最多呈现两个直接操作，其余进入 DropdownMenu。',
+);
+
+check(
+  storagePurchase.includes('storage-product-grid')
+    && storagePurchase.includes('storage-tier-grid')
+    && storagePurchase.includes('type="range"')
+    && storagePurchase.includes('storage-capacity-presets')
+    && storagePurchase.includes('storage-stepper')
+    && storagePurchase.includes('<Switch')
+    && storagePurchase.includes('attachAfterPurchase &&'),
+  '存储购买页必须保留产品卡、规格卡、容量滑块与快捷项、Stepper、Switch 和条件挂载区。',
+);
+check(
+  storagePurchase.includes('storage-quote')
+    && storagePurchaseStyles.includes('.storage-quote { position: sticky;')
+    && !storagePurchaseStyles.match(/\.storage-quote[^}]*overflow:\s*(?:auto|scroll)/s),
+  '存储购买页必须使用无内部滚动的 Sticky 实时报价面板。',
+);
+check(
+  storagePurchase.includes('storage-order-confirmation')
+    && storagePurchase.includes('创建订单并支付')
+    && storagePurchase.includes('确认订单'),
+  '存储购买页必须提供独立确认订单阶段和正式支付入口。',
+);
+check(
+  !storagePurchase.includes('storage-configurator__header')
+    && !storagePurchase.match(/<h1[^>]*>\s*购买存储\s*<\/h1>/)
+    && !storagePurchase.includes('storage-purchase-step')
+    && !storagePurchase.match(/提交购买申请|提交申请/),
+  '存储购买页不得保留重复标题、旧大数字区块或申请型提交动作。',
 );
 
 check(
@@ -151,4 +184,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`视觉结构验证通过：${formalTableOwners.length} 个正式表格入口已迁移，存储与文件样板结构有效。`);
+console.log(`视觉结构验证通过：${formalTableOwners.length} 个正式表格入口已迁移，存储购买、存储管理与文件样板结构有效。`);

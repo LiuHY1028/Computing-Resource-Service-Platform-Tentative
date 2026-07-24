@@ -105,7 +105,7 @@ describe('marketplace production-source policies', () => {
     ).toEqual([]);
     expect(
       sourceOffenders(
-        /\u539f\u4ef7|\u5212\u7ebf\u4ef7|\u4f18\u60e0\u5238|\u65b0\u4eba\u4f18\u60e0|\u9650\u65f6|\u5012\u8ba1\u65f6|\u4fc3\u9500|\u6d3b\u52a8\u4ef7|\u7acb\u5373\u8d2d\u4e70|\u5145\u503c|\u652f\u4ed8|\b(?:discount|coupon|promotion|checkout)\b/iu,
+        /\u539f\u4ef7|\u5212\u7ebf\u4ef7|\u4f18\u60e0\u5238|\u65b0\u4eba\u4f18\u60e0|\u9650\u65f6|\u5012\u8ba1\u65f6|\u4fc3\u9500|\u6d3b\u52a8\u4ef7|\u7acb\u5373\u8d2d\u4e70|\u5145\u503c|\b(?:discount|coupon|promotion)\b/iu,
       ),
     ).toEqual([]);
     expect(
@@ -137,7 +137,7 @@ describe('marketplace production-source policies', () => {
       ['\u5b58\u50a8\u7ba1\u7406', '/console/storage'],
       ['\u955c\u50cf\u7ba1\u7406', '/console/images'],
       ['\u7f51\u7edc\u4e0e\u8bbf\u95ee', '/console/network-access'],
-      ['\u8ba2\u5355\u4e0e\u8bb0\u5f55', '/console/orders'],
+      ['\u8ba2\u5355\u4e0e\u8d26\u5355', '/console/orders'],
     ]);
     expect(
       navigationGroups[0]?.items.at(-1)?.children?.map((item) => [
@@ -146,6 +146,7 @@ describe('marketplace production-source policies', () => {
       ]),
     ).toEqual([
       ['\u8ba2\u5355', '/console/orders'],
+      ['\u8d26\u5355', '/console/bills'],
       ['\u64cd\u4f5c\u8bb0录', '/console/operation-records'],
     ]);
 

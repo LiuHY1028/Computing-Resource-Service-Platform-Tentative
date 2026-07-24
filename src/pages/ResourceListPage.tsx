@@ -307,7 +307,7 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
                 <Button variant="secondary" onClick={() => openBatch('renew')}>批量续费</Button>
                 <Button variant="secondary" onClick={() => openBatch('auto-renew')}>批量自动续费</Button>
               </>
-            ) : <Button variant="secondary" onClick={() => openBatch('extend')}>批量申请延期</Button>}
+            ) : <Button variant="secondary" onClick={() => openBatch('extend')}>批量续租</Button>}
             <Button variant="secondary" onClick={() => openBatch('metadata')}>批量项目与标签</Button>
           </>
         )}

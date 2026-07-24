@@ -40,7 +40,7 @@ describe('networkStore', () => {
     ).rejects.toThrow('1 至 65535');
   });
 
-  it('stores new rules and deletions as processing requests', async () => {
+  it('applies free rule changes directly without creating a commerce request', async () => {
     const rule = await createNetworkRule({
       resourceId: 'cs-west-003',
       resourceName: '数据处理节点-03',
@@ -54,8 +54,9 @@ describe('networkStore', () => {
       source: '192.0.2.0/24',
       description: '数据服务',
     });
-    expect(rule.status).toBe('processing');
+    expect(rule.status).toBe('effective');
     expect(getNetworkRulesForResource('cs-west-003')).toHaveLength(1);
-    await expect(deleteNetworkRule(rule.id)).rejects.toThrow('处理中');
+    await deleteNetworkRule(rule.id);
+    expect(getNetworkRulesForResource('cs-west-003')).toHaveLength(0);
   });
 });

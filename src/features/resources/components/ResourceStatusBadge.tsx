@@ -3,12 +3,18 @@ import { RESOURCE_STATUS_LABELS } from '../formatters';
 import type { ResourceStatus } from '../types';
 
 const TONES: Readonly<Record<ResourceStatus, StatusBadgeTone>> = {
+  creating: 'info',
   running: 'success',
   stopped: 'neutral',
   preparing: 'info',
-  operating: 'info',
+  'powered-off': 'neutral',
+  restarting: 'info',
+  resizing: 'info',
+  maintenance: 'warning',
+  expiring: 'warning',
   abnormal: 'error',
   expired: 'error',
+  releasing: 'warning',
 };
 
 export function ResourceStatusBadge({

@@ -1,23 +1,41 @@
 import type { PriceSnapshot } from '../pricing';
 
-export type OrderStatus = 'pending' | 'preparing' | 'delivered' | 'cancelled' | 'failed';
-export type OrderResourceType = 'cloud-server' | 'physical-machine' | 'storage';
-export type ApplicationType =
-  | 'new-purchase'
-  | 'cloud-renewal'
-  | 'auto-renewal'
-  | 'physical-extension'
-  | 'configuration-change'
-  | 'storage-purchase'
-  | 'storage-expansion'
-  | 'storage-renewal'
-  | 'storage-mount'
-  | 'storage-unmount'
-  | 'storage-release'
-  | 'os-reinstall'
-  | 'resource-release';
+export type OrderStatus =
+  | 'awaiting-payment'
+  | 'paying'
+  | 'paid'
+  | 'provisioning'
+  | 'completed'
+  | 'cancelled'
+  | 'payment-failed'
+  | 'refunding'
+  | 'refunded';
+
+export type OrderType =
+  | 'purchase'
+  | 'renewal'
+  | 'rentalRenewal'
+  | 'resize'
+  | 'storageExpansion'
+  | 'softwarePurchase'
+  | 'refund';
+
+export type OrderProductType =
+  | 'cloud-server'
+  | 'physical-machine'
+  | 'storage'
+  | 'software';
 
 export type OrderSummaryItem = Readonly<{ label: string; value: string }>;
+
+export type OrderLineItem = Readonly<{
+  id: string;
+  name: string;
+  description?: string;
+  quantity: number;
+  amount: PriceSnapshot['total'];
+}>;
+
 export type OrderTimelineItem = Readonly<{
   label: string;
   time: string;
@@ -25,34 +43,76 @@ export type OrderTimelineItem = Readonly<{
   description: string;
 }>;
 
-export type PurchaseOrder = Readonly<{
+export type CommerceFulfillment =
+  | Readonly<{
+      kind: 'resource-purchase';
+      resourceType: 'cloud-server' | 'physical-machine';
+      skuId: string;
+      configuration: Readonly<Record<string, unknown>>;
+    }>
+  | Readonly<{
+      kind: 'storage-purchase';
+      configuration: Readonly<Record<string, unknown>>;
+    }>
+  | Readonly<{
+      kind: 'resource-renewal' | 'resource-rental-renewal';
+      resourceId: string;
+      periodMonths: 1 | 3 | 6 | 12;
+    }>
+  | Readonly<{
+      kind: 'resource-resize';
+      resourceId: string;
+      changes: string;
+    }>
+  | Readonly<{
+      kind: 'storage-renewal';
+      storageId: string;
+      periodMonths: 1 | 3 | 6 | 12;
+    }>
+  | Readonly<{
+      kind: 'storage-expansion';
+      storageId: string;
+      capacityGb: number;
+    }>
+  | Readonly<{
+      kind: 'software-purchase';
+      softwareId: string;
+      resourceId: string;
+      version: string;
+    }>;
+
+export type CommerceOrder = Readonly<{
   id: string;
-  applicationType: ApplicationType;
-  resourceType: OrderResourceType;
+  orderType: OrderType;
+  productType: OrderProductType;
   productName: string;
-  specificationSummary: string;
-  quantity: number;
-  site: string;
-  applicant: '当前用户';
-  submittedAt: string;
-  status: OrderStatus;
   resourceId?: string;
   resourceIds?: readonly string[];
   resourceName?: string;
-  storageId?: string;
-  expectedExpiresAt?: string;
-  configurationChanges?: string;
-  summary: readonly OrderSummaryItem[];
+  items: readonly OrderLineItem[];
+  pricingSnapshot: PriceSnapshot;
+  status: OrderStatus;
+  createdAt: string;
+  paidAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  site: string;
+  quantity: number;
+  billingMode: string;
+  billingPeriod?: Readonly<{ startAt: string; endAt: string }>;
+  configurationSummary: readonly OrderSummaryItem[];
   timeline: readonly OrderTimelineItem[];
-  priceSnapshot: PriceSnapshot;
+  fulfillment?: CommerceFulfillment;
 }>;
+
+export type PurchaseOrder = CommerceOrder;
 
 export type OrderQuery = Readonly<{
   search?: string;
-  applicationType?: 'all' | ApplicationType;
-  resourceType?: 'all' | OrderResourceType;
+  orderType?: 'all' | OrderType;
+  productType?: 'all' | OrderProductType;
   status?: 'all' | OrderStatus;
   site?: string;
-  submittedAfter?: string;
+  createdAfter?: string;
   related?: 'all' | 'yes' | 'no';
 }>;

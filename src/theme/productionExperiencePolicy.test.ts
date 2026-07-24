@@ -39,9 +39,9 @@ describe('production-like user experience policy', () => {
     ).toEqual([]);
   });
 
-  it('does not claim external side effects that are not implemented', () => {
+  it('does not claim external payment, inventory or infrastructure side effects', () => {
     expect(
-      offenders(/支付已完成|订单已创建|资源已开通|库存已扣减|审批已通过|已分配真实 IP/iu),
+      offenders(/真实支付|第三方交易号|库存已扣减|审批已通过|已分配真实 IP/iu),
     ).toEqual([]);
   });
 

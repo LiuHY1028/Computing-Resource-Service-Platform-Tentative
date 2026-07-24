@@ -1,19 +1,22 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { APP_PATHS, orderDetailPath, storageDetailPath } from '../app/routes';
+import { APP_PATHS, checkoutPath } from '../app/routes';
+import { NavigationIcon } from '../app/shell/icons/AppShellIcons';
+import { useConsolePageHeader } from '../app/shell/PageHeaderContext';
 import {
   Button,
-  CardRadio,
   Checkbox,
   Container,
   FormField,
   Input,
-  PageState,
-  RadioGroup,
-  Select,
-  StatusBadge,
+  Switch,
 } from '../components/ui';
-import { calculateStoragePrice, formatMoney } from '../features/pricing';
+import {
+  calculateStoragePrice,
+  formatMoney,
+  getStoragePrice,
+  PricingSummary,
+} from '../features/pricing';
 import { listResources } from '../features/resources/state/resourceStore';
 import {
   purchaseStorage,
@@ -24,7 +27,13 @@ import {
 import '../styles/management.css';
 import '../styles/storage-purchase.css';
 
-const SITES = ['东部算力中心', '西部算力中心', '南部算力中心'];
+const SITES = [
+  { value: '东部算力中心', note: '核心业务与研发工作负载' },
+  { value: '西部算力中心', note: '批处理与数据归档工作负载' },
+  { value: '南部算力中心', note: '验证与弹性业务工作负载' },
+] as const;
+const CAPACITY_PRESETS = [100, 500, 1024, 2048] as const;
+const PERIODS = [1, 3, 6, 12] as const;
 
 function skuId(type: StorageType, tier: StoragePerformanceTier) {
   return type === 'cloud-disk'
@@ -35,169 +44,557 @@ function skuId(type: StorageType, tier: StoragePerformanceTier) {
 export function StoragePurchasePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const requestedTarget = listResources().find((resource) => resource.id === searchParams.get('mount'));
+  const requestedTarget = listResources().find(
+    (resource) => resource.id === searchParams.get('mount'),
+  );
   const requestedSite = requestedTarget?.site ?? searchParams.get('site');
-  const [type, setType] = useState<StorageType>(searchParams.get('type') === 'shared' ? 'shared' : 'cloud-disk');
-  const [tier, setTier] = useState<StoragePerformanceTier>(searchParams.get('tier') === 'performance' ? 'performance' : 'standard');
+  const [stage, setStage] = useState<'configuration' | 'confirmation'>('configuration');
+  const [type, setType] = useState<StorageType>(
+    searchParams.get('type') === 'shared' ? 'shared' : 'cloud-disk',
+  );
+  const [tier, setTier] = useState<StoragePerformanceTier>(
+    searchParams.get('tier') === 'performance' ? 'performance' : 'standard',
+  );
   const [name, setName] = useState('业务数据存储');
-  const [site, setSite] = useState(SITES.includes(requestedSite ?? '') ? requestedSite! : SITES[0]);
+  const [site, setSite] = useState(
+    SITES.some((item) => item.value === requestedSite)
+      ? requestedSite!
+      : SITES[0].value,
+  );
   const [capacityGb, setCapacityGb] = useState(500);
   const [quantity, setQuantity] = useState(1);
-  const [durationMonths, setDurationMonths] = useState<1 | 3 | 6 | 12>(1);
+  const [durationMonths, setDurationMonths] =
+    useState<(typeof PERIODS)[number]>(1);
   const [autoRenew, setAutoRenew] = useState(false);
   const [protocol, setProtocol] = useState<'NFS' | 'SMB'>('NFS');
-  const [mountMode, setMountMode] = useState<'none' | 'immediate'>(requestedTarget ? 'immediate' : 'none');
-  const [targetIds, setTargetIds] = useState<string[]>(requestedTarget ? [requestedTarget.id] : []);
-  const [mountPath, setMountPath] = useState('/data/storage');
+  const [attachAfterPurchase, setAttachAfterPurchase] = useState(Boolean(requestedTarget));
+  const [targetIds, setTargetIds] = useState<string[]>(
+    requestedTarget ? [requestedTarget.id] : [],
+  );
+  const [mountPath, setMountPath] = useState(
+    type === 'shared' ? '/data/shared' : '/data/disk',
+  );
   const [readOnly, setReadOnly] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<Awaited<ReturnType<typeof purchaseStorage>>>();
+  const [feedback, setFeedback] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const pageHeader = useMemo(() => ({
+    description: '选择存储产品、容量与性能，确认实时报价后创建订单。',
+    actions: (
+      <Button onClick={() => navigate(APP_PATHS.storage)}>
+        返回存储管理
+      </Button>
+    ),
+  }), [navigate]);
+  useConsolePageHeader(pageHeader);
 
-  const targets = listResources().filter((resource) => resource.site === site && (type === 'shared' || resource.resourceType === 'cloud-server'));
-  const currentSku = skuId(type, tier);
-  const quote = useMemo(
-    () => calculateStoragePrice({ skuId: currentSku, capacityGb: capacityGb * quantity, durationMonths, label: `${type === 'cloud-disk' ? '云硬盘' : '高性能共享存储'} · ${capacityGb} GB × ${quantity}` }),
-    [capacityGb, currentSku, durationMonths, quantity, type],
+  const targets = listResources().filter(
+    (resource) =>
+      resource.site === site &&
+      (type === 'shared' || resource.resourceType === 'cloud-server'),
   );
+  const currentSku = skuId(type, tier);
+  const currentPrice = getStoragePrice(currentSku)!;
+  const quote = calculateStoragePrice({
+    skuId: currentSku,
+    capacityGb: capacityGb * quantity,
+    durationMonths,
+    label: `${type === 'cloud-disk' ? '云硬盘' : '高性能共享存储'} · ${tier === 'performance' ? '性能型' : '标准型'}`,
+  });
+
+  const input: PurchaseStorageInput = {
+    name: name.trim(),
+    type,
+    skuId: currentSku,
+    performanceTier: tier,
+    site,
+    capacityGb,
+    quantity,
+    durationMonths,
+    autoRenew,
+    protocol: type === 'shared' ? protocol : undefined,
+    mounts: attachAfterPurchase
+      ? targetIds.map((resourceId) => {
+          const resource = targets.find((candidate) => candidate.id === resourceId);
+          return {
+            resourceId,
+            resourceType: resource?.resourceType ?? 'cloud-server',
+            mountPath,
+            deviceName: type === 'cloud-disk' ? '/dev/vdb' : undefined,
+            readOnly,
+          };
+        })
+      : [],
+  };
 
   function changeType(next: StorageType) {
     setType(next);
     setTargetIds([]);
     setMountPath(next === 'shared' ? '/data/shared' : '/data/disk');
+    if (next === 'shared') setQuantity(1);
   }
 
   function toggleTarget(resourceId: string) {
     setTargetIds((current) => {
-      if (current.includes(resourceId)) return current.filter((id) => id !== resourceId);
+      if (current.includes(resourceId)) {
+        return current.filter((id) => id !== resourceId);
+      }
       return type === 'cloud-disk' ? [resourceId] : [...current, resourceId];
     });
   }
 
-  async function submit() {
-    setError('');
-    try {
-      if (mountMode === 'immediate' && !targetIds.length) throw new Error('请选择至少一个立即挂载的目标资源。');
-      const input: PurchaseStorageInput = {
-        name,
-        type,
-        skuId: currentSku,
-        performanceTier: tier,
-        site,
-        capacityGb,
-        quantity,
-        durationMonths,
-        autoRenew,
-        protocol: type === 'shared' ? protocol : undefined,
-        mounts: mountMode === 'none' ? [] : targetIds.map((resourceId) => {
-          const resource = targets.find((candidate) => candidate.id === resourceId);
-          if (!resource) throw new Error('挂载目标不再可用。');
-          return {
-            resourceId,
-            resourceType: resource.resourceType,
-            mountPath,
-            deviceName: type === 'cloud-disk' ? '/dev/vdb' : undefined,
-            readOnly,
-          };
-        }),
-      };
-      setResult(await purchaseStorage(input));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '提交失败。');
+  function validate() {
+    if (!name.trim()) throw new Error('请输入存储名称。');
+    if (attachAfterPurchase && !targetIds.length) {
+      throw new Error('请选择购买后挂载的目标资源。');
+    }
+    if (!Number.isSafeInteger(capacityGb) || capacityGb < 100 || capacityGb > 32768) {
+      throw new Error('容量需为 100 至 32768 GB 的整数。');
     }
   }
 
-  if (result) {
-    return (
-      <main className="management-page">
-        <PageState title="存储购买申请已提交" description={`订单 ${result.order.id} 已创建，${result.spaces.length} 个存储处于准备中；挂载关系将在后续处理中执行。`} />
-        <Container className="storage-purchase-result">
-          <StatusBadge tone="warning">准备中</StatusBadge>
-          <h2>{result.spaces.map((space) => space.name).join('、')}</h2>
-          <p>申请已进入受理流程，存储将在准备完成后按所选配置挂载。</p>
-          <div>
-            <Button variant="primary" onClick={() => navigate(orderDetailPath(result.order.id))}>查看订单</Button>
-            <Button onClick={() => navigate(storageDetailPath(result.spaces[0].id))}>查看存储</Button>
-            <Button onClick={() => navigate(APP_PATHS.storage)}>返回存储管理</Button>
-          </div>
-        </Container>
-      </main>
-    );
+  function confirmOrder() {
+    setError('');
+    try {
+      validate();
+      setStage('confirmation');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '请检查当前配置。');
+    }
   }
 
+  async function createOrder() {
+    if (submitting) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const result = await purchaseStorage(input);
+      navigate(checkoutPath(result.order.id));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '订单创建失败。');
+      setSubmitting(false);
+    }
+  }
+
+  function saveConfiguration() {
+    try {
+      window.sessionStorage.setItem(
+        'storage-purchase-configuration',
+        JSON.stringify(input),
+      );
+      setFeedback('当前配置已保存到本次浏览会话。');
+    } catch {
+      setFeedback('当前配置已在本页面保留。');
+    }
+  }
+
+  const productName = type === 'cloud-disk' ? '云硬盘' : '高性能共享存储';
+  const tierMetrics = type === 'cloud-disk'
+    ? {
+        standard: { scene: '通用业务与开发环境', iops: '8,000 IOPS', throughput: '260 MB/s' },
+        performance: { scene: '数据库与高 IO 工作负载', iops: '16,000 IOPS', throughput: '480 MB/s' },
+      }
+    : {
+        standard: { scene: '共享数据与团队目录', iops: '12,000 IOPS', throughput: '420 MB/s' },
+        performance: { scene: '模型与并行训练数据', iops: '18,500 IOPS', throughput: '620 MB/s' },
+      };
+
   return (
-    <main className="management-page storage-purchase-page">
-      <Container className="storage-purchase-heading">
-        <div><span>存储管理</span><h2>存储配置</h2><p>在一个页面完成类型、规格、挂载和价格确认。</p></div>
-        <Button onClick={() => navigate(APP_PATHS.storage)}>返回存储管理</Button>
-      </Container>
+    <div className="storage-configurator">
+      <nav className="storage-configurator__progress" aria-label="购买进度">
+        <ol>
+          <li data-active={stage === 'configuration'} data-complete={stage === 'confirmation'}>
+            <span>1</span><strong>配置</strong>
+          </li>
+          <li data-active={stage === 'confirmation'}>
+            <span>2</span><strong>确认订单</strong>
+          </li>
+          <li><span>3</span><strong>支付</strong></li>
+        </ol>
+      </nav>
 
-      <div className="storage-purchase-layout">
-        <div className="storage-purchase-form">
-          <Container className="storage-purchase-section">
-            <div className="storage-purchase-step"><span>1</span><div><h2>选择存储类型</h2><p>物理机本地存储不在此处独立购买。</p></div></div>
-            <RadioGroup value={type} onValueChange={(value) => changeType(value as StorageType)} className="storage-type-grid">
-              <CardRadio value="cloud-disk" title="云硬盘" description="独立块存储，一次挂载一台同站点云服务器，适合数据库和高 IO 工作负载。" />
-              <CardRadio value="shared" title="高性能共享存储" description="文件系统语义，可同时挂载多个同站点计算资源，适合共享数据、模型和团队目录。" />
-            </RadioGroup>
-          </Container>
-
-          <Container className="storage-purchase-section">
-            <div className="storage-purchase-step"><span>2</span><div><h2>选择规格</h2><p>价格来自统一存储价格目录。</p></div></div>
-            <div className="storage-purchase-fields">
-              <FormField id="storage-purchase-name" label="存储名称" required><Input id="storage-purchase-name" value={name} onChange={(event) => setName(event.target.value)} /></FormField>
-              <FormField id="storage-purchase-site" label="站点" required><Select id="storage-purchase-site" value={site} onValueChange={(value) => { setSite(value); setTargetIds([]); }} options={SITES.map((value) => ({ value, label: value }))} /></FormField>
-              <FormField id="storage-purchase-tier" label="性能等级" required><Select id="storage-purchase-tier" value={tier} onValueChange={(value) => setTier(value as StoragePerformanceTier)} options={[{ value: 'standard', label: '标准型' }, { value: 'performance', label: '性能型' }]} /></FormField>
-              <FormField id="storage-purchase-capacity" label="容量（GB）" required><Input id="storage-purchase-capacity" type="number" min={10} value={capacityGb} onChange={(event) => setCapacityGb(Math.max(10, Number(event.target.value) || 10))} /></FormField>
-              {type === 'cloud-disk' && <FormField id="storage-purchase-quantity" label="数量" required><Input id="storage-purchase-quantity" type="number" min={1} max={10} value={quantity} onChange={(event) => setQuantity(Math.min(10, Math.max(1, Number(event.target.value) || 1)))} /></FormField>}
-              {type === 'shared' && <FormField id="storage-purchase-protocol" label="协议"><Select id="storage-purchase-protocol" value={protocol} onValueChange={(value) => setProtocol(value as 'NFS' | 'SMB')} options={[{ value: 'NFS', label: 'NFS' }, { value: 'SMB', label: 'SMB' }]} /></FormField>}
-              <FormField id="storage-purchase-duration" label="计费周期"><Select id="storage-purchase-duration" value={String(durationMonths)} onValueChange={(value) => setDurationMonths(Number(value) as 1 | 3 | 6 | 12)} options={[1, 3, 6, 12].map((value) => ({ value: String(value), label: `${value} 个月` }))} /></FormField>
-              <Checkbox className="storage-purchase-check" checked={autoRenew} onCheckedChange={setAutoRenew}>到期后自动续费</Checkbox>
-            </div>
-          </Container>
-
-          <Container className="storage-purchase-section">
-            <div className="storage-purchase-step"><span>3</span><div><h2>是否立即挂载</h2><p>提交后只创建待执行关系，不声明远程挂载已完成。</p></div></div>
-            <RadioGroup value={mountMode} onValueChange={(value) => setMountMode(value as 'none' | 'immediate')} className="storage-mount-mode">
-              <CardRadio value="none" title="暂不挂载" description="存储准备完成后再从存储详情选择资源。" />
-              <CardRadio value="immediate" title="立即挂载" description={type === 'cloud-disk' ? '选择一台同站点云服务器。' : '选择一个或多个同站点计算资源。'} />
-            </RadioGroup>
-            {mountMode === 'immediate' && (
-              <div className="storage-purchase-mount">
-                <div className="storage-target-grid">
-                  {targets.map((resource) => (
-                    <Checkbox key={resource.id} className="storage-target-card" checked={targetIds.includes(resource.id)} onCheckedChange={() => toggleTarget(resource.id)}>
-                      <span><strong>{resource.name}</strong><small>{resource.id} · {resource.resourceType === 'cloud-server' ? '云服务器' : '物理机'}</small></span>
-                    </Checkbox>
-                  ))}
-                </div>
-                {!targets.length && <p>当前站点没有适用的计算资源，可选择暂不挂载。</p>}
-                <div className="storage-purchase-fields">
-                  <FormField id="storage-purchase-path" label="挂载路径"><Input id="storage-purchase-path" value={mountPath} onChange={(event) => setMountPath(event.target.value)} /></FormField>
-                  <Checkbox className="storage-purchase-check" checked={readOnly} onCheckedChange={setReadOnly}>以只读模式挂载</Checkbox>
-                </div>
+      {stage === 'configuration' ? (
+        <div className="storage-configurator__workspace">
+          <Container as="section" className="storage-configurator__main">
+            <section className="storage-config-section" aria-labelledby="storage-product-title">
+              <div className="storage-config-section__heading">
+                <div><span>PRODUCT</span><h2 id="storage-product-title">存储产品</h2></div>
+                <p>先选择块存储或共享文件存储，再配置对应性能。</p>
               </div>
-            )}
+              <div className="storage-product-grid">
+                {([
+                  {
+                    value: 'cloud-disk' as const,
+                    title: '云硬盘',
+                    positioning: '低延迟块存储',
+                    scene: '数据库、应用数据盘和高 IO 工作负载',
+                    mount: '单台同站点云服务器',
+                    performance: '标准型 / 性能型',
+                  },
+                  {
+                    value: 'shared' as const,
+                    title: '高性能共享存储',
+                    positioning: '多节点共享文件存储',
+                    scene: '共享数据、模型目录和团队协作',
+                    mount: '多台同站点计算资源',
+                    performance: 'NFS / SMB',
+                  },
+                ]).map((product) => {
+                  const entry = getStoragePrice(skuId(product.value, 'standard'))!;
+                  const selected = type === product.value;
+                  return (
+                    <button
+                      type="button"
+                      key={product.value}
+                      className="storage-product-card"
+                      data-selected={selected}
+                      aria-pressed={selected}
+                      onClick={() => changeType(product.value)}
+                    >
+                      <span className="storage-product-card__icon">
+                        <NavigationIcon name="storage" />
+                      </span>
+                      {selected && (
+                        <span className="storage-product-card__check">已选择</span>
+                      )}
+                      <strong>{product.title}</strong>
+                      <span>{product.positioning}</span>
+                      <dl>
+                        <div><dt>典型场景</dt><dd>{product.scene}</dd></div>
+                        <div><dt>挂载方式</dt><dd>{product.mount}</dd></div>
+                        <div><dt>性能特点</dt><dd>{product.performance}</dd></div>
+                      </dl>
+                      <small>¥{(entry.unitPriceFen / 100).toFixed(2)} / GB / 月起</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="storage-config-section" aria-labelledby="storage-basic-title">
+              <div className="storage-config-section__heading">
+                <div><span>LOCATION</span><h2 id="storage-basic-title">基础配置</h2></div>
+                <p>存储与挂载目标必须处于同一站点。</p>
+              </div>
+              <FormField id="storage-purchase-name" label="存储名称" required>
+                <Input
+                  id="storage-purchase-name"
+                  value={name}
+                  maxLength={48}
+                  showCount
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </FormField>
+              <div className="storage-site-grid" role="group" aria-label="站点">
+                {SITES.map((item) => (
+                  <button
+                    type="button"
+                    key={item.value}
+                    data-selected={site === item.value}
+                    aria-pressed={site === item.value}
+                    onClick={() => {
+                      setSite(item.value);
+                      setTargetIds([]);
+                    }}
+                  >
+                    <span className="storage-site-grid__availability">可用</span>
+                    <strong>{item.value}</strong>
+                    <small>{item.note}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="storage-config-section" aria-labelledby="storage-performance-title">
+              <div className="storage-config-section__heading">
+                <div><span>CAPACITY & PERFORMANCE</span><h2 id="storage-performance-title">容量与性能</h2></div>
+                <p>性能等级决定单位容量的 IOPS、吞吐与价格。</p>
+              </div>
+              <div className="storage-tier-grid" role="group" aria-label="性能等级">
+                {(['standard', 'performance'] as const).map((value) => {
+                  const entry = getStoragePrice(skuId(type, value))!;
+                  const metrics = tierMetrics[value];
+                  return (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-pressed={tier === value}
+                      data-selected={tier === value}
+                      onClick={() => setTier(value)}
+                    >
+                      <span>{value === 'standard' ? '标准型' : '性能型'}</span>
+                      <strong>{metrics.scene}</strong>
+                      <dl>
+                        <div><dt>IOPS</dt><dd>{metrics.iops}</dd></div>
+                        <div><dt>吞吐</dt><dd>{metrics.throughput}</dd></div>
+                      </dl>
+                      <small>{formatMoney({ amountFen: entry.unitPriceFen, currency: 'CNY' })} / GB / 月</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="storage-capacity-control">
+                <div className="storage-capacity-control__label">
+                  <div><strong>容量</strong><span>100 GB – 32 TB</span></div>
+                  <label>
+                    <Input
+                      id="storage-capacity-input"
+                      aria-label="容量"
+                      type="number"
+                      min={100}
+                      max={32768}
+                      value={capacityGb}
+                      onChange={(event) =>
+                        setCapacityGb(
+                          Math.min(32768, Math.max(100, Number(event.target.value) || 100)),
+                        )}
+                    />
+                    <span>GB</span>
+                  </label>
+                </div>
+                <input
+                  className="storage-capacity-slider"
+                  aria-label="容量滑块"
+                  type="range"
+                  min={100}
+                  max={32768}
+                  step={1}
+                  value={capacityGb}
+                  onChange={(event) => setCapacityGb(Number(event.target.value))}
+                />
+                <div className="storage-capacity-presets">
+                  {CAPACITY_PRESETS.map((value) => (
+                    <button
+                      type="button"
+                      key={value}
+                      data-selected={capacityGb === value}
+                      onClick={() => setCapacityGb(value)}
+                    >
+                      {value >= 1024 ? `${value / 1024} TB` : `${value} GB`}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    data-selected={!CAPACITY_PRESETS.includes(capacityGb as never)}
+                    onClick={() => document.getElementById('storage-capacity-input')?.focus()}
+                  >
+                    自定义
+                  </button>
+                </div>
+                <p>
+                  当前配置费用 {formatMoney(quote.total)}，单价 {formatMoney({
+                    amountFen: currentPrice.unitPriceFen,
+                    currency: 'CNY',
+                  })} / GB / 月。
+                </p>
+              </div>
+              {type === 'cloud-disk' && (
+                <div className="storage-stepper-row">
+                  <div><strong>数量</strong><span>一次最多购买 10 块云硬盘</span></div>
+                  <div className="storage-stepper" role="group" aria-label="购买数量">
+                    <button type="button" aria-label="减少数量" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))}>−</button>
+                    <output aria-live="polite">{quantity}</output>
+                    <button type="button" aria-label="增加数量" disabled={quantity >= 10} onClick={() => setQuantity((value) => Math.min(10, value + 1))}>＋</button>
+                  </div>
+                </div>
+              )}
+              {type === 'shared' && (
+                <div className="storage-protocol">
+                  <strong>访问协议</strong>
+                  <div role="group" aria-label="访问协议">
+                    {(['NFS', 'SMB'] as const).map((value) => (
+                      <button
+                        type="button"
+                        key={value}
+                        aria-pressed={protocol === value}
+                        data-selected={protocol === value}
+                        onClick={() => setProtocol(value)}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="storage-config-section" aria-labelledby="storage-duration-title">
+              <div className="storage-config-section__heading">
+                <div><span>DURATION</span><h2 id="storage-duration-title">购买时长</h2></div>
+                <p>周期变化会立即更新右侧应付金额。</p>
+              </div>
+              <div className="storage-period-grid" role="group" aria-label="购买时长">
+                {PERIODS.map((value) => (
+                  <button
+                    type="button"
+                    key={value}
+                    aria-pressed={durationMonths === value}
+                    data-selected={durationMonths === value}
+                    onClick={() => setDurationMonths(value)}
+                  >
+                    <strong>{value} 个月</strong>
+                    <span>{formatMoney(calculateStoragePrice({
+                      skuId: currentSku,
+                      capacityGb: capacityGb * quantity,
+                      durationMonths: value,
+                    }).total)}</span>
+                  </button>
+                ))}
+              </div>
+              <Switch
+                checked={autoRenew}
+                onCheckedChange={setAutoRenew}
+                description="到期前按当前续费规则生成待支付续费订单。"
+              >
+                自动续费
+              </Switch>
+            </section>
+
+            <section className="storage-config-section" aria-labelledby="storage-attach-title">
+              <div className="storage-config-section__heading storage-config-section__heading--switch">
+                <div><span>ATTACHMENT</span><h2 id="storage-attach-title">挂载设置</h2></div>
+                <Switch
+                  checked={attachAfterPurchase}
+                  onCheckedChange={(checked) => {
+                    setAttachAfterPurchase(checked);
+                    if (!checked) setTargetIds([]);
+                  }}
+                  description={attachAfterPurchase ? '资源开通后执行挂载。' : '暂不挂载'}
+                >
+                  购买后挂载
+                </Switch>
+              </div>
+              {attachAfterPurchase && (
+                <div className="storage-attach-panel">
+                  <div className="storage-target-grid">
+                    {targets.map((resource) => (
+                      <Checkbox
+                        key={resource.id}
+                        className="storage-target-card"
+                        checked={targetIds.includes(resource.id)}
+                        onCheckedChange={() => toggleTarget(resource.id)}
+                      >
+                        <span>
+                          <strong>{resource.name}</strong>
+                          <small>{resource.id} · {resource.resourceType === 'cloud-server' ? '云服务器' : '物理机'}</small>
+                        </span>
+                      </Checkbox>
+                    ))}
+                  </div>
+                  {!targets.length && (
+                    <p>当前站点没有适用资源，可关闭“购买后挂载”并在存储开通后操作。</p>
+                  )}
+                  <div className="storage-attach-fields">
+                    <FormField id="storage-purchase-path" label="挂载路径">
+                      <Input
+                        id="storage-purchase-path"
+                        value={mountPath}
+                        onChange={(event) => setMountPath(event.target.value)}
+                      />
+                    </FormField>
+                    <Switch
+                      checked={readOnly}
+                      onCheckedChange={setReadOnly}
+                      description="关闭时使用读写模式。"
+                    >
+                      只读挂载
+                    </Switch>
+                  </div>
+                  <p className="storage-compatibility-note">
+                    {type === 'cloud-disk'
+                      ? '云硬盘仅支持挂载到一台同站点云服务器。'
+                      : '共享存储支持挂载到多台同站点计算资源。'}
+                  </p>
+                </div>
+              )}
+            </section>
+          </Container>
+
+          <aside className="storage-quote">
+            <Container>
+              <div className="storage-quote__heading">
+                <span>REAL-TIME QUOTE</span>
+                <h2>实时报价</h2>
+                <p>配置变化将立即更新费用。</p>
+              </div>
+              <section>
+                <h3>已选配置</h3>
+                <dl className="storage-quote__configuration">
+                  <div><dt>存储类型</dt><dd>{productName}</dd></div>
+                  <div><dt>站点</dt><dd>{site}</dd></div>
+                  <div><dt>性能等级</dt><dd>{tier === 'performance' ? '性能型' : '标准型'}</dd></div>
+                  <div><dt>容量</dt><dd>{capacityGb} GB × {quantity}</dd></div>
+                  <div><dt>周期</dt><dd>{durationMonths} 个月</dd></div>
+                  <div><dt>挂载方式</dt><dd>{attachAfterPurchase ? `购买后挂载 · ${readOnly ? '只读' : '读写'}` : '暂不挂载'}</dd></div>
+                </dl>
+              </section>
+              <section>
+                <h3>费用明细</h3>
+                <dl className="storage-quote__fees">
+                  <div><dt>容量与性能</dt><dd>{formatMoney(quote.total)}</dd></div>
+                  <div><dt>单位价格</dt><dd>{formatMoney({ amountFen: currentPrice.unitPriceFen, currency: 'CNY' })} / GB / 月</dd></div>
+                  <div><dt>数量</dt><dd>× {quantity}</dd></div>
+                  <div><dt>周期</dt><dd>× {durationMonths} 个月</dd></div>
+                </dl>
+                <p>性能费用已计入当前等级单价。</p>
+              </section>
+              <div className="storage-quote__total">
+                <span>应付金额</span>
+                <strong>{formatMoney(quote.total)}</strong>
+              </div>
+              {error && <p className="storage-configurator__error" role="alert">{error}</p>}
+              {feedback && <p className="storage-configurator__feedback" role="status">{feedback}</p>}
+              <Button variant="primary" onClick={confirmOrder}>确认订单</Button>
+              <Button onClick={saveConfiguration}>保存当前配置</Button>
+            </Container>
+          </aside>
+        </div>
+      ) : (
+        <div className="storage-order-confirmation">
+          <Container as="section" className="storage-order-confirmation__main">
+            <div className="storage-config-section__heading">
+              <div><span>ORDER REVIEW</span><h2>确认订单</h2></div>
+              <p>创建订单后将冻结当前配置与价格快照。</p>
+            </div>
+            <section>
+              <h3>商品信息</h3>
+              <dl className="storage-confirmation-grid">
+                <div><dt>商品</dt><dd>{productName}</dd></div>
+                <div><dt>存储名称</dt><dd>{name}</dd></div>
+                <div><dt>站点</dt><dd>{site}</dd></div>
+                <div><dt>性能等级</dt><dd>{tier === 'performance' ? '性能型' : '标准型'}</dd></div>
+                <div><dt>容量与数量</dt><dd>{capacityGb} GB × {quantity}</dd></div>
+                <div><dt>购买周期</dt><dd>{durationMonths} 个月</dd></div>
+                <div><dt>自动续费</dt><dd>{autoRenew ? '已开启' : '未开启'}</dd></div>
+                <div><dt>挂载配置</dt><dd>{attachAfterPurchase ? `${targetIds.length} 个目标 · ${mountPath} · ${readOnly ? '只读' : '读写'}` : '暂不挂载'}</dd></div>
+              </dl>
+            </section>
+            <section className="storage-order-notice">
+              <h3>购买须知</h3>
+              <ul>
+                <li>订单支付完成后进入存储开通流程。</li>
+                <li>历史账单保留本次价格快照，不随价格目录变化。</li>
+                <li>免费挂载和卸载操作不会生成额外账单。</li>
+              </ul>
+            </section>
+          </Container>
+          <Container as="aside" className="storage-confirmation-quote">
+            <PricingSummary value={quote} title="费用明细" />
+            <div className="storage-quote__total">
+              <span>应付金额</span>
+              <strong>{formatMoney(quote.total)}</strong>
+            </div>
+            {error && <p className="storage-configurator__error" role="alert">{error}</p>}
+            <Button variant="primary" disabled={submitting} onClick={() => void createOrder()}>
+              {submitting ? '正在创建订单' : '创建订单并支付'}
+            </Button>
+            <Button disabled={submitting} onClick={() => setStage('configuration')}>
+              返回修改
+            </Button>
           </Container>
         </div>
-
-        <aside className="storage-price-summary">
-          <Container>
-            <div className="storage-purchase-step"><span>4</span><div><h2>价格摘要</h2><p>提交时保存完整价格快照。</p></div></div>
-            <dl>
-              <div><dt>存储类型</dt><dd>{type === 'cloud-disk' ? '云硬盘' : '高性能共享存储'}</dd></div>
-              <div><dt>性能等级</dt><dd>{tier === 'performance' ? '性能型' : '标准型'}</dd></div>
-              <div><dt>容量</dt><dd>{capacityGb} GB × {quantity}</dd></div>
-              <div><dt>周期</dt><dd>{durationMonths} 个月</dd></div>
-              <div><dt>挂载</dt><dd>{mountMode === 'none' ? '暂不挂载' : `${targetIds.length} 个资源 · ${readOnly ? '只读' : '读写'}`}</dd></div>
-              <div><dt>单价</dt><dd>{formatMoney(quote.lineItems[0].unitPrice)} / GB / 月</dd></div>
-            </dl>
-            <div className="storage-price-total"><span>总费用</span><strong>{formatMoney(quote.total)}</strong></div>
-            {error && <p className="storage-dialog-error" role="alert">{error}</p>}
-            <Button variant="primary" onClick={() => void submit()}>提交购买申请</Button>
-            <small>提交后将生成待处理订单，存储与挂载状态可在控制台持续查看。</small>
-          </Container>
-        </aside>
-      </div>
-    </main>
+      )}
+    </div>
   );
 }

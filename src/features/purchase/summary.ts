@@ -72,7 +72,7 @@ export function buildPhysicalSummary(
     { label: '使用时长', value: `${configuration.periodMonths} 个月` },
     { label: '使用说明', value: configuration.purpose.trim() || '未填写（可选）' },
     { label: '网络访问意向', value: networkSummary(configuration.network.sshEnabled, configuration.network.portRules.length) },
-    { label: '交付方式', value: '申请受理后进入资源准备与基础初始化' },
+    { label: '开通方式', value: '支付后进入资源准备与基础初始化' },
     { label: '认证方式', value: 'SSH 密钥' },
     { label: '连接信息', value: '资源交付完成后在“我的资源”提供' },
   ];

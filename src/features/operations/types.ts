@@ -4,13 +4,15 @@ export type OperationModule =
   | 'image'
   | 'software'
   | 'network'
-  | 'order';
+  | 'order'
+  | 'bill';
 
 export type OperationStatus =
-  | 'submitted'
-  | 'processing'
+  | 'waiting'
+  | 'executing'
   | 'completed'
-  | 'failed';
+  | 'failed'
+  | 'cancelled';
 
 export type PlatformOperationRecord = Readonly<{
   id: string;

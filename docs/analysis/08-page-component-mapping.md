@@ -5,7 +5,7 @@
 > 业务依据：[需求基线](./01-requirements-baseline.md)与[信息架构](./04-information-architecture.md)。
 >
 > 视觉依据：[UI 规范提取](./07-ui-spec-extraction.md)。
-> 约束：表中“新增规范外组件”只是为承载已确认业务和完整交互所需的表现组件，不新增计费、审批、权限或状态机规则。
+> 约束：表中“新增规范外组件”只承载已确认业务；交易和单一主状态规则以 DEC-045～047 为准，不新增审批、权限或真实外部支付规则。
 
 ## 1. 组件分层
 
@@ -32,9 +32,10 @@
 | 模板 ID | 名称 | 结构 | 适用页面 | UI 依据 |
 |---|---|---|---|---|
 | `TPL-CATALOG` | 目录/卡片模板 | 页面标题栏 → 标题栏 Tab/筛选 → 24 栏卡片区 → 分页/页面状态 | `MKT-01`、`SW-01` | p.7、p.9、p.12、p.14、p.16、p.17 |
-| `TPL-FORM` | 配置表单模板 | 页面标题栏 → 栅格化分段表单 → 右侧锚点 → 底部操作区；上传区域可按 p.18 使用 800 px 明确宽度 | `BUY-01`、`BUY-02` | p.10-p.13、p.16、p.18 |
+| `TPL-FORM` | 商品配置模板 | 页面标题栏 → 轻量购买进度 → 领域配置工作区 → Sticky 实时报价 → 确认订单 | `BUY-01`、`BUY-02`、`STO-03` | p.10-p.13、p.16、p.18；Task 15 结构重做 |
 | `TPL-LIST` | 列表管理模板 | PageTitleBar → 可选紧凑概览带 → DataTable V2 单一工作区（Command Bar / Selection Bar / 表格 / 结果分页）；按领域启用筛选、批量操作、列设置和密度 | `RES-01`、`RES-03`、`STO-01`、`IMG-01`、`NET-01`、`ORD-01`、`OPS-01` | p.7、p.9-p.12、p.14、p.17；Task 14 结构性视觉返工 |
 | `TPL-DETAIL` | 对象详情模板 | 页面标题栏 → 对象摘要 → 下划线 Tabs/锚点 → 分区容器 | `RES-02`、`RES-04`、`STO-02`、`ORD-02` | p.7、p.8、p.14、p.16、p.18 |
+| `TPL-CHECKOUT` | 收银台模板 | 订单摘要与支付方式 → Sticky 应付金额和费用明细 → 支付/取消 → 交易结果 | `CHK-01` | Task 15 正式交易流程；不接入第三方支付 SDK |
 | `TPL-TASK-MODAL` | 轻量任务模板 | 普通弹窗/抽屉 → 表单 → 确认/取消 → 结果反馈 | 创建存储、上传镜像、安装软件、开放端口等 | p.10-p.13、p.18；Drawer/结果反馈为规范外扩展 |
 
 ## 4. 页面与组件总映射
@@ -51,14 +52,17 @@
 | `RES-03` 物理机列表 | `TPL-LIST`；“我的资源”物理机 Tab | Tabs、Search Input、Select、Button、Table、Pagination、Tooltip | `ResourceStatusBadge`、`PhysicalSpecCell`、`QuickActionMenu` | 搜索/筛选；进入 `RES-04`；发起已确认适用操作；不得假设物理机与云服务器操作完全相同 | `L/E/N/F/P/S/D`；不可用操作说明；交付状态名称保持可替换 | **需要**：状态标识、整机规格单元格、异步反馈。依据：物理机需管理与监控 `REQ-008/010`，具体动作集合待确认 |
 | `RES-04` 物理机详情 | `TPL-DETAIL`；摘要 + 分区/下划线 Tabs | Container、Tabs、Button、Tooltip、Table、Modal、Form | `PhysicalResourceSummary`、`ConnectionInfo`、`MonitoringPanel`、`MetricChart`、`NetworkRuleSummary`、`SoftwareInstallSummary`、`PendingDecisionNotice` | 查看整机规格、IP/连接、CPU/内存/加速卡监控；进入网络/软件/订单；只显示已确认适用操作 | 页面 `L/F`；监控 `L/E/F`；复制 `S`；操作 `P/S/F/D`；OS/镜像/存储适用性待确认提示 | **需要**：物理机摘要、监控图表、连接信息、待确认提示。依据：`REQ-008/010/011/016/017`；PDF 无领域详情与图表 |
 | `STO-01` 存储列表 | `TPL-LIST`；标准页头 + 五项紧凑概览带 + 单一数据工作区 | Search Input、Select、Button、DataTable V2、DropdownMenu、UsageMeter V2、StatusBadge V2、Toast | `StorageIdentityCell`、`MountSummaryCell`、`StorageCompatibilityHint` | 搜索/筛选/排序/密度/列设置；选择后切换批量操作；按类型直达文件或挂载，其余进入菜单 | `L/E/N/F`；容量 Normal/High/Critical；行 Hover/Selected；1366 表格局部滚动 | **需要**：Task 14 样板结构；页头不重复，概览与表格不再套卡，操作有主次和即时反馈 |
-| `STO-03` 存储购买 | `TPL-FORM`；一页式类型、规格、挂载和价格摘要 | Form、CardRadio、Select、Checkbox、Input、PricingSummary、Button | `StorageTypeSelector`、`MountTargetSelector`、`StoragePriceSummary` | 云硬盘/共享存储；性能、容量、数量、周期；立即挂载或暂不挂载；提交 | 校验 Error、价格更新、提交 Processing/Success/Failure | **需要**：存储购买组合。依据：独立购买与统一价格目录 |
+| `STO-03` 存储购买 | `TPL-FORM`；现代商品配置器 + 实时报价 + 独立确认订单阶段 | Button、Input、Switch、Container、PricingSummary | `StorageProductCards`、`StorageTierCards`、`CapacityConfigurator`、`QuantityStepper`、`PeriodCards`、`ConditionalMountSettings`、`StickyQuote` | 比较云硬盘/共享存储；站点、性能、容量、数量、周期和条件挂载；保存配置；确认订单；创建订单并支付 | 校验 Error、报价实时更新、确认阶段、提交 Processing/Failure | **需要**：Task 15 明确推倒重做旧表单 DOM，不使用大数字区块和重复标题 |
 | `STO-04` 文件管理 | 剩余视口高度的单一工作区；两层 Command Bar + 可折叠 Navigation + 文件主区 + 按需 Inspector | Button、SearchInput、Select、Checkbox、DropdownMenu、Modal、UsageMeter V2、PageState、Toast | `FileWorkbench`、`QuickAccess`、`DirectoryTree`、`FileList/Grid`、`ContextMenu`、`FileInspector`、`FilePreview`、`FileTaskPopover` | 前进/后退/上级、搜索、排序、列表/网格、选择后原位切换 Selection Bar、复制/剪切/粘贴、拖放、新建、上传下载、重命名、移动、删除、预览、快捷键、撤销 | 空目录、上传覆盖层、拖动数量、允许/禁止目标、单选/多选、任务成功/失败/重试、Inspector 默认关闭及 1366 覆盖式展示 | **需要**：PDF 无文件管理器；Task 14 文件工作台样板与 1366/1440/1920 验收 |
 | `STO-02` 存储空间详情 | `TPL-DETAIL`；摘要 + 挂载关系列表 | Container、Tabs/锚点、Button、Table、Pagination、Modal、Tooltip | `StorageSummary`、`MountRelationTable`、`StorageTypeBadge`、`CompatibilityNotice` | 查看类型、站点和挂载关系；从关联资源返回；购后挂载/解绑仅在规则确认后开放 | 页面 `L/F`；挂载关系 `L/E/F`；关联资源缺失；操作若未确认则 D/不展示 | **需要**：存储摘要、挂载关系、兼容提示。依据：存储独立管理 `REQ-012/026/027`；文件浏览器不在当前确认范围 |
 | `IMG-01` 镜像管理 | `TPL-LIST`；上传入口使用任务弹窗/抽屉 | Search Input、Select、Button、Table、Pagination、Modal、Form、Tooltip | `ImageCompatibilityBadge`、`UploadImageForm`、`UploadProgress`、`ImageSourceLabel` | 搜索/筛选；打开上传；校验表单；上传并查看结果；作为 `BUY-01` 的关联入口 | `L/E/N/F`；上传校验 Error/D；上传 `P/S/F`；兼容性未知或不兼容提示 | **需要**：Drawer（如采用）、上传进度、兼容性标识、结果反馈。依据：镜像上传与创建选择 `REQ-015`；PDF 仅给上传区域，无进度/兼容性 |
 | `SW-01` 软件中心 | `TPL-CATALOG`；软件卡片 + 安装任务弹窗 | Search Input、Select、筛选标签、Button、Container、Pagination、Modal、Form、Tooltip | `SoftwareCard`、`CompatibilityBadge`、`TargetResourceSelector`、`InstallTaskSummary` | 搜索/筛选；查看软件信息；选择目标资源；发起安装；跳转资源/操作记录 | `L/E/N/F`；目标资源加载 `L/E/F`；不兼容 D；安装 `P/S/F`；版本/卸载规则不擅自出现 | **需要**：软件卡、兼容性标识、安装任务反馈。依据：软件安装 `REQ-017`；PDF 无软件目录与安装进度 |
 | `NET-01` 网络与访问 | `TPL-LIST`；资源关联规则表 + 新建/编辑弹窗 | Search Input、Select、Button、Table、Pagination、Modal、Form、Input、Tooltip | `PortRuleEditor`、`IpAllowlistEditor`、`ResourceSelector`、`ConnectionInfo`、`RuleStatusBadge` | 按资源筛选；查看端口暴露/转发/允许 IP；新建/编辑已确认字段；复制连接信息 | `L/E/N/F`；字段 Normal/Focus/Error/D；提交 `P/S/F`；冲突/非法格式 Error；协议等未确认项不固化 | **需要**：端口规则编辑器、IP 列表编辑器、复制反馈、状态标识。依据：`REQ-014`；PDF 无网络字段组合 |
-| `ORD-01` 订单列表 | `TPL-LIST`；不展示未经确认的价格/支付字段 | Search Input、Select、Tabs（如订单/记录同壳）、Table、Pagination、Tooltip | `OrderStatusBadge`、`ResourceLinkCell`、`PurchaseSnapshotCell` | 搜索/筛选；进入 `ORD-02`；跳转关联资源 | `L/E/N/F`；关联资源缺失；状态枚举未确认时使用可替换展示，不增加金额/支付态 | **需要**：订单状态标识、关联资源单元格。依据：购买记录方向 `REQ-018`；正式状态与金额口径待确认 |
-| `ORD-02` 订单详情 | `TPL-DETAIL`；购买快照 + 关联资源 | Container、Tabs/锚点、Button、Table、Tooltip | `OrderSummary`、`PurchaseSnapshot`、`RelatedResourceCard`、`PendingDecisionNotice` | 查看购买快照；进入关联资源；返回列表并保留上下文 | 页面 `L/F`；关联资源 `L/E/F`；无金额/账单字段；未知订单状态不推断 | **需要**：购买快照、关联资源卡、待确认提示。依据：`REQ-018` 与订单/账单冲突 `CON-007` |
+| `ORD-01` 订单列表 | `TPL-LIST`；交易订单单一主状态 | Search Input、Select、DataTable V2、StatusBadge、Button | `OrderStatusBadge`、`OrderSnapshotCell`、`ResourceLinkCell` | 搜索/筛选；去支付；取消待支付订单；查看订单/资源 | `L/E/N/F`；每行一个主状态；取消确认；关联资源未生成 | **需要**：Task 15 统一订单类型、状态机、价格快照和账单关系 |
+| `ORD-02` 订单详情 | `TPL-DETAIL`；价格快照 + 单一当前状态 + 历史时间线 | Container、StatusBadge、Button、DataTable V2 | `OrderSummary`、`OrderTimeline`、`RelatedBillCard`、`RelatedResourceCard` | 去支付/取消；查看账单和资源；历史节点不与当前状态并列 | 页面 `L/F`；单一当前状态；关联账单/资源缺失 | **需要**：Task 15 订单交易与履约追踪 |
+| `BILL-01` 账单列表 | `TPL-LIST`；账务对象单一主状态 | Search Input、Select、DataTable V2、StatusBadge、Button | `BillStatusBadge`、`OrderLinkCell`、`BillingPeriodCell` | 搜索/筛选；查看账单/订单；未支付账单进入收银台 | `L/E/N/F`；每行一个主状态 | **需要**：Task 15 独立账单模型与正式路由 |
+| `BILL-02` 账单详情 | `TPL-DETAIL`；金额、费用明细与关联交易 | Container、StatusBadge、Button、DataTable V2 | `BillSummary`、`BillLineItems`、`RelatedOrderCard` | 查看订单/资源；未支付时进入收银台 | 页面 `L/F`；单一当前状态；关联对象缺失 | **需要**：Task 15 账单快照和支付信息 |
+| `CHK-01` 收银台 | `TPL-CHECKOUT`；订单核对 + 支付方式 + Sticky 金额 | Container、CardRadio、RadioGroup、Button、PromptModal、PricingSummary、StatusBadge | `CheckoutOrderSummary`、`PaymentMethodSelector`、`CheckoutResult` | 确认支付；取消待支付订单；支付失败重试；完成后查看资源/订单 | 待支付、支付中、支付失败、开通中、完成、取消确认 | **需要**：Task 15 本地交易闭环；不生成第三方交易号 |
 | `OPS-01` 操作记录 | `TPL-LIST`；跨资源操作结果列表 | Search Input、Select、Table、Pagination、Tooltip、Modal（查看失败详情） | `OperationResultBadge`、`OperationTargetLink`、`FailureDetailPanel` | 搜索/筛选；查看操作对象和结果；进入关联资源；查看失败原因并按允许方式重试 | `L/E/N/F`；单条操作 `P/S/F`；关联对象缺失；重试按钮 D 时说明原因 | **需要**：操作结果标识、失败详情、统一重试反馈。依据：完整管理与异常闭环的推断需求 `INF-004/008`；不定义后台状态机 |
 
 ## 5. 业务组件定义与边界
@@ -144,9 +148,10 @@
 | `DropdownMenu` / `DropdownMenuItem` / `DropdownMenuGroup` / `DropdownMenuSeparator` | 资源列表和详情需要在触发器附近承载分组操作，避免使用大型弹窗导航 | Closed、Open、Keyboard focus、Disabled、Danger、Viewport edge | Task 09；使用 Portal 避免表格裁切，具体操作仍由 Modal 承担确认或填写 |
 | `DataTable V2` | 数据密集页面以单一 Command Bar、按需 Filter Summary、Selection Bar、组合单元格、行快捷操作、状态页和结果分页形成连续工作区 | Standard/Compact/Comfortable、Sorted、Selected、Loading、Empty、NoResult、Error、Overflow、Embedded | Task 14；基于公共 `Table` 语义组合，不引入表格库；旧页面标题/筛选卡/表格卡结构不再兼容 |
 | `UsageMeter V2`（兼容 `CapacityBar` / `MiniProgress` / `MetricProgress`） | 表格、概览和文件导航分别用清晰轨道表达总量、已用、剩余、百分比与容量风险 | Table、Overview、Sidebar；Normal、High、Critical、Unknown | Task 14；统一阈值、数值、状态文字和颜色，不引入随机或服务端指标 |
-| `StatusBadge V2` | 运行、健康、容量、任务和订单状态使用文本、形状标记、背景/边框共同表达 | Neutral、Info、Success、Warning、Error、Unknown | Task 14；不得只用彩色圆点，领域状态仍由各 Store 映射 |
+| `StatusBadge V2` | 为每个业务对象的唯一主状态提供文本、形状标记和背景/边框语义 | Neutral、Info、Success、Warning、Error、Unknown | Task 14/15；同一对象同一区域只出现一个，健康、容量和到期风险不得作为第二个主状态 |
 | `FileTaskPopover` | 文件上传、复制、移动、删除和下载的非阻断任务反馈 | Empty、Running、Completed、Failed、Retry、ClearCompleted | Task 14；顶部入口打开浮层，不占工作区整行，不虚构服务端进度 |
-| `PricingSummary` | 在购买、续费、延期、扩容和订单中统一展示整数分费用明细与总额 | Free、Included、Monthly、Hourly、Quantity、Duration | Task 10；金额只读 `src/features/pricing/`，不表达支付或扣款结果 |
+| `PricingSummary` | 在购买、续费、续租、扩容、订单、账单和收银台展示整数分费用明细与总额 | Free、Included、Monthly、Hourly、Quantity、Duration | Task 10/15；金额只读统一价格目录或不可变价格快照 |
+| `Switch` | 自动续费、购买后挂载等即时布尔配置需要比 Checkbox 更明确的开关语义 | On、Off、Hover、Focus、Disabled | Task 15 存储配置器；原生 checkbox 提供 `role=switch`、键盘操作和可见标签 |
 | `PendingDecisionNotice` | 防止将待确认项实现成确定规则 | Inline、Section、Blocking | 使用 p.8 信息/注意容器；文案明确“暂定/待确认” |
 
 ## 7. 公共组件状态覆盖要求

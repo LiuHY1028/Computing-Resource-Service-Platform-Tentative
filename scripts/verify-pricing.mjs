@@ -13,6 +13,7 @@ const source = {
   calculate: read('src/features/pricing/calculatePrice.ts'),
   orders: read('src/features/orders/state/orderStore.ts'),
   orderTypes: read('src/features/orders/types.ts'),
+  bills: read('src/features/bills/state/billStore.ts'),
   resources: read('src/features/resources/data/resourceCatalog.ts'),
   resourceStore: read('src/features/resources/state/resourceStore.ts'),
   storage: read('src/features/storage/state/storageStore.ts'),
@@ -129,18 +130,19 @@ require(
   '报价总额必须由费用明细使用整数分求和。',
 );
 require(
-  /priceSnapshot:\s*PriceSnapshot/.test(source.orderTypes),
+  /pricingSnapshot:\s*PriceSnapshot/.test(source.orderTypes),
   '订单必须包含价格快照。',
 );
 require(
-  source.orders.includes('Array.isArray(order.priceSnapshot?.lineItems)') &&
-    source.orders.includes('Number.isSafeInteger(order.priceSnapshot?.total?.amountFen)'),
+  source.orders.includes('Array.isArray(order.pricingSnapshot?.lineItems)') &&
+    source.orders.includes('Number.isSafeInteger(order.pricingSnapshot?.total?.amountFen)'),
   '订单持久化校验必须拒绝缺失或无效价格快照。',
 );
 require(
-  source.orders.includes('structuredClone(input.priceSnapshot)') &&
-    source.orders.includes('createZeroPriceSnapshot'),
-  '订单必须保存独立价格快照，非计费申请也必须有明确快照。',
+  source.orders.includes('structuredClone(input.pricingSnapshot)') &&
+    source.bills.includes('structuredClone(order.pricingSnapshot.total)') &&
+    source.bills.includes('structuredClone(order.pricingSnapshot.lineItems)'),
+  '订单与账单必须保存独立价格快照。',
 );
 require(
   source.resources.includes('priceSnapshot') &&
@@ -148,26 +150,31 @@ require(
   '已有资源必须保存创建时价格快照。',
 );
 require(
-  source.resourceStore.includes("applicationType: 'cloud-renewal'") &&
+  source.resourceStore.includes("orderType: 'renewal'") &&
     source.resourceStore.includes("current.resourceType !== 'cloud-server'") &&
     source.resourceStore.includes('createRenewalQuote'),
-  '续费订单必须关联有效云服务器并按提交时价格生成快照。',
+  '续费订单必须关联有效云服务器并按确认时价格生成快照。',
 );
 require(
-  source.resourceStore.includes("applicationType: 'physical-extension'") &&
+  source.resourceStore.includes("orderType: 'rentalRenewal'") &&
     source.resourceStore.includes("current.resourceType !== 'physical-machine'") &&
-    source.resourceStore.includes('createExtensionQuote'),
-  '延期订单必须关联有效物理机并按提交时价格生成快照。',
+    source.resourceStore.includes('createRentalRenewalQuote'),
+  '续租订单必须关联有效物理机并按确认时价格生成快照。',
 );
 require(
-  source.storage.includes("applicationType: 'storage-expansion'") &&
-    source.storage.includes('priceSnapshot'),
+  source.storage.includes("orderType: 'storageExpansion'") &&
+    source.storage.includes('pricingSnapshot'),
   '存储扩容订单必须包含价格快照。',
 );
 require(
-  source.storage.includes("applicationType: 'storage-purchase'") &&
-    source.storage.includes("applicationType: 'storage-renewal'"),
-  '存储购买和续期订单必须由统一价格目录生成快照。',
+  source.storage.includes("orderType: 'purchase'") &&
+    source.storage.includes("orderType: 'renewal'"),
+  '存储购买和续费订单必须由统一价格目录生成快照。',
+);
+require(
+  source.calculate.includes('calculateSoftwarePrice') &&
+    source.calculate.includes("category: 'software'"),
+  '收费软件缺少统一价格计算入口。',
 );
 
 if (errors.length) {

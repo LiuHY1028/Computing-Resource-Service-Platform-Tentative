@@ -46,6 +46,21 @@ Business requirements override UI examples on behavior. UI specifications govern
 - Do not merge managed Notebook, training, inference, Token, or model-product workflows from the AI development platform into this product.
 - Do not hardcode OneAiNexus or any other unconfirmed final product name or Logo. Product identity must be configurable.
 
+### Single visible status
+
+- 同一业务对象在同一信息层级只能展示一个主状态，列表与详情必须读取同一状态事实来源。
+- 运行状态、健康信息、到期风险、支付状态、计费模式和操作进度不得并列冒充多个主状态。
+- 健康、风险、计费、时间和使用率应使用普通字段、提示、指标或说明表达，不得堆叠多个 `StatusBadge`。
+- 状态枚举、优先级和迁移必须集中维护，不得散落在页面组件中。
+
+### Commerce terminology
+
+- 资源、存储和收费软件使用自助购买交易语义；新购、续费、续租、收费扩容和收费变配形成订单与账单。
+- 正常商业行为使用购买、确认订单、创建订单、支付、开通、续费、续租、扩容、变配、取消订单等术语。
+- 禁止将正常商业行为表达为申请、提交申请、购买申请、续费申请、延期申请或扩容申请。
+- 免费挂载、卸载、网络规则和其他运维操作直接确认并写入操作记录，不创建订单或账单。
+- “申请”仅用于明确需要人工授权的非交易权限场景；本项目前台默认不使用该表达。
+
 ## UI and interaction
 
 - Use shared Design Tokens and public components defined by the UI extraction and component mapping. Do not scatter duplicate raw values through pages.
@@ -65,6 +80,7 @@ Business requirements override UI examples on behavior. UI specifications govern
 - Establish and accept one visual reference page before migrating the same system to other complex pages.
 - The UI specification is the minimum consistency baseline, not the visual or interaction ceiling.
 - If the rebuilt page remains compositionally similar to a rejected screenshot, the task is not complete.
+- 购买页面必须按商品配置与交易流程组织，包含配置、确认订单和支付衔接；不得退化为普通后台录入表单。
 
 ### UI specification as a quality baseline
 

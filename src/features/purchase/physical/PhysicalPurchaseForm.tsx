@@ -63,9 +63,8 @@ export function PhysicalPurchaseForm({ value, errors, onChange, onConfirm, onRet
         description="说明物理机从配置确认到资源可用后的标准交付流程。"
       >
         <div className="purchase-delivery-notice">
-          <span className="purchase-delivery-notice__mark" aria-hidden="true">i</span>
           <div>
-            <strong>申请受理后进入资源准备和基础初始化</strong>
+            <strong>支付完成后进入资源准备和基础初始化</strong>
             <p>资源交付完成后，可在“我的资源”中查看服务器连接信息并开始使用。</p>
             <ul>
               <li>实际部署时间以资源和网络准备情况为准。</li>
@@ -89,7 +88,7 @@ export function PhysicalPurchaseForm({ value, errors, onChange, onConfirm, onRet
             <div><dt>连接信息</dt><dd>资源交付完成后生成</dd></div>
           </dl>
           <p className="purchase-delivery-information__security">
-            提交时从已登记的 SSH 公钥中选择，交付后写入服务器；不长期明文展示登录密码。BMC/IPMI 管理地址仅向具备权限的用户展示，不在购买页显示。
+            创建订单时只记录 SSH 公钥选择意向；连接凭据与 BMC/IPMI 管理信息必须由真实基础设施安全交付，本页面不生成或展示。
           </p>
         </section>
       </FormSection>
@@ -110,7 +109,7 @@ export function PhysicalPurchaseForm({ value, errors, onChange, onConfirm, onRet
 
       <FormActions
         className="purchase-form__actions"
-        primaryAction={{ label: '确认整机配置', type: 'submit' }}
+        primaryAction={{ label: '确认订单', type: 'submit' }}
         secondaryAction={{ label: '返回资源商城', onClick: onReturn }}
       />
     </Form>

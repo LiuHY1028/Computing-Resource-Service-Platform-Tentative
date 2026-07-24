@@ -30,12 +30,18 @@ export function PurchasePageLayout({
   return (
     <section className="purchase-page" data-resource-type={resourceType} aria-label={title}>
       <header className="purchase-page__header">
-        <span>RESOURCE CONFIGURATOR · 资源配置</span>
+        <span>RESOURCE CONFIGURATOR · 商品配置</span>
         <h1>{title}</h1>
         <p>{description}</p>
       </header>
+      <nav className="purchase-progress" aria-label="购买进度">
+        <ol>
+          <li aria-current="step"><span>1</span><strong>配置</strong></li>
+          <li><span>2</span><strong>确认订单</strong></li>
+          <li><span>3</span><strong>支付</strong></li>
+        </ol>
+      </nav>
       <Container as="section" className="purchase-config-notice" aria-label="配置说明">
-        <span aria-hidden="true">i</span>
         <p><strong>配置说明</strong> · {description}</p>
       </Container>
 
