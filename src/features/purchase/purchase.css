@@ -256,16 +256,55 @@
   gap: var(--space-12);
 }
 
+.purchase-image-none {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.purchase-image-none .ui-card-radio {
+  min-height: auto;
+}
+
+.purchase-image-source-tabs {
+  margin-top: var(--space-16);
+}
+
+.purchase-image-source-tabs .ui-tabs__panel {
+  padding-top: var(--space-12);
+}
+
 .purchase-image-grid .ui-card-radio { min-height: 104px; align-items: flex-start; }
-.purchase-image-grid em {
-  margin-left: var(--space-8);
-  padding: 1px var(--space-6);
+
+.purchase-image-empty {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-16);
+  border: var(--border-default);
+  border-radius: var(--radius-container);
+  background: var(--color-background-page);
+}
+
+.purchase-image-empty strong,
+.purchase-image-selection strong {
+  color: var(--color-text-title);
+}
+
+.purchase-image-empty span,
+.purchase-image-selection span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}
+
+.purchase-image-selection {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-top: var(--space-12);
+  padding: var(--space-8) var(--space-12);
   border-radius: var(--radius-control);
   background: var(--purchase-accent-soft);
-  color: var(--purchase-accent);
-  font-size: var(--font-size-caption);
-  font-style: normal;
-  font-weight: var(--font-weight-regular);
 }
 
 .purchase-field-error { margin: var(--space-8) 0 0; color: var(--color-error); font-size: var(--font-size-caption); }

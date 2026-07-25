@@ -61,21 +61,42 @@ describe('PurchasePage', () => {
     expect(screen.getByText('待支付')).toBeInTheDocument();
   });
 
-  it('lets users select an image and switch back to no image', async () => {
+  it('lets users select public and custom images and switch back to no image', async () => {
     const user = renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-cpu-c8-east');
     await waitForCloud();
 
     const noImage = screen.getByRole('radio', { name: /不选择镜像/ });
+    expect(screen.getByRole('tab', { name: '公共镜像 2' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '自定义镜像 1' })).toBeInTheDocument();
     const baseImage = screen.getByRole('radio', { name: /基础 Linux 运行镜像/ });
     expect(noImage).toBeChecked();
 
     await user.click(baseImage);
     expect(baseImage).toBeChecked();
+    expect(screen.getByText('公共镜像 · 基础 Linux 运行镜像')).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '云服务器配置' })).toHaveTextContent('基础 Linux 运行镜像');
+
+    await user.click(screen.getByRole('tab', { name: '自定义镜像 1' }));
+    const customImage = screen.getByRole('radio', { name: /团队运行环境/ });
+    await user.click(customImage);
+    expect(customImage).toBeChecked();
+    expect(screen.getByText('自定义镜像 · 团队运行环境')).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: '云服务器配置' })).toHaveTextContent('团队运行环境');
 
     await user.click(noImage);
     expect(noImage).toBeChecked();
     expect(screen.getByRole('complementary', { name: '云服务器配置' })).toHaveTextContent('未选择（可选）');
+  });
+
+  it('explains when a GPU product has no compatible custom image', async () => {
+    const user = renderPurchase('/marketplace/cloud-server/purchase?product=catalog-cloud-gpu-g1-east');
+    await waitForCloud();
+
+    expect(screen.getByRole('tab', { name: '公共镜像 3' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '自定义镜像 0' }));
+    const customPanel = screen.getByRole('tabpanel');
+    expect(within(customPanel).getByRole('status')).toHaveTextContent('当前没有兼容且可用的自定义镜像');
+    expect(within(customPanel).getByRole('status')).toHaveTextContent('需处于“可用”状态');
   });
 
   it('updates the quote for billing mode, duration, quantity and image price', async () => {
