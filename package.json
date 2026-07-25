@@ -22,6 +22,10 @@
     "verify:visual-structure": "node scripts/verify-visual-structure.mjs",
     "verify:status": "node scripts/verify-status.mjs",
     "verify:commerce": "node scripts/verify-commerce.mjs",
+    "verify:state": "node scripts/verify-status.mjs",
+    "verify:transaction": "node scripts/verify-commerce.mjs",
+    "verify:images": "node scripts/verify-images.mjs",
+    "verify:network": "node scripts/verify-network.mjs",
     "verify:offline": "node scripts/verify-offline.mjs",
     "preview": "vite preview"
   },

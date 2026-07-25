@@ -283,10 +283,26 @@ function validatePurchase(input: PurchaseStorageInput) {
   }
   const skuId = storageSku(input);
   if (input.skuId !== skuId) throw new Error('存储规格与价格目录不一致。');
-  if (input.type === 'cloud-disk' && input.mounts.length > 1) {
-    throw new Error('云硬盘一次只能挂载到一台云服务器。');
+  if (input.type === 'cloud-disk' && input.mountPlan.mode === 'shared') {
+    throw new Error('云硬盘挂载计划无效。');
   }
-  input.mounts.forEach((mount) => {
+  if (input.type === 'shared' && input.mountPlan.mode === 'cloud-disks') {
+    throw new Error('共享存储挂载计划无效。');
+  }
+  if (
+    input.mountPlan.mode === 'cloud-disks' &&
+    (input.mountPlan.units.length !== input.quantity ||
+      new Set(input.mountPlan.units.map((unit) => unit.unitIndex)).size !== input.quantity)
+  ) {
+    throw new Error('请为每块云硬盘分别配置挂载目标。');
+  }
+  const plannedMounts =
+    input.mountPlan.mode === 'cloud-disks'
+      ? input.mountPlan.units.map((unit) => unit.mount)
+      : input.mountPlan.mode === 'shared'
+        ? input.mountPlan.targets
+        : [];
+  plannedMounts.forEach((mount) => {
     const resource = getResourceByAnyId(mount.resourceId);
     if (!resource || resource.site !== input.site) {
       throw new Error('挂载目标必须是同站点的有效计算资源。');
@@ -324,7 +340,15 @@ export async function purchaseStorage(input: PurchaseStorageInput) {
       { label: '容量', value: `${input.capacityGb} GB` },
       { label: '数量', value: String(input.quantity) },
       { label: '购买周期', value: `${input.durationMonths} 个月` },
-      { label: '挂载配置', value: input.mounts.length ? `购买后挂载 ${input.mounts.length} 个资源` : '暂不挂载' },
+      {
+        label: '挂载配置',
+        value:
+          input.mountPlan.mode === 'later'
+            ? '暂不挂载'
+            : input.mountPlan.mode === 'cloud-disks'
+              ? `逐块挂载 ${input.mountPlan.units.length} 块云硬盘`
+              : `共享挂载 ${input.mountPlan.targets.length} 个资源`,
+      },
     ],
     pricingSnapshot: createPriceSnapshot(input.skuId, combined, now),
     fulfillment: {
@@ -633,7 +657,15 @@ export function fulfillStorageCommerceOrder(order: CommerceOrder) {
     { length: input.quantity },
     (_, index) => {
       const id = `storage-${input.type === 'cloud-disk' ? 'cloud' : 'shared'}-${now.replace(/\D/g, '').slice(0, 14)}-${index + 1}`;
-      const mounts = input.mounts.map((mount, mountIndex) => {
+      const plannedMounts =
+        input.mountPlan.mode === 'later'
+          ? []
+          : input.mountPlan.mode === 'shared'
+            ? input.mountPlan.targets
+            : input.mountPlan.units
+                .filter((unit) => unit.unitIndex === index)
+                .map((unit) => unit.mount);
+      const mounts = plannedMounts.map((mount, mountIndex) => {
         const resource = getResourceByAnyId(mount.resourceId);
         if (!resource) throw new Error('挂载目标不存在。');
         return {

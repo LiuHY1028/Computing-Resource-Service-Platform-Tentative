@@ -7,7 +7,7 @@ import {
   type PriceSnapshot,
 } from '../../pricing';
 import {
-  readVersionedState,
+  readMigratedVersionedState,
   removeVersionedState,
   writeVersionedState,
 } from '../../platform/persistence';
@@ -24,7 +24,7 @@ import type {
 import { ORDER_STATUS_VIEWS } from '../formatters';
 
 const STORAGE_KEY = 'computing-platform:commerce-orders';
-const VERSION = 1;
+const VERSION = 2;
 
 const INITIAL_CLOUD_PRICE = createPriceSnapshot(
   'catalog-cloud-cpu-c16-west',
@@ -104,7 +104,7 @@ const INITIAL_ORDERS: readonly CommerceOrder[] = [
       amount: item.amount,
     })),
     pricingSnapshot: INITIAL_PHYSICAL_PRICE,
-    status: 'provisioning',
+    status: 'fulfilling',
     createdAt: '2026-07-20T05:10:00.000Z',
     paidAt: '2026-07-20T05:12:00.000Z',
     site: '东部算力中心',
@@ -128,7 +128,7 @@ const ORDER_STATUSES: readonly OrderStatus[] = [
   'awaiting-payment',
   'paying',
   'paid',
-  'provisioning',
+  'fulfilling',
   'completed',
   'cancelled',
   'payment-failed',
@@ -139,8 +139,8 @@ const ORDER_STATUSES: readonly OrderStatus[] = [
 const ORDER_TRANSITIONS: Readonly<Record<OrderStatus, readonly OrderStatus[]>> = {
   'awaiting-payment': ['paying', 'payment-failed', 'cancelled'],
   paying: ['paid', 'payment-failed', 'cancelled'],
-  paid: ['provisioning', 'refunding'],
-  provisioning: ['completed', 'refunding'],
+  paid: ['fulfilling', 'refunding'],
+  fulfilling: ['completed', 'refunding'],
   completed: ['refunding'],
   cancelled: [],
   'payment-failed': ['paying', 'cancelled'],
@@ -173,11 +173,30 @@ function isOrder(value: unknown): value is CommerceOrder {
 }
 
 function readOrders() {
-  return readVersionedState(
+  return readMigratedVersionedState(
     STORAGE_KEY,
     VERSION,
     (value): value is CommerceOrder[] =>
       Array.isArray(value) && value.every(isOrder),
+    (value, previousVersion) => {
+      if (previousVersion !== 1 || !Array.isArray(value)) return undefined;
+      return value
+        .filter((candidate) => {
+          if (!candidate || typeof candidate !== 'object') return false;
+          const order = candidate as { orderType?: unknown };
+          return order.orderType !== 'resize';
+        })
+        .map((candidate) => {
+          const order = candidate as Record<string, unknown>;
+          const fulfillment = order.fulfillment as { kind?: unknown } | undefined;
+          return {
+            ...order,
+            status: order.status === 'provisioning' ? 'fulfilling' : order.status,
+            fulfillment:
+              fulfillment?.kind === 'resource-resize' ? undefined : fulfillment,
+          };
+        }) as CommerceOrder[];
+    },
     () => structuredClone(INITIAL_ORDERS) as CommerceOrder[],
   );
 }
@@ -245,7 +264,7 @@ export function createCommerceOrder(input: Readonly<{
     resourceName: input.resourceName,
     items: itemize(input.pricingSnapshot),
     pricingSnapshot: structuredClone(input.pricingSnapshot),
-    status: requiresPayment ? 'awaiting-payment' : 'provisioning',
+    status: requiresPayment ? 'awaiting-payment' : 'fulfilling',
     createdAt,
     site: input.site,
     quantity: input.quantity ?? 1,

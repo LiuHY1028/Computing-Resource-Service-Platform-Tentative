@@ -17,7 +17,7 @@ import type {
   PurchaseSummaryItem,
 } from '../types';
 
-const DRAFT_VERSION = 1;
+const DRAFT_VERSION = 2;
 const draftMemory = new Map<string, string>();
 
 export function loadPurchaseProduct(productId: string) {
@@ -69,11 +69,15 @@ export function savePurchaseDraft<T extends PurchaseConfiguration>(
   productId: string,
   resourceType: MarketplaceResourceType,
   configuration: T,
+  step: 'configuration' | 'confirmation' = 'configuration',
 ) {
   const envelope: PurchaseDraftEnvelope<T> = {
     version: DRAFT_VERSION,
     productId,
     resourceType,
+    productKind: 'compute',
+    step,
+    updatedAt: new Date().toISOString(),
     configuration,
   };
   const serialized = JSON.stringify(envelope);
@@ -88,7 +92,7 @@ export function savePurchaseDraft<T extends PurchaseConfiguration>(
 export function loadPurchaseDraft<T extends PurchaseConfiguration>(
   productId: string,
   resourceType: MarketplaceResourceType,
-): T | undefined {
+): PurchaseDraftEnvelope<T> | undefined {
   const key = draftKey(productId);
   let raw = draftMemory.get(key);
   if (!raw) {
@@ -105,12 +109,15 @@ export function loadPurchaseDraft<T extends PurchaseConfiguration>(
       parsed.version !== DRAFT_VERSION ||
       parsed.productId !== productId ||
       parsed.resourceType !== resourceType ||
+      parsed.productKind !== 'compute' ||
+      (parsed.step !== 'configuration' && parsed.step !== 'confirmation') ||
+      typeof parsed.updatedAt !== 'string' ||
       !parsed.configuration
     ) {
       clearPurchaseDraft(productId);
       return undefined;
     }
-    return parsed.configuration;
+    return parsed as PurchaseDraftEnvelope<T>;
   } catch {
     clearPurchaseDraft(productId);
     return undefined;
@@ -183,9 +190,10 @@ function isNetworkConfiguration(value: unknown) {
         isRecord(rule) &&
         typeof rule.id === 'string' &&
         (rule.protocol === 'TCP' || rule.protocol === 'UDP') &&
-        typeof rule.servicePort === 'number' &&
-        typeof rule.mappedPort === 'number' &&
-        typeof rule.source === 'string' &&
+        typeof rule.ruleName === 'string' &&
+        typeof rule.port === 'number' &&
+        (rule.sourceType === 'ip' || rule.sourceType === 'cidr' || rule.sourceType === 'all') &&
+        typeof rule.sourceValue === 'string' &&
         typeof rule.description === 'string',
     )
   );

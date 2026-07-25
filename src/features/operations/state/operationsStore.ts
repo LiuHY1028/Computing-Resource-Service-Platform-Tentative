@@ -102,6 +102,19 @@ export function getOperationsForTarget(targetId: string) {
   return listOperationRecords().filter((record) => record.targetId === targetId);
 }
 
+export function updateOperationStatus(
+  operationId: string,
+  status: PlatformOperationRecord['status'],
+  message: string,
+) {
+  const records = readRecords();
+  const index = records.findIndex((record) => record.id === operationId);
+  if (index < 0) throw new Error('未找到操作记录。');
+  const updated = { ...records[index], status, message };
+  writeRecords([...records.slice(0, index), updated, ...records.slice(index + 1)]);
+  return updated;
+}
+
 export function resetOperationsStore() {
   removeVersionedState(STORAGE_KEY);
 }

@@ -15,10 +15,11 @@ export type NetworkProtocol = 'TCP' | 'UDP';
 
 export type PortRule = Readonly<{
   id: string;
+  ruleName: string;
   protocol: NetworkProtocol;
-  servicePort: number;
-  mappedPort: number;
-  source: string;
+  port: number;
+  sourceType: 'ip' | 'cidr' | 'all';
+  sourceValue: string;
   description: string;
 }>;
 
@@ -84,10 +85,15 @@ export type PurchaseSubmissionResult = Readonly<{
 }>;
 
 export type PurchaseViewState = 'normal' | 'loading' | 'error';
+export type PurchaseStepId = 'configuration' | 'confirmation' | 'payment';
+export type PurchaseStepState = 'complete' | 'current' | 'upcoming';
 
 export type PurchaseDraftEnvelope<T extends PurchaseConfiguration> = Readonly<{
-  version: 1;
+  version: 2;
   productId: string;
   resourceType: MarketplaceResourceType;
+  productKind: 'compute';
+  step: Exclude<PurchaseStepId, 'payment'>;
+  updatedAt: string;
   configuration: T;
 }>;

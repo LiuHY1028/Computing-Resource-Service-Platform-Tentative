@@ -84,11 +84,22 @@ export function ResourceDetailPage({ resourceType }: Readonly<{ resourceType: Re
 
   function handleAction(action: ResourceMenuAction) {
     if (isDirectAction(action)) return setDirectAction(action);
-    if (['renew', 'auto-renew', 'extend', 'metadata', 'configuration-change', 'os-reinstall'].includes(action)) return setLifecycleAction(action as LifecycleDialogAction);
-    if (action === 'image') return changeTab('image-system');
+    if (['renew', 'auto-renew', 'extend', 'metadata'].includes(action)) return setLifecycleAction(action as LifecycleDialogAction);
+    if (action === 'image') {
+      navigate(`${APP_PATHS.images}?type=custom&create=resource&resourceId=${encodeURIComponent(resourceId)}`);
+      return;
+    }
+    if (action === 'network') {
+      navigate(`${APP_PATHS.networkAccess}?resourceId=${encodeURIComponent(resourceId)}`);
+      return;
+    }
+    if (action === 'operations') {
+      navigate(`${APP_PATHS.operationRecords}?module=resource&resourceId=${encodeURIComponent(resourceId)}`);
+      return;
+    }
     const tab: Partial<Record<ResourceMenuAction, string>> = {
-      details: 'overview', storage: 'storage', network: 'network', monitoring: 'monitoring',
-      operations: 'operations', 'hardware-health': 'health', bmc: 'delivery',
+      details: 'overview', storage: 'storage', monitoring: 'monitoring',
+      'hardware-health': 'health', bmc: 'delivery',
     };
     changeTab(tab[action] ?? 'overview');
   }

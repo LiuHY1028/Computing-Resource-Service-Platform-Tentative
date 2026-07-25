@@ -1,7 +1,8 @@
 export { PurchasePageLayout } from './components/PurchasePageLayout';
+export { PurchaseStepper } from './components/PurchaseStepper';
+export { PurchaseOrderConfirmation } from './components/PurchaseOrderConfirmation';
 export { SelectedProductSummary } from './components/SelectedProductSummary';
 export { ConfigurationSummary } from './components/ConfigurationSummary';
-export { ConfirmationModal } from './components/ConfirmationModal';
 export { PurchaseSuccessState } from './components/PurchaseSuccessState';
 export { PurchaseStatePanel } from './components/PurchaseStatePanel';
 export { CloudPurchaseForm } from './cloud/CloudPurchaseForm';

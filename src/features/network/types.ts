@@ -1,24 +1,16 @@
-export type NetworkRuleStatus = 'effective' | 'failed';
-export type NetworkRuleChange = 'none';
+export type NetworkRuleStatus = 'enabled' | 'disabled';
+export type NetworkSourceType = 'current-ip' | 'ip' | 'cidr' | 'all';
 
 export type NetworkAccessRule = Readonly<{
   id: string;
   resourceId: string;
-  resourceName: string;
-  project?: string;
-  tags?: readonly string[];
-  resourceType: 'cloud-server' | 'physical-machine';
-  site: string;
-  privateIp: string;
-  publicIp?: string;
-  sshAvailable: boolean;
+  ruleName: string;
   protocol: 'TCP' | 'UDP';
-  servicePort: number;
-  mappedPort: number;
-  source: string;
+  port: number;
+  sourceType: NetworkSourceType;
+  sourceValue: string;
   description: string;
   status: NetworkRuleStatus;
-  change: NetworkRuleChange;
   updatedAt: string;
 }>;
 
@@ -32,17 +24,10 @@ export type NetworkQuery = Readonly<{
 
 export type NetworkRuleInput = Readonly<{
   resourceId: string;
-  resourceName: string;
-  project?: string;
-  tags?: readonly string[];
-  resourceType: 'cloud-server' | 'physical-machine';
-  site: string;
-  privateIp: string;
-  publicIp?: string;
-  sshAvailable: boolean;
+  ruleName: string;
   protocol: 'TCP' | 'UDP';
-  servicePort: number;
-  mappedPort: number;
-  source: string;
+  port: number;
+  sourceType: NetworkSourceType;
+  sourceValue: string;
   description: string;
 }>;

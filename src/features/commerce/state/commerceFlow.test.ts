@@ -85,7 +85,7 @@ describe('commerceFlow', () => {
     );
     expect(completed.status).toBe('completed');
     expect(completed.timeline.map((item) => item.label)).toEqual(
-      expect.arrayContaining(['支付中', '已支付', '开通中', '已完成']),
+      expect.arrayContaining(['支付中', '已支付', '履约中', '已完成']),
     );
     expect(getBillForOrder(result.orderId)).toMatchObject({
       status: 'paid',

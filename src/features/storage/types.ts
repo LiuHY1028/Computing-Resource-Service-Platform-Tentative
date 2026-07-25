@@ -97,5 +97,17 @@ export type PurchaseStorageInput = Readonly<{
   durationMonths: 1 | 3 | 6 | 12;
   autoRenew: boolean;
   protocol?: 'NFS' | 'SMB';
-  mounts: readonly Omit<StorageMount, 'id' | 'resourceName' | 'status'>[];
+  mountPlan:
+    | Readonly<{ mode: 'later' }>
+    | Readonly<{
+        mode: 'cloud-disks';
+        units: readonly Readonly<{
+          unitIndex: number;
+          mount: Omit<StorageMount, 'id' | 'resourceName' | 'status'>;
+        }>[];
+      }>
+    | Readonly<{
+        mode: 'shared';
+        targets: readonly Omit<StorageMount, 'id' | 'resourceName' | 'status'>[];
+      }>;
 }>;

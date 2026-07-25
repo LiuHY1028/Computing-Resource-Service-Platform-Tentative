@@ -4,6 +4,10 @@ import path from 'node:path';
 const projectRoot = process.cwd();
 const releaseDirectory = path.join(projectRoot, 'release');
 const releaseHtml = path.join(releaseDirectory, '算力资源服务平台.html');
+const requirementsDocument = path.join(
+  releaseDirectory,
+  '算力资源服务平台功能需求说明书.docx',
+);
 const failures = [];
 
 let html = '';
@@ -42,14 +46,27 @@ if (html) {
 }
 
 try {
-  const requiredAssets = (await readdir(releaseDirectory)).filter(
-    (entry) => entry !== '算力资源服务平台.html',
+  const allowedArtifacts = new Set([
+    '算力资源服务平台.html',
+    '算力资源服务平台功能需求说明书.docx',
+  ]);
+  const unexpectedAssets = (await readdir(releaseDirectory)).filter(
+    (entry) => !allowedArtifacts.has(entry),
   );
-  if (requiredAssets.length > 0) {
-    failures.push(`release 中存在额外文件：${requiredAssets.join(', ')}`);
+  if (unexpectedAssets.length > 0) {
+    failures.push(`release 中存在额外文件：${unexpectedAssets.join(', ')}`);
   }
 } catch {
   // Missing release directory is already reported through the target check.
+}
+
+try {
+  const documentSize = (await stat(requirementsDocument)).size;
+  if (documentSize < 500_000) {
+    failures.push('功能需求说明书文件体积低于合理下限。');
+  }
+} catch {
+  failures.push('功能需求说明书不存在。');
 }
 
 if (failures.length > 0) {

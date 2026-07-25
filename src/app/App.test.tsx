@@ -77,11 +77,14 @@ describe('application routes', () => {
     const pageTitle = screen.getByRole('heading', { level: 1, name: title });
     expect(pageTitle).toBeInTheDocument();
     expect(pageTitle.closest('.purchase-page__header')).toBeInTheDocument();
-    expect(await screen.findByLabelText('配置说明')).toBeInTheDocument();
+    expect(await screen.findByRole('navigation', { name: '购买进度' })).toBeInTheDocument();
     expect(
       screen.getAllByRole('button', { name: '返回资源商城' })[0],
     ).toBeInTheDocument();
-    expect(screen.getByText('配置说明')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '配置 当前步骤' })).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
     expect(document.querySelector('.purchase-guide')).toBeNull();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
   });

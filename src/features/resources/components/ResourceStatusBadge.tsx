@@ -9,12 +9,12 @@ const TONES: Readonly<Record<ResourceStatus, StatusBadgeTone>> = {
   preparing: 'info',
   'powered-off': 'neutral',
   restarting: 'info',
-  resizing: 'info',
   maintenance: 'warning',
   expiring: 'warning',
   abnormal: 'error',
   expired: 'error',
   releasing: 'warning',
+  released: 'neutral',
 };
 
 export function ResourceStatusBadge({

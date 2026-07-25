@@ -35,7 +35,7 @@ export function isValidPort(value: number) {
 }
 
 export function isDuplicatePortRule(
-  candidate: Pick<PortRule, 'protocol' | 'servicePort' | 'mappedPort'>,
+  candidate: Pick<PortRule, 'protocol' | 'port' | 'sourceValue'>,
   rules: readonly PortRule[],
   editingId?: string,
 ) {
@@ -43,8 +43,8 @@ export function isDuplicatePortRule(
     (rule) =>
       rule.id !== editingId &&
       rule.protocol === candidate.protocol &&
-      (rule.servicePort === candidate.servicePort ||
-        rule.mappedPort === candidate.mappedPort),
+      rule.port === candidate.port &&
+      rule.sourceValue === candidate.sourceValue,
   );
 }
 

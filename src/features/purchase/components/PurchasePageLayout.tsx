@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import {
-  Container,
   FormAnchorNav,
   Grid,
   GridItem,
   type FormAnchorItem,
 } from '../../../components/ui';
 import type { MarketplaceResourceType } from '../../marketplace';
+import type { PurchaseStepId } from '../types';
+import { PurchaseStepper } from './PurchaseStepper';
 
 type PurchasePageLayoutProps = Readonly<{
   resourceType: MarketplaceResourceType;
@@ -16,6 +17,8 @@ type PurchasePageLayoutProps = Readonly<{
   children: ReactNode;
   summary: ReactNode;
   liveMessage?: string;
+  currentStep?: PurchaseStepId;
+  onStepChange?: (step: PurchaseStepId) => void;
 }>;
 
 export function PurchasePageLayout({
@@ -26,6 +29,8 @@ export function PurchasePageLayout({
   children,
   summary,
   liveMessage = '',
+  currentStep = 'configuration',
+  onStepChange,
 }: PurchasePageLayoutProps) {
   return (
     <section className="purchase-page" data-resource-type={resourceType} aria-label={title}>
@@ -34,16 +39,7 @@ export function PurchasePageLayout({
         <h1>{title}</h1>
         <p>{description}</p>
       </header>
-      <nav className="purchase-progress" aria-label="购买进度">
-        <ol>
-          <li aria-current="step"><span>1</span><strong>配置</strong></li>
-          <li><span>2</span><strong>确认订单</strong></li>
-          <li><span>3</span><strong>支付</strong></li>
-        </ol>
-      </nav>
-      <Container as="section" className="purchase-config-notice" aria-label="配置说明">
-        <p><strong>配置说明</strong> · {description}</p>
-      </Container>
+      <PurchaseStepper currentStep={currentStep} onStepChange={onStepChange} />
 
       <Grid className="purchase-workspace">
         <GridItem span={16} className="purchase-workspace__form">

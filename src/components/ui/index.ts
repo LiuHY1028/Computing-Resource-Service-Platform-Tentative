@@ -75,6 +75,11 @@ export {
   type PromptModalVariant,
 } from './Modal/Modal';
 export {
+  Drawer,
+  type DrawerAction,
+  type DrawerProps,
+} from './Drawer/Drawer';
+export {
   Tabs,
   TitleBarTabs,
   UnderlineTabs,

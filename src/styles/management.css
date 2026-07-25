@@ -184,6 +184,65 @@
 }
 .management-capacity-summary span { color: var(--color-text-secondary); }
 .management-capacity-summary strong { font-size: var(--font-size-subtitle); }
+.management-guide,
+.management-filter-panel,
+.network-resource-summary {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: var(--border-default);
+  border-radius: var(--radius-container);
+  background: var(--color-surface-default);
+}
+.management-guide {
+  grid-template-columns: minmax(200px, .35fr) minmax(0, 1fr);
+  align-items: center;
+}
+.management-guide p { margin: 0; color: var(--color-text-secondary); }
+.management-filter-panel {
+  grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(140px, 1fr));
+}
+.network-resource-summary {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.network-resource-summary > div {
+  display: grid;
+  gap: var(--space-4);
+}
+.network-resource-summary span { color: var(--color-text-secondary); }
+.network-template-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin-bottom: var(--space-16);
+}
+.network-template-grid button {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  color: var(--color-text-body);
+  text-align: left;
+  background: var(--workspace-surface);
+  border: var(--border-default);
+  border-radius: var(--radius-control);
+}
+.network-template-grid button[data-selected='true'] {
+  border-color: var(--color-primary-border);
+  background: var(--color-primary-background);
+}
+.network-template-grid span { color: var(--color-text-secondary); font-size: var(--font-size-caption); }
+.network-risk-warning {
+  margin: 0;
+  padding: var(--space-12);
+  color: var(--color-text-title);
+  background: var(--color-warning-background);
+  border-left: 3px solid var(--color-warning);
+}
+.management-inline-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
 @media (max-width: 1440px) {
   .management-page { padding: var(--space-16); }
   .management-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -195,4 +254,8 @@
   .management-card-grid { grid-template-columns: 1fr; }
   .management-capacity-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .management-detail-section--wide { grid-column: auto; }
+  .management-guide,
+  .management-filter-panel,
+  .network-resource-summary,
+  .network-template-grid { grid-template-columns: 1fr; }
 }

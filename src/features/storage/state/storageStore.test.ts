@@ -62,7 +62,7 @@ describe('storageStore', () => {
       durationMonths: 1,
       autoRenew: false,
       protocol: 'NFS',
-      mounts: [],
+      mountPlan: { mode: 'later' },
     });
     expect(result.spaces).toHaveLength(0);
     expect(result.order.status).toBe('awaiting-payment');

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -30,7 +30,7 @@ describe('PurchasePage', () => {
     const pageTitle = screen.getByRole('heading', { level: 1, name: '配置云服务器' });
     expect(pageTitle.closest('.purchase-page__header')).toBeInTheDocument();
     expect(document.querySelector('.purchase-guide')).toBeNull();
-    expect(screen.getByLabelText('配置说明')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: '购买进度' })).toBeInTheDocument();
     expect(screen.getAllByText('30 GB').length).toBeGreaterThan(0);
     expect(screen.getByText('当前系统盘容量不可修改')).toBeInTheDocument();
     expect(screen.getByText(/该值表示存储容量，不是内存/)).toBeInTheDocument();
@@ -51,16 +51,14 @@ describe('PurchasePage', () => {
     await user.type(screen.getByLabelText(/实例名称/), 'cloud-resource-01');
     await user.click(screen.getAllByRole('button', { name: '确认订单' })[0]!);
 
-    const confirmation = screen.getByRole('dialog', { name: '确认订单' });
+    const confirmation = screen.getByRole('heading', { level: 1, name: '确认订单' }).closest('section');
     expect(confirmation).toBeInTheDocument();
-    expect(within(confirmation).getByText('未选择（可选）')).toBeInTheDocument();
+    expect(within(confirmation as HTMLElement).getByText('未选择（可选）')).toBeInTheDocument();
     const submit = screen.getByRole('button', { name: '创建订单并支付' });
     await user.click(submit);
-    expect(submit).toBeDisabled();
-    expect(await screen.findByRole('heading', { name: '订单已创建，请完成支付' }, { timeout: 2000 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '核对订单与付款' }, { timeout: 2000 })).toBeInTheDocument();
     expect(screen.getByText(/^ORD-\d{8}-\d{4}$/)).toBeInTheDocument();
     expect(screen.getByText('待支付')).toBeInTheDocument();
-    expect(screen.getByText('支付完成后将执行资源开通。')).toBeInTheDocument();
   });
 
   it('lets users select an image and switch back to no image', async () => {
@@ -158,32 +156,34 @@ describe('PurchasePage', () => {
     await user.clear(screen.getByLabelText(/SSH 允许来源/));
     await user.type(screen.getByLabelText(/SSH 允许来源/), '192.0.2.0/24');
 
-    await user.click(screen.getByRole('button', { name: '新增端口规则' }));
-    const dialog = screen.getByRole('dialog', { name: '新增端口规则' });
+    await user.click(screen.getByRole('button', { name: '新增访问规则' }));
+    const dialog = screen.getByRole('dialog', { name: '新增访问规则' });
+    await user.click(within(dialog).getByRole('button', { name: /自定义/ }));
     await user.click(within(dialog).getByRole('button', { name: '添加规则' }));
-    expect(within(dialog).getAllByText(/服务端口必须是 1 至 65535/).length).toBeGreaterThan(0);
-    await waitFor(() => expect(within(dialog).getByLabelText(/服务端口/)).toHaveFocus());
-    await user.type(within(dialog).getByLabelText(/服务端口/), '8080');
-    await user.type(within(dialog).getByLabelText(/映射端口/), '80');
-    await user.type(within(dialog).getByLabelText(/^允许来源/), '192.0.2.0/24');
-    await user.type(within(dialog).getByLabelText('说明'), '端口服务');
-    expect(within(dialog).getByLabelText(/服务端口/)).toHaveValue('8080');
-    expect(within(dialog).getByLabelText(/映射端口/)).toHaveValue('80');
-    expect(within(dialog).getByLabelText(/^允许来源/)).toHaveValue('192.0.2.0/24');
+    expect(within(dialog).getAllByText(/访问端口必须是 1 至 65535/).length).toBeGreaterThan(0);
+    fireEvent.change(within(dialog).getByLabelText(/访问端口/), {
+      target: { value: '8080' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('说明'), {
+      target: { value: '端口服务' },
+    });
+    expect(within(dialog).getByLabelText(/访问端口/)).toHaveValue('8080');
+    expect(within(dialog).getByLabelText('CIDR')).toHaveValue('10.0.0.0/8');
     await user.click(within(dialog).getByRole('button', { name: '添加规则' }));
-    await waitFor(() => expect(screen.getByRole('table', { name: '端口规则' })).toHaveTextContent('8080'));
+    await waitFor(() => expect(screen.getByRole('table', { name: '访问规则' })).toHaveTextContent('8080'));
 
     await user.click(screen.getByRole('button', { name: '编辑' }));
-    const editDialog = screen.getByRole('dialog', { name: '编辑端口规则' });
-    await user.clear(within(editDialog).getByLabelText(/服务端口/));
-    await user.type(within(editDialog).getByLabelText(/服务端口/), '8081');
+    const editDialog = screen.getByRole('dialog', { name: '编辑访问规则' });
+    fireEvent.change(within(editDialog).getByLabelText(/访问端口/), {
+      target: { value: '8081' },
+    });
     await user.click(within(editDialog).getByRole('button', { name: '保存修改' }));
-    expect(screen.getByRole('table', { name: '端口规则' })).toHaveTextContent('8081');
+    expect(screen.getByRole('table', { name: '访问规则' })).toHaveTextContent('8081');
 
     await user.click(screen.getByRole('button', { name: '删除' }));
-    expect(screen.getByRole('alertdialog', { name: '删除端口规则' })).toBeInTheDocument();
+    expect(screen.getByRole('alertdialog', { name: '删除访问规则' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '确认删除' }));
-    expect(screen.getByText('暂无端口规则')).toBeInTheDocument();
+    expect(screen.getByText('暂无其他访问规则')).toBeInTheDocument();
   }, 10_000);
 
   it('keeps the physical-machine flow distinct and submits without cloud storage or images', async () => {
@@ -220,14 +220,14 @@ describe('PurchasePage', () => {
     await user.click(screen.getByRole('checkbox', { name: '记录 SSH 访问意向' }));
     await user.type(screen.getByLabelText(/SSH 允许来源/), '192.0.2.0/24');
     await user.click(screen.getAllByRole('button', { name: '确认订单' })[0]!);
-    const confirmation = screen.getByRole('dialog', { name: '确认订单' });
+    const confirmation = screen.getByRole('heading', { level: 1, name: '确认订单' }).closest('section');
     expect(confirmation).toHaveTextContent('开通方式支付后进入资源准备与基础初始化');
     expect(confirmation).toHaveTextContent('认证方式SSH 密钥');
     expect(confirmation).toHaveTextContent('连接信息资源交付完成后在“我的资源”提供');
     await user.click(screen.getByRole('button', { name: '创建订单并支付' }));
     expect(await screen.findByText(/^ORD-\d{8}-\d{4}$/, {}, { timeout: 2000 })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '订单已创建，请完成支付' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '去支付' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '核对订单与付款' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '确认支付' })).toBeInTheDocument();
   });
 
   it.each([
@@ -259,6 +259,6 @@ describe('PurchasePage', () => {
     expect(screen.getByRole('alertdialog', { name: '离开当前配置？' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '继续配置' }));
     expect(screen.getByLabelText(/实例名称/)).toHaveValue('draft-name');
-    expect(window.sessionStorage.getItem('purchase-draft:v1:catalog-cloud-cpu-c8-east')).toContain('draft-name');
+    expect(window.sessionStorage.getItem('purchase-draft:v2:catalog-cloud-cpu-c8-east')).toContain('draft-name');
   });
 });

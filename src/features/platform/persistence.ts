@@ -40,6 +40,43 @@ export function readVersionedState<T>(
   }
 }
 
+export function readMigratedVersionedState<T>(
+  key: string,
+  version: number,
+  validate: (value: unknown) => value is T,
+  migrate: (value: unknown, previousVersion: number) => T | undefined,
+  fallback: () => T,
+): T {
+  const cached = memoryState.get(key);
+  if (validate(cached)) return cached;
+
+  try {
+    const storage = window.localStorage;
+    if (typeof storage?.getItem !== 'function') {
+      return createFallback(key, fallback);
+    }
+    const raw = storage.getItem(key);
+    if (!raw) return createFallback(key, fallback);
+    const parsed = JSON.parse(raw) as Partial<VersionedEnvelope<unknown>>;
+    if (parsed.version === version && validate(parsed.data)) {
+      memoryState.set(key, parsed.data);
+      return parsed.data;
+    }
+    const migrated =
+      typeof parsed.version === 'number'
+        ? migrate(parsed.data, parsed.version)
+        : undefined;
+    if (migrated && validate(migrated)) {
+      writeVersionedState(key, version, migrated);
+      return migrated;
+    }
+    storage.removeItem?.(key);
+    return createFallback(key, fallback);
+  } catch {
+    return createFallback(key, fallback);
+  }
+}
+
 export function writeVersionedState<T>(key: string, version: number, data: T) {
   memoryState.set(key, data);
   const envelope: VersionedEnvelope<T> = { version, data };

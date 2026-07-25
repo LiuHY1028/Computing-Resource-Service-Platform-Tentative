@@ -18,7 +18,7 @@ import type {
 } from '../types';
 
 const STORAGE_KEY = 'computing-platform:bills';
-const VERSION = 1;
+const VERSION = 2;
 
 const INITIAL_CLOUD_BILL_PRICE = createPriceSnapshot(
   'catalog-cloud-cpu-c16-west',
@@ -130,7 +130,7 @@ function writeBills(bills: readonly Bill[]) {
 
 function billTypeForOrder(orderType: OrderType): BillType {
   if (orderType === 'renewal' || orderType === 'rentalRenewal') return 'renewal';
-  if (orderType === 'resize' || orderType === 'storageExpansion') return 'adjustment';
+  if (orderType === 'storageExpansion') return 'adjustment';
   if (orderType === 'refund') return 'refund';
   return 'prepaid';
 }

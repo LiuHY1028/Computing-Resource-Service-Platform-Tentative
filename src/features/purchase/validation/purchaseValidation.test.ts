@@ -108,14 +108,15 @@ describe('purchase prototype validation', () => {
   it('detects obvious duplicate protocol and port combinations while allowing edits', () => {
     const rule: PortRule = {
       id: 'rule-1',
+      ruleName: '应用服务',
       protocol: 'TCP',
-      servicePort: 8080,
-      mappedPort: 80,
-      source: '192.0.2.0/24',
+      port: 8080,
+      sourceType: 'cidr',
+      sourceValue: '192.0.2.0/24',
       description: '',
     };
-    expect(isDuplicatePortRule({ protocol: 'TCP', servicePort: 8080, mappedPort: 81 }, [rule])).toBe(true);
-    expect(isDuplicatePortRule({ protocol: 'UDP', servicePort: 8080, mappedPort: 80 }, [rule])).toBe(false);
-    expect(isDuplicatePortRule({ protocol: 'TCP', servicePort: 8080, mappedPort: 80 }, [rule], 'rule-1')).toBe(false);
+    expect(isDuplicatePortRule({ protocol: 'TCP', port: 8080, sourceValue: '192.0.2.0/24' }, [rule])).toBe(true);
+    expect(isDuplicatePortRule({ protocol: 'UDP', port: 8080, sourceValue: '192.0.2.0/24' }, [rule])).toBe(false);
+    expect(isDuplicatePortRule({ protocol: 'TCP', port: 8080, sourceValue: '192.0.2.0/24' }, [rule], 'rule-1')).toBe(false);
   });
 });

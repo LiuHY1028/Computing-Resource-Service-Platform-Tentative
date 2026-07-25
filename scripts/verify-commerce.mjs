@@ -29,7 +29,7 @@ const formalFiles = [
   'README.md',
 ];
 const forbiddenCopy =
-  /申请购买|提交申请|购买申请|续费申请|延期申请|扩容申请|挂载申请|卸载申请|变配申请|释放申请|申请编号|申请订单|申请记录|申请已受理|提交配置|配置已提交/;
+  /申请购买|提交申请|购买申请|续费申请|延期申请|扩容申请|挂载申请|卸载申请|变配申请|释放申请|申请编号|申请订单|申请记录|申请已受理|提交配置|配置已提交|重装系统|变更配置/;
 formalFiles.forEach((file) => {
   check(!forbiddenCopy.test(read(file)), `${file} 仍包含申请型商业文案。`);
 });
@@ -49,7 +49,6 @@ for (const orderType of [
   'purchase',
   'renewal',
   'rentalRenewal',
-  'resize',
   'storageExpansion',
   'softwarePurchase',
   'refund',
@@ -70,9 +69,9 @@ check(
   '预付费订单没有同步创建待支付账单。',
 );
 check(
-  commerce.includes("updateOrderStatus(orderId, 'paying'") &&
+    commerce.includes("updateOrderStatus(orderId, 'paying'") &&
     commerce.includes("updateBillForOrder(orderId, 'paid', paymentMethod)") &&
-    /updateOrderStatus\(\s*orderId,\s*'provisioning'/.test(commerce) &&
+    /updateOrderStatus\(\s*orderId,\s*'fulfilling'/.test(commerce) &&
     /updateOrderStatus\(\s*orderId,\s*'completed'/.test(commerce),
   '收银台未完整串联支付、开通与完成状态。',
 );
@@ -82,13 +81,13 @@ check(
   '取消订单未限制在待支付阶段或未同步取消账单。',
 );
 check(
-  resources.includes("orderType: 'renewal'") &&
+    resources.includes("orderType: 'renewal'") &&
     resources.includes("orderType: 'rentalRenewal'") &&
-    resources.includes("orderType: 'resize'") &&
     resources.includes("kind: 'resource-renewal'") &&
     resources.includes("kind: 'resource-rental-renewal'") &&
-    resources.includes("kind: 'resource-resize'"),
-  '云服务器续费、物理机续租或收费变配未进入统一订单履约体系。',
+    !resources.includes("kind: 'resource-resize'") &&
+    !orderTypes.includes("'resize'"),
+  '云服务器续费或物理机续租未进入统一订单履约体系，或已删除变配仍有残留。',
 );
 check(
   storage.includes("orderType: 'purchase'") &&

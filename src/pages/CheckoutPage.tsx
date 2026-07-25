@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Button,
   CardRadio,
@@ -27,11 +27,13 @@ import {
   type PaymentMethod,
 } from '../features/commerce';
 import { formatMoney, PricingSummary } from '../features/pricing';
+import { PurchaseStepper, type PurchaseStepId } from '../features/purchase';
 import '../styles/checkout.css';
 
 export function CheckoutPage() {
   const { orderId = '' } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>('account-balance');
   const [busy, setBusy] = useState(false);
@@ -67,6 +69,11 @@ export function CheckoutPage() {
         ? resourceDetailPath(order.productType, order.resourceId)
         : undefined
     : undefined;
+  const readOnlyView =
+    searchParams.get('view') === 'configuration' ||
+    searchParams.get('view') === 'confirmation'
+      ? searchParams.get('view') as 'configuration' | 'confirmation'
+      : undefined;
 
   async function pay() {
     if (!payable || busy) return;
@@ -113,13 +120,38 @@ export function CheckoutPage() {
           {ORDER_STATUS_VIEWS[order.status].label}
         </StatusBadge>
       </header>
-      <nav className="checkout-progress" aria-label="购买进度">
-        <ol>
-          <li data-complete="true">配置</li>
-          <li data-complete="true">确认订单</li>
-          <li aria-current="step">支付</li>
-        </ol>
-      </nav>
+      <PurchaseStepper
+        currentStep="payment"
+        readonlyMode
+        onStepChange={(step: PurchaseStepId) => {
+          const next = new URLSearchParams(searchParams);
+          if (step === 'payment') next.delete('view');
+          else next.set('view', step);
+          setSearchParams(next);
+        }}
+      />
+      {readOnlyView && (
+        <Container as="section" className="checkout-readonly-snapshot">
+          <div className="checkout-section__heading">
+            <div>
+              <span>只读快照</span>
+              <h2>{readOnlyView === 'configuration' ? '订单配置' : '订单确认信息'}</h2>
+            </div>
+            <Button onClick={() => {
+              const next = new URLSearchParams(searchParams);
+              next.delete('view');
+              setSearchParams(next);
+            }}>返回支付</Button>
+          </div>
+          <dl className="checkout-definition">
+            {order.configurationSummary.map((item) => (
+              <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>
+            ))}
+          </dl>
+          <p>订单已创建，配置和价格快照不可修改。</p>
+        </Container>
+      )}
+      {!readOnlyView && (
       <div className="checkout-workspace">
         <div className="checkout-main">
           <Container as="section" className="checkout-section">
@@ -172,6 +204,7 @@ export function CheckoutPage() {
           <p>支付完成后，订单将进入资源开通或变更流程。</p>
         </Container>
       </div>
+      )}
       <PromptModal
         open={cancelOpen}
         title="取消订单"

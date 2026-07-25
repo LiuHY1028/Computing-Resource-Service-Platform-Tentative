@@ -65,7 +65,7 @@ describe('commerce invariants', () => {
       ).toBe(bill.amount.amountFen);
       if (bill.status === 'paid') {
         expect(order?.status).toMatch(
-          /^(paid|provisioning|completed|refunding|refunded)$/,
+          /^(paid|fulfilling|completed|refunding|refunded)$/,
         );
       }
       if (bill.status === 'cancelled') {
@@ -155,15 +155,11 @@ describe('commerce invariants', () => {
     });
     await createNetworkRule({
       resourceId: 'cs-west-003',
-      resourceName: '数据处理节点-03',
-      resourceType: 'cloud-server',
-      site: '西部算力中心',
-      privateIp: '10.24.2.23',
-      sshAvailable: true,
+      ruleName: '数据服务',
       protocol: 'UDP',
-      servicePort: 9000,
-      mappedPort: 19000,
-      source: '192.0.2.0/24',
+      port: 19000,
+      sourceType: 'cidr',
+      sourceValue: '192.0.2.0/24',
       description: '数据服务',
     });
     expect(queryBills()).toHaveLength(before);

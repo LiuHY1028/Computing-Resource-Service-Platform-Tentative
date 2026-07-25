@@ -13,9 +13,7 @@ export {
   submitResourceAction,
   submitBatchPowerAction,
   createRentalRenewalOrders,
-  createResourceResizeOrder,
   createRenewalOrders,
-  submitResourceMaintenance,
   updateAutoRenewal,
   updateResourceMetadata,
 } from './state/resourceStore';

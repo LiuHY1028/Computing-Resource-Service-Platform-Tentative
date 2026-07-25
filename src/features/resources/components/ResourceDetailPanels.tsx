@@ -254,7 +254,7 @@ export function ResourceImageSystem({ resource }: Readonly<{ resource: Resource 
   if (resource.resourceType !== 'cloud-server') return null;
   return <DefinitionSection eyebrow="镜像与启动系统" title="镜像和操作系统" fields={[
     ['镜像名称', resource.image],
-    ['镜像 ID', <Link to={`${APP_PATHS.images}?resource=${resource.id}`}>{resource.imageId}</Link>],
+    ['镜像 ID', <Link to={`${APP_PATHS.images}?q=${encodeURIComponent(resource.imageId)}`}>{resource.imageId}</Link>],
     ['操作系统', resource.operatingSystem],
     ['SSH', resource.sshEnabled ? '已启用' : '未启用'],
     ['系统盘', `${resource.systemDiskGb} GB`],
@@ -278,21 +278,21 @@ export function ResourceNetwork({ resource, connectionContent }: Readonly<{ reso
   const [selectedRule, setSelectedRule] = useState<NetworkAccessRule>();
   const rules = getNetworkRulesForResource(resource.id);
   const columns: readonly TableColumn<NetworkAccessRule>[] = [
-    { key: 'name', title: '规则名称', render: (rule) => rule.description || '端口访问规则' },
+    { key: 'name', title: '规则名称', render: (rule) => rule.ruleName },
     { key: 'protocol', title: '协议', render: (rule) => rule.protocol },
-    { key: 'mapping', title: '端口映射', render: (rule) => `${rule.servicePort} → ${rule.mappedPort}` },
-    { key: 'source', title: '允许来源', render: (rule) => rule.source },
-    { key: 'status', title: '状态', render: (rule) => rule.status === 'effective' ? '已生效' : rule.status === 'failed' ? '失败' : '处理中' },
+    { key: 'port', title: '访问端口', render: (rule) => rule.port },
+    { key: 'source', title: '允许来源', render: (rule) => rule.sourceType === 'all' ? '全部来源' : rule.sourceValue },
+    { key: 'status', title: '状态', render: (rule) => rule.status === 'enabled' ? '已启用' : '已停用' },
   ];
   return (
     <div className="resource-detail-stack">
       {connectionContent}
       <Container as="section" className="resource-section">
-        <div className="resource-section__heading"><div><span>端口与来源</span><h3>访问规则</h3></div><Link to={`${APP_PATHS.networkAccess}?resource=${resource.id}`}>进入网络管理</Link></div>
+        <div className="resource-section__heading"><div><span>端口与来源</span><h3>访问规则</h3></div><Link to={`${APP_PATHS.networkAccess}?resourceId=${resource.id}`}>进入网络管理</Link></div>
         <DataTable title="网络访问规则" embedded enableDensity={false} enableColumnSettings={false} aria-label="网络访问规则" columns={columns} rows={rules} getRowKey={(rule) => rule.id} renderRowActions={(rule) => <Button variant="ghost" onClick={() => setSelectedRule(rule)}>查看</Button>} empty={<EmptyTable title="暂无访问规则" />} />
       </Container>
       <Modal open={Boolean(selectedRule)} title="访问规则详情" onClose={() => setSelectedRule(undefined)} primaryAction={{ label: '关闭', onClick: () => setSelectedRule(undefined) }}>
-        {selectedRule && <dl className="resource-modal-definition"><div><dt>规则名称</dt><dd>{selectedRule.description}</dd></div><div><dt>协议</dt><dd>{selectedRule.protocol}</dd></div><div><dt>服务端口</dt><dd>{selectedRule.servicePort}</dd></div><div><dt>映射端口</dt><dd>{selectedRule.mappedPort}</dd></div><div><dt>允许来源</dt><dd>{selectedRule.source}</dd></div></dl>}
+        {selectedRule && <dl className="resource-modal-definition"><div><dt>规则名称</dt><dd>{selectedRule.ruleName}</dd></div><div><dt>协议</dt><dd>{selectedRule.protocol}</dd></div><div><dt>访问端口</dt><dd>{selectedRule.port}</dd></div><div><dt>允许来源</dt><dd>{selectedRule.sourceType === 'all' ? '全部来源' : selectedRule.sourceValue}</dd></div><div><dt>说明</dt><dd>{selectedRule.description || '—'}</dd></div></dl>}
       </Modal>
     </div>
   );
@@ -338,7 +338,7 @@ export function ResourceDetailHeader({ resource, onBack, onConnection, onPurchas
           <ResourceStatusBadge status={resource.status} />
           <Button variant="primary" onClick={onPurchaseSimilar}>{resource.resourceType === 'cloud-server' ? '购买同规格' : '购买同类整机'}</Button>
           {resource.resourceType === 'cloud-server'
-            ? <Button variant="secondary" onClick={() => onAction('configuration-change')}>变更配置</Button>
+            ? null
             : <Button variant="secondary" onClick={() => onAction('hardware-health')}>硬件健康</Button>}
           <Button variant="secondary" onClick={onConnection}>{resource.resourceType === 'cloud-server' ? '连接' : '连接信息'}</Button>
           <Button variant="secondary" onClick={() => onAction(resource.resourceType === 'cloud-server' ? 'renew' : 'extend')}>{resource.resourceType === 'cloud-server' ? '续费' : '续租'}</Button>

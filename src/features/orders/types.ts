@@ -4,7 +4,7 @@ export type OrderStatus =
   | 'awaiting-payment'
   | 'paying'
   | 'paid'
-  | 'provisioning'
+  | 'fulfilling'
   | 'completed'
   | 'cancelled'
   | 'payment-failed'
@@ -15,7 +15,6 @@ export type OrderType =
   | 'purchase'
   | 'renewal'
   | 'rentalRenewal'
-  | 'resize'
   | 'storageExpansion'
   | 'softwarePurchase'
   | 'refund';
@@ -58,11 +57,6 @@ export type CommerceFulfillment =
       kind: 'resource-renewal' | 'resource-rental-renewal';
       resourceId: string;
       periodMonths: 1 | 3 | 6 | 12;
-    }>
-  | Readonly<{
-      kind: 'resource-resize';
-      resourceId: string;
-      changes: string;
     }>
   | Readonly<{
       kind: 'storage-renewal';

@@ -1,15 +1,14 @@
 import { resourceDetailPath } from '../../../app/routes';
 import { createCommerceOrder, type CommerceOrder } from '../../orders';
-import { recordOperation } from '../../operations';
+import { getOperationsForTarget, recordOperation } from '../../operations';
 import {
   calculateCloudPrice,
   calculatePhysicalPrice,
   createPriceSnapshot,
-  type PriceSnapshot,
   type PriceQuote,
 } from '../../pricing';
 import {
-  readVersionedState,
+  readMigratedVersionedState,
   removeVersionedState,
   writeVersionedState,
 } from '../../platform/persistence';
@@ -32,7 +31,7 @@ import type {
 } from '../types';
 
 const STORAGE_KEY = 'computing-platform:resources';
-const VERSION = 2;
+const VERSION = 3;
 let operationSequence = 100;
 
 const CLOUD_STATUSES = new Set([
@@ -40,10 +39,10 @@ const CLOUD_STATUSES = new Set([
   'running',
   'stopped',
   'restarting',
-  'resizing',
   'expiring',
   'expired',
   'releasing',
+  'released',
   'abnormal',
 ]);
 const PHYSICAL_STATUSES = new Set([
@@ -55,6 +54,7 @@ const PHYSICAL_STATUSES = new Set([
   'expiring',
   'expired',
   'releasing',
+  'released',
   'abnormal',
 ]);
 
@@ -81,17 +81,38 @@ function isResource(value: unknown): value is Resource {
       ? CLOUD_STATUSES.has(resource.status)
       : PHYSICAL_STATUSES.has(resource.status)) &&
     typeof resource.expiresAt === 'string' &&
-    typeof resource.health === 'object' &&
-    Array.isArray(resource.operationRecords)
+    typeof resource.health === 'object'
   );
 }
 
 function readResources() {
-  return readVersionedState(
+  return readMigratedVersionedState(
     STORAGE_KEY,
     VERSION,
     (value): value is Resource[] =>
       Array.isArray(value) && value.every(isResource),
+    (value, previousVersion) => {
+      if (previousVersion !== 2 || !Array.isArray(value)) return undefined;
+      return value.map((candidate) => {
+        const resource = candidate as Record<string, unknown>;
+        const rest = { ...resource };
+        delete rest.operationRecords;
+        delete rest.networkRules;
+        return {
+          ...rest,
+          status:
+            resource.status === 'resizing'
+              ? 'running'
+              : resource.status === 'releasing'
+                ? 'released'
+                : resource.status,
+          releasedAt:
+            resource.status === 'releasing'
+              ? new Date().toISOString()
+              : resource.releasedAt,
+        };
+      }) as Resource[];
+    },
     () => createInitialResourceCatalog(),
   );
 }
@@ -182,7 +203,16 @@ export function getOperationRecords(
   resourceType: ResourceType,
   resourceId: string,
 ): readonly OperationRecord[] {
-  return getResourceById(resourceType, resourceId)?.operationRecords ?? [];
+  return getResourceById(resourceType, resourceId)
+    ? getOperationsForTarget(resourceId).map((record) => ({
+        id: record.id,
+        action: record.action,
+        actor: record.actor,
+        createdAt: record.createdAt,
+        status: record.status,
+        message: record.message,
+      }))
+    : [];
 }
 
 export function getResourceFilterOptions(
@@ -211,7 +241,7 @@ export function getResourceActionAvailability(
   resource: Resource,
   action: ResourceAction,
 ): ResourceActionAvailability {
-  if (['creating', 'preparing', 'restarting', 'resizing', 'maintenance', 'releasing'].includes(resource.status)) {
+  if (['creating', 'preparing', 'restarting', 'maintenance', 'releasing', 'released'].includes(resource.status)) {
     return { enabled: false, reason: '资源正在执行生命周期操作，请稍后再试。' };
   }
   if (action === 'release') {
@@ -383,16 +413,40 @@ export async function submitResourceAction(
     if (nextName.length > 48) throw new ResourceActionError('资源名称不能超过 48 个字符。');
     if (nextName === current.name) throw new ResourceActionError('请输入与当前名称不同的资源名称。');
   }
-  const isRelease = request.action === 'release';
+  if (request.action === 'release') {
+    const startedAt = new Date().toISOString();
+    operation(
+      current,
+      '释放资源',
+      '资源进入释放处理中。',
+      'executing',
+    );
+    updateResource(current.id, (resource) => ({
+      ...resource,
+      status: 'releasing',
+      lastOperatedAt: startedAt,
+    } as Resource));
+    const completedRecord = operation(
+      current,
+      '释放资源',
+      '资源已释放，历史信息保留在操作记录中。',
+      'completed',
+    );
+    const released = updateResource(current.id, (resource) => ({
+      ...resource,
+      status: 'released',
+      releasedAt: completedRecord.createdAt,
+      lastOperatedAt: completedRecord.createdAt,
+    } as Resource));
+    return { resource: clone(released), record: clone(completedRecord) };
+  }
   const record = operation(
     current,
     actionLabel(request.action),
-    isRelease
-      ? '资源正在释放，完成前仍可查看历史信息。'
-      : request.action === 'rename'
+    request.action === 'rename'
         ? '资源名称已更新。'
         : `${actionLabel(request.action)}操作已完成。`,
-    isRelease ? 'executing' : 'completed',
+    'completed',
   );
   const updated = updateResource(current.id, (resource) => {
     if (resource.resourceType === 'cloud-server') {
@@ -401,15 +455,12 @@ export async function submitResourceAction(
           ? 'running'
           : request.action === 'stop'
             ? 'stopped'
-            : request.action === 'release'
-              ? 'releasing'
-              : resource.status;
+            : resource.status;
       return {
         ...resource,
         name: request.action === 'rename' ? request.nextName!.trim() : resource.name,
         status,
         lastOperatedAt: record.createdAt,
-        operationRecords: [record, ...resource.operationRecords],
       };
     }
     const status =
@@ -417,15 +468,12 @@ export async function submitResourceAction(
         ? 'running'
         : request.action === 'stop'
           ? 'powered-off'
-          : request.action === 'release'
-            ? 'releasing'
-            : resource.status;
+          : resource.status;
     return {
       ...resource,
       name: request.action === 'rename' ? request.nextName!.trim() : resource.name,
       status,
       lastOperatedAt: record.createdAt,
-      operationRecords: [record, ...resource.operationRecords],
     };
   });
   return { resource: clone(updated), record: clone(record) };
@@ -493,7 +541,6 @@ export function updateAutoRenewal(
         ...resource,
         autoRenewal: { enabled, periodMonths },
         lastOperatedAt: record.createdAt,
-        operationRecords: [record, ...resource.operationRecords],
       };
     }));
   });
@@ -565,7 +612,6 @@ export function updateResourceMetadata(
       project,
       tags,
       lastOperatedAt: record.createdAt,
-      operationRecords: [record, ...resource.operationRecords],
     })));
   });
 }
@@ -596,74 +642,6 @@ export async function submitBatchPowerAction(
     })));
 }
 
-export function submitResourceMaintenance(
-  resourceIds: readonly string[],
-  operationType: 'configuration-change' | 'os-reinstall',
-  details: string,
-) {
-  if (!resourceIds.length) throw new ResourceActionError('请选择资源。');
-  if (!details.trim()) throw new ResourceActionError('请填写操作说明。');
-  return resourceIds.map((resourceId) => {
-    const current = getResourceByAnyId(resourceId);
-    if (!current) throw new ResourceActionError(`未找到资源：${resourceId}`);
-    if (['creating', 'preparing', 'releasing'].includes(current.status)) {
-      throw new ResourceActionError(`${current.name} 当前不可执行该操作。`);
-    }
-    const action = operationType === 'configuration-change' ? '变更配置' : '重装系统';
-    const record = operation(current, action, `${action}已确认并开始执行。`, 'executing');
-    const updated = updateResource(current.id, (resource) => {
-      const status = operationType === 'configuration-change'
-        ? resource.resourceType === 'cloud-server'
-          ? 'resizing' as const
-          : 'maintenance' as const
-        : resource.resourceType === 'cloud-server'
-          ? 'restarting' as const
-          : 'maintenance' as const;
-      return {
-        ...resource,
-        status,
-        lastOperatedAt: record.createdAt,
-        operationRecords: [record, ...resource.operationRecords],
-      } as Resource;
-    });
-    return { resource: clone(updated), order: undefined };
-  });
-}
-
-export function createResourceResizeOrder(input: Readonly<{
-  resourceId: string;
-  changes: string;
-  pricingSnapshot: PriceSnapshot;
-}>) {
-  const current = getResourceByAnyId(input.resourceId);
-  if (!current) throw new ResourceActionError('未找到需要变配的资源。');
-  if (!input.changes.trim()) {
-    throw new ResourceActionError('请说明目标配置。');
-  }
-  if (input.pricingSnapshot.total.amountFen <= 0) {
-    throw new ResourceActionError('免费配置变更应直接确认，不创建交易订单。');
-  }
-  return createCommerceOrder({
-    orderType: 'resize',
-    productType: current.resourceType,
-    productName: `${current.name}变更配置`,
-    site: current.site,
-    resourceId: current.id,
-    resourceIds: [current.id],
-    resourceName: current.name,
-    configurationSummary: [
-      { label: '关联资源', value: `${current.name}（${current.id}）` },
-      { label: '配置变化', value: input.changes.trim() },
-    ],
-    pricingSnapshot: input.pricingSnapshot,
-    fulfillment: {
-      kind: 'resource-resize',
-      resourceId: current.id,
-      changes: input.changes.trim(),
-    },
-  });
-}
-
 export function fulfillResourceCommerceOrder(order: CommerceOrder) {
   const fulfillment = order.fulfillment;
   if (!fulfillment) return [];
@@ -685,21 +663,6 @@ export function fulfillResourceCommerceOrder(order: CommerceOrder) {
     );
     return [updated.id];
   }
-  if (fulfillment.kind === 'resource-resize') {
-    updateResource(fulfillment.resourceId, (resource) => ({
-      ...resource,
-      status:
-        resource.resourceType === 'cloud-server' ? 'resizing' : 'maintenance',
-      lastOperatedAt: new Date().toISOString(),
-    } as Resource));
-    const updated = updateResource(fulfillment.resourceId, (resource) => ({
-      ...resource,
-      status: resource.resourceType === 'cloud-server' ? 'running' : 'running',
-      lastOperatedAt: new Date().toISOString(),
-    } as Resource));
-    operation(updated, '变更配置完成', fulfillment.changes);
-    return [updated.id];
-  }
   if (fulfillment.kind !== 'resource-purchase') return [];
 
   const resources = readResources();
@@ -713,6 +676,7 @@ export function fulfillResourceCommerceOrder(order: CommerceOrder) {
     order.configurationSummary.find((item) =>
       item.label === '资源名称' || item.label === '实例名称')?.value ??
     order.productName;
+  const configuration = fulfillment.configuration;
   const created = Array.from({ length: quantity }, (_, index) => {
     const id = `${fulfillment.resourceType === 'cloud-server' ? 'cs' : 'pm'}-${now.replace(/\D/g, '').slice(0, 14)}-${index + 1}`;
     const expiresAt = addMonths(
@@ -735,9 +699,28 @@ export function fulfillResourceCommerceOrder(order: CommerceOrder) {
         createdAt: now,
         expiresAt,
         expiryState: 'active',
+        purpose:
+          typeof configuration.purpose === 'string'
+            ? configuration.purpose
+            : template.purpose,
+        imageId:
+          typeof configuration.imageId === 'string'
+            ? configuration.imageId
+            : template.imageId,
+        image:
+          order.configurationSummary.find((item) => item.label === '镜像')?.value ??
+          template.image,
+        autoRenewal: {
+          enabled: configuration.autoRenewalEnabled === true,
+          periodMonths:
+            configuration.periodMonths === '3' ||
+            configuration.periodMonths === '6' ||
+            configuration.periodMonths === '12'
+              ? Number(configuration.periodMonths) as 3 | 6 | 12
+              : 1,
+        },
         lastOperatedAt: now,
         priceSnapshot: clone(order.pricingSnapshot),
-        operationRecords: [],
       };
       return next;
     }
@@ -757,9 +740,12 @@ export function fulfillResourceCommerceOrder(order: CommerceOrder) {
       createdAt: now,
       expiresAt,
       expiryState: 'active',
+      purpose:
+        typeof configuration.purpose === 'string'
+          ? configuration.purpose
+          : template.purpose,
       lastOperatedAt: now,
       priceSnapshot: clone(order.pricingSnapshot),
-      operationRecords: [],
     };
     return next;
   });

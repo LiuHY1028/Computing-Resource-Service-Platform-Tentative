@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  createCustomImage,
+  completeImageTask,
+  createImageFromResource,
   deleteCustomImage,
   getCompatibleImages,
+  importCustomImage,
   queryImages,
   resetImageStore,
 } from './imageStore';
@@ -23,29 +25,37 @@ describe('imageStore', () => {
     resetImageStore();
   });
 
-  it('uses declared compute compatibility', () => {
+  it('keeps only public and custom image categories', () => {
+    expect(queryImages().every((image) => image.type === 'public' || image.type === 'custom')).toBe(true);
     expect(getCompatibleImages('cpu').some((image) => image.id === 'preset-image-gpu-runtime')).toBe(false);
     expect(getCompatibleImages('gpu').some((image) => image.id === 'preset-image-gpu-runtime')).toBe(true);
   });
 
-  it('stores import metadata as a processing task', async () => {
-    const image = await createCustomImage({
+  it('creates an import task from validated file metadata and completes it', async () => {
+    const task = await importCustomImage({
       name: '项目运行环境',
       description: '团队运行依赖',
       operatingSystem: 'Linux LTS',
       version: '1.0',
       architecture: 'x86_64',
       compatibleComputeTypes: ['cpu'],
-      sourceFile: { name: 'runtime.img', size: 1024 },
+      bootMode: 'UEFI',
+      file: { name: 'runtime.img', size: 1024 },
     });
-    expect(image.status).toBe('processing');
-    expect(image.sourceFile?.name).toBe('runtime.img');
-    expect((await queryImages({ type: 'custom' })).some((item) => item.id === image.id)).toBe(true);
+    expect(task.status).toBe('importing');
+    expect(task.source.kind).toBe('file');
+    expect(completeImageTask(task.id).status).toBe('available');
   });
 
-  it('protects platform images from deletion', async () => {
-    await expect(deleteCustomImage('preset-image-platform')).rejects.toThrow(
-      '不可删除',
-    );
+  it('creates a custom image from a cloud server and protects public images', async () => {
+    const task = await createImageFromResource({
+      resourceId: 'cs-east-001',
+      name: '研发系统镜像',
+      description: '',
+      includeSystemConfiguration: true,
+    });
+    expect(task.status).toBe('creating');
+    expect(task.source.kind).toBe('resource');
+    await expect(deleteCustomImage('preset-image-base-linux')).rejects.toThrow('不可删除');
   });
 });

@@ -61,7 +61,9 @@ if (!source.resourceStore.includes("orderType: 'rentalRenewal'") || !source.reso
   errors.push('物理机续租订单缺少资源类型与存在性校验。');
 }
 if (
-  !source.resourceStore.includes("? 'releasing'") ||
+  !source.resourceStore.includes("status: 'releasing'") ||
+  !source.resourceStore.includes("status: 'released'") ||
+  !source.resourceStore.includes("'资源已释放，历史信息保留在操作记录中。'") ||
   !source.storage.includes("status: 'releasing'") ||
   !source.storage.includes("action: '释放存储'")
 ) {

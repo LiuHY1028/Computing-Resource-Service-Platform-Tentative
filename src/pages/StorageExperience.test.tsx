@@ -41,9 +41,9 @@ describe('storage purchase and file management routes', () => {
     await user.click(screen.getByRole('button', { name: /性能型模型与并行训练数据/ }));
     expect(screen.getAllByText('¥1.20 / GB / 月').length).toBeGreaterThan(0);
     await user.click(screen.getByRole('button', { name: '确认订单' }));
-    expect(screen.getByRole('heading', { name: '确认订单' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '确认订单' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '创建订单并支付' }));
-    expect(await screen.findByRole('heading', { name: '收银台' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '核对订单与付款' })).toBeInTheDocument();
     expect(screen.getByText(/^ORD-\d{8}-\d{4}$/)).toBeInTheDocument();
   });
 

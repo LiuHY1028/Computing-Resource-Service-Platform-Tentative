@@ -57,7 +57,7 @@
 | `STO-02` 存储空间详情 | `TPL-DETAIL`；摘要 + 挂载关系列表 | Container、Tabs/锚点、Button、Table、Pagination、Modal、Tooltip | `StorageSummary`、`MountRelationTable`、`StorageTypeBadge`、`CompatibilityNotice` | 查看类型、站点和挂载关系；从关联资源返回；购后挂载/解绑仅在规则确认后开放 | 页面 `L/F`；挂载关系 `L/E/F`；关联资源缺失；操作若未确认则 D/不展示 | **需要**：存储摘要、挂载关系、兼容提示。依据：存储独立管理 `REQ-012/026/027`；文件浏览器不在当前确认范围 |
 | `IMG-01` 镜像管理 | `TPL-LIST`；上传入口使用任务弹窗/抽屉 | Search Input、Select、Button、Table、Pagination、Modal、Form、Tooltip | `ImageCompatibilityBadge`、`UploadImageForm`、`UploadProgress`、`ImageSourceLabel` | 搜索/筛选；打开上传；校验表单；上传并查看结果；作为 `BUY-01` 的关联入口 | `L/E/N/F`；上传校验 Error/D；上传 `P/S/F`；兼容性未知或不兼容提示 | **需要**：Drawer（如采用）、上传进度、兼容性标识、结果反馈。依据：镜像上传与创建选择 `REQ-015`；PDF 仅给上传区域，无进度/兼容性 |
 | `SW-01` 软件中心 | `TPL-CATALOG`；软件卡片 + 安装任务弹窗 | Search Input、Select、筛选标签、Button、Container、Pagination、Modal、Form、Tooltip | `SoftwareCard`、`CompatibilityBadge`、`TargetResourceSelector`、`InstallTaskSummary` | 搜索/筛选；查看软件信息；选择目标资源；发起安装；跳转资源/操作记录 | `L/E/N/F`；目标资源加载 `L/E/F`；不兼容 D；安装 `P/S/F`；版本/卸载规则不擅自出现 | **需要**：软件卡、兼容性标识、安装任务反馈。依据：软件安装 `REQ-017`；PDF 无软件目录与安装进度 |
-| `NET-01` 网络与访问 | `TPL-LIST`；资源关联规则表 + 新建/编辑弹窗 | Search Input、Select、Button、Table、Pagination、Modal、Form、Input、Tooltip | `PortRuleEditor`、`IpAllowlistEditor`、`ResourceSelector`、`ConnectionInfo`、`RuleStatusBadge` | 按资源筛选；查看端口暴露/转发/允许 IP；新建/编辑已确认字段；复制连接信息 | `L/E/N/F`；字段 Normal/Focus/Error/D；提交 `P/S/F`；冲突/非法格式 Error；协议等未确认项不固化 | **需要**：端口规则编辑器、IP 列表编辑器、复制反馈、状态标识。依据：`REQ-014`；PDF 无网络字段组合 |
+| `NET-01` 网络与访问 | `TPL-LIST`；资源筛选、网络摘要与基础访问规则 | Search Input、Select、Button、DataTable V2、Modal、Form、Input、Tooltip | `NetworkRuleEditor`、`ResourceSelector`、`ConnectionInfo` | 按资源筛选；使用 SSH/RDP/HTTP/HTTPS 模板或自定义单端口；配置来源；启停、编辑和删除 | `L/E/N/F`；字段 Normal/Focus/Error/D；全部来源风险提示；免费操作直接完成 | **需要**：单端口规则编辑、来源类型、全局操作记录链接。依据：`REQ-014` 与基础访问目标 |
 | `ORD-01` 订单列表 | `TPL-LIST`；交易订单单一主状态 | Search Input、Select、DataTable V2、StatusBadge、Button | `OrderStatusBadge`、`OrderSnapshotCell`、`ResourceLinkCell` | 搜索/筛选；去支付；取消待支付订单；查看订单/资源 | `L/E/N/F`；每行一个主状态；取消确认；关联资源未生成 | **需要**：Task 15 统一订单类型、状态机、价格快照和账单关系 |
 | `ORD-02` 订单详情 | `TPL-DETAIL`；价格快照 + 单一当前状态 + 历史时间线 | Container、StatusBadge、Button、DataTable V2 | `OrderSummary`、`OrderTimeline`、`RelatedBillCard`、`RelatedResourceCard` | 去支付/取消；查看账单和资源；历史节点不与当前状态并列 | 页面 `L/F`；单一当前状态；关联账单/资源缺失 | **需要**：Task 15 订单交易与履约追踪 |
 | `BILL-01` 账单列表 | `TPL-LIST`；账务对象单一主状态 | Search Input、Select、DataTable V2、StatusBadge、Button | `BillStatusBadge`、`OrderLinkCell`、`BillingPeriodCell` | 搜索/筛选；查看账单/订单；未支付账单进入收银台 | `L/E/N/F`；每行一个主状态 | **需要**：Task 15 独立账单模型与正式路由 |
@@ -77,11 +77,13 @@
 | `MarketplaceStatePanel` | 在结果上下文内统一呈现 Loading、Error、Empty、No Result 及对应下一步 | 中性标题、说明、重试/清除搜索/重置/切换类型操作 | 后台错误码、库存状态机；用同一文案混淆空目录和筛选无结果 | `MKT-01` |
 | `CloudSpecSelector` | 选择云服务器规格 | CPU、内存、加速卡信息、站点可用性 | 把系统盘写成内存；暗含库存/锁定规则 | `BUY-01` |
 | `PhysicalSpecSelector` | 选择整机规格 | CPU、内存、加速卡型号/卡数、站点 | 默认镜像、系统盘或自动开机规则 | `BUY-02` |
+| `PurchaseStepper` | 统一配置、确认订单、支付三个交易阶段 | 当前路由、草稿阶段、订单主状态 | 页面自行维护另一套步骤 DOM；允许跳转未来步骤 | `BUY-01/02`、`STO-03`、`CHK-01` |
+| `Drawer` | 承载需要持续核对摘要和报价的专用流程 | 标题、说明、正文、主次操作、焦点与关闭回退 | 仅换标题的通用业务弹窗；不可恢复的页面跳转 | 资源续费、物理机续租 |
 | `SystemDiskField` | 显示系统盘配置 | 标签“系统盘”、暂定默认 `30 GB`、是否可编辑的待确认说明 | K8S Pod 底层术语；将 30 GB 表达为内存 | `BUY-01` |
 | `StorageMountSelector` | 选择已有独立存储 | 云硬盘/高性能共享存储、名称、站点兼容性与可挂载状态 | 不显示已单独挂载的云硬盘；物理机本地盘不进入选择器 | `BUY-01`、`STO-02/03` |
-| `PurchaseSummary` | 提交前复述用户选择 | 已选择的可确认字段 | 金额、支付、续费、审批、正式订单状态 | `BUY-01/02` |
-| `NetworkRulesEditor` | 复用 SSH/来源与端口规则意向编辑 | TCP/UDP、服务/映射端口、IPv4/CIDR、说明 | 真实地址/凭据、安全组、网络资源或审批 | `BUY-01/02` |
-| `PurchaseSuccessState` | 显示 DEMO 配置编号、摘要与原型边界 | 商品、资源类型、已确认演示字段 | 正式订单编号、资源生命周期或写入“我的资源” | `BUY-01/02` |
+| `PurchaseSummary` | 配置阶段实时复述选择与费用 | 已选择配置、价格目录生成的报价 | 支付状态、第三方交易号或真实基础设施结果 | `BUY-01/02` |
+| `NetworkRulesEditor` | 复用 SSH/来源与基础访问规则编辑 | TCP/UDP、单一访问端口、IPv4/CIDR/全部来源、说明 | 双端口映射、安全组、复杂路由、真实地址或凭据 | `BUY-01/02` |
+| `PurchaseOrderConfirmation` | 在正式确认阶段冻结前复核配置和费用 | 商品摘要、完整配置、价格快照、返回修改 | 使用 Modal 绕过路由阶段；付款前提前履约 | `BUY-01/02`、`STO-03` |
 
 `MKT-01` 状态组合覆盖：
 
@@ -92,7 +94,7 @@
 | Error (`F`) | 数据读取失败 | 可见错误说明和真实重试操作 |
 | Empty (`E`) | 当前资源类型目录总数为 0 | 说明该类型暂无资源并提供切换类型入口 |
 | No Result (`N`) | 目录有数据但组合条件结果为 0 | 清除搜索和/或重置筛选，不与 Empty 共用文案 |
-| Disabled (`D`) | 单个规格演示为暂不可配置 | 卡片仍可比较；按钮禁用；可见原因与 Tooltip/ARIA 说明 |
+| Disabled (`D`) | 单个规格暂不可配置 | 卡片仍可比较；按钮禁用；可见原因与 Tooltip/ARIA 说明 |
 
 以上均为页面反馈状态，不是正式库存、资源、订单或交付状态枚举。
 

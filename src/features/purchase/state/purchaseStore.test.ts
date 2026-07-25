@@ -43,8 +43,12 @@ describe('purchase store', () => {
     savePurchaseDraft(product.id, product.resourceType, configuration);
 
     const restored = loadPurchaseDraft(product.id, product.resourceType);
-    expect(isCloudDraft(restored)).toBe(true);
-    expect(restored).toMatchObject({ instanceName: 'draft-cloud', imageId: null });
+    expect(isCloudDraft(restored?.configuration)).toBe(true);
+    expect(restored).toMatchObject({
+      version: 2,
+      step: 'configuration',
+      configuration: { instanceName: 'draft-cloud', imageId: null },
+    });
     expect(loadPurchaseDraft('another-product', product.resourceType)).toBeUndefined();
     expect(loadPurchaseDraft(product.id, 'physical-machine')).toBeUndefined();
 

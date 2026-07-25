@@ -13,12 +13,12 @@ export const RESOURCE_STATUS_LABELS: Readonly<Record<ResourceStatus, string>> = 
   stopped: '已停止',
   'powered-off': '已关机',
   restarting: '重启中',
-  resizing: '变配中',
   maintenance: '维护中',
   expiring: '即将到期',
   abnormal: '异常',
   expired: '已到期',
   releasing: '释放中',
+  released: '已释放',
 };
 
 export const COMPUTE_TYPE_LABELS: Readonly<Record<ComputeType, string>> = {

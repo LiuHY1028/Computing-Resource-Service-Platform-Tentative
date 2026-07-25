@@ -223,15 +223,17 @@ export function ResourceListPage({ resourceType }: Readonly<{ resourceType: Reso
       setResourceAction({ resource, action });
       return;
     }
-    if (['renew', 'auto-renew', 'extend', 'metadata', 'configuration-change', 'os-reinstall'].includes(action)) {
+    if (['renew', 'auto-renew', 'extend', 'metadata'].includes(action)) {
       setLifecycleAction({ resources: [resource], action: action as LifecycleDialogAction });
       return;
     }
     const tabs: Partial<Record<ResourceMenuAction, string>> = {
-      storage: 'storage', network: 'network', monitoring: 'monitoring', operations: 'operations',
+      storage: 'storage', monitoring: 'monitoring',
       'hardware-health': 'health', bmc: 'delivery',
     };
-    if (action === 'image') navigate(`${APP_PATHS.images}?resource=${encodeURIComponent(resource.id)}`);
+    if (action === 'image') navigate(`${APP_PATHS.images}?type=custom&create=resource&resourceId=${encodeURIComponent(resource.id)}`);
+    else if (action === 'network') navigate(`${APP_PATHS.networkAccess}?resourceId=${encodeURIComponent(resource.id)}`);
+    else if (action === 'operations') navigate(`${APP_PATHS.operationRecords}?module=resource&resourceId=${encodeURIComponent(resource.id)}`);
     else detailPath(resource, tabs[action]);
   }
 

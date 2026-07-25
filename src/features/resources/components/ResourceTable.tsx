@@ -37,8 +37,6 @@ export type ResourceMenuAction =
   | 'auto-renew'
   | 'extend'
   | 'metadata'
-  | 'configuration-change'
-  | 'os-reinstall'
   | 'storage'
   | 'network'
   | 'monitoring'
@@ -125,8 +123,6 @@ export function ResourceActionMenu({ resource, onAction }: Readonly<{ resource: 
         <DropdownMenuGroup label="配置与运维">
           <DropdownMenuItem disabled={!renewal.enabled} title={renewal.reason} onSelect={() => onAction(resource, 'renew')}>续费</DropdownMenuItem>
           <DropdownMenuItem disabled={!renewal.enabled} title={renewal.reason} onSelect={() => onAction(resource, 'auto-renew')}>自动续费设置</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onAction(resource, 'configuration-change')}>变更配置</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onAction(resource, 'os-reinstall')}>重装系统</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onAction(resource, 'image')}>制作镜像</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onAction(resource, 'storage')}>存储管理</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onAction(resource, 'network')}>网络与访问</DropdownMenuItem>
@@ -155,7 +151,6 @@ export function ResourceActionMenu({ resource, onAction }: Readonly<{ resource: 
       <DropdownMenuSeparator />
       <DropdownMenuGroup label="交付与管理">
         <DropdownMenuItem disabled={!extension.enabled} title={extension.reason} onSelect={() => onAction(resource, 'extend')}>续租</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onAction(resource, 'os-reinstall')}>重装系统</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onAction(resource, 'network')}>网络与访问</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => onAction(resource, 'storage')}>本地存储</DropdownMenuItem>
         <DropdownMenuItem disabled={resource.bmcAccess !== 'authorized'} title={resource.bmcAccess !== 'authorized' ? '当前资源未获得带外管理授权。' : undefined} onSelect={() => onAction(resource, 'bmc')}>带外管理</DropdownMenuItem>

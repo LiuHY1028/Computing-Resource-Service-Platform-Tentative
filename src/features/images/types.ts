@@ -1,5 +1,5 @@
-export type ImageType = 'public' | 'platform' | 'custom';
-export type ImageStatus = 'available' | 'submitted' | 'processing' | 'failed';
+export type ImageType = 'public' | 'custom';
+export type ImageStatus = 'creating' | 'importing' | 'available' | 'failed';
 export type ImageComputeType = 'cpu' | 'gpu';
 
 export type PlatformImage = Readonly<{
@@ -16,14 +16,29 @@ export type PlatformImage = Readonly<{
   description: string;
   status: ImageStatus;
   createdAt: string;
-  resourceIds: readonly string[];
-  sourceFile?: Readonly<{ name: string; size: number }>;
+  updatedAt: string;
+  source:
+    | Readonly<{ kind: 'public' }>
+    | Readonly<{
+        kind: 'resource';
+        resourceId: string;
+        systemDiskId: string;
+        includeSystemConfiguration: boolean;
+      }>
+    | Readonly<{
+        kind: 'file';
+        fileName: string;
+        fileSize: number;
+        bootMode: 'BIOS' | 'UEFI';
+      }>;
+  failureReason?: string;
 }>;
 
 export type ImageQuery = Readonly<{
   search?: string;
   type?: 'all' | ImageType;
   operatingSystem?: string;
+  architecture?: 'all' | 'x86_64' | 'arm64';
   computeType?: 'all' | ImageComputeType;
   status?: 'all' | ImageStatus;
 }>;

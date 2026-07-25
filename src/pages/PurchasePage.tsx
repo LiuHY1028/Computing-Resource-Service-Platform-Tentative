@@ -5,7 +5,7 @@ import { APP_PATHS, checkoutPath, orderDetailPath } from '../app/routes';
 import {
   CloudPurchaseForm,
   ConfigurationSummary,
-  ConfirmationModal,
+  PurchaseOrderConfirmation,
   PhysicalPurchaseForm,
   PurchasePageLayout,
   PurchaseStatePanel,
@@ -89,6 +89,7 @@ function PurchasePageContent({
   resourceType,
 }: PurchasePageContentProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const product = loadPurchaseProduct(productId);
   const draft =
     product?.resourceType === resourceType && product.configurable
@@ -106,13 +107,14 @@ function PurchasePageContent({
         return undefined;
       }
       const initial = createInitialCloudConfiguration(product);
-      return draft && isCloudDraft(draft)
+      const restored = draft?.configuration;
+      return restored && isCloudDraft(restored)
         ? {
             ...initial,
-            ...draft,
-            imageId: draft.imageId || null,
+            ...restored,
+            imageId: restored.imageId || null,
             systemDiskGb: product.defaultSystemDiskGb,
-            network: { ...initial.network, ...draft.network },
+            network: { ...initial.network, ...restored.network },
           }
         : initial;
     });
@@ -126,20 +128,20 @@ function PurchasePageContent({
         return undefined;
       }
       const initial = createInitialPhysicalConfiguration();
-      return draft && isPhysicalDraft(draft)
-        ? { ...initial, ...draft, network: { ...initial.network, ...draft.network } }
+      const restored = draft?.configuration;
+      return restored && isPhysicalDraft(restored)
+        ? { ...initial, ...restored, network: { ...initial.network, ...restored.network } }
         : initial;
     });
   const [errors, setErrors] = useState<PurchaseFieldErrors>({});
   const [dirty, setDirty] = useState(
-    () => isCloudDraft(draft) || isPhysicalDraft(draft),
+    () => isCloudDraft(draft?.configuration) || isPhysicalDraft(draft?.configuration),
   );
-  const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<PurchaseSubmissionResult>();
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [liveMessage, setLiveMessage] = useState(() => {
-    if (isCloudDraft(draft) || isPhysicalDraft(draft)) {
+    if (isCloudDraft(draft?.configuration) || isPhysicalDraft(draft?.configuration)) {
       return '已恢复当前商品在本次浏览会话中的草稿。';
     }
     if (product?.resourceType === 'cloud-server') {
@@ -150,6 +152,11 @@ function PurchasePageContent({
     }
     return '';
   });
+  const requestedStep =
+    searchParams.get('step') === 'confirmation' &&
+    draft?.step === 'confirmation'
+      ? 'confirmation'
+      : 'configuration';
 
   useEffect(() => {
     if (!dirty) return undefined;
@@ -231,7 +238,7 @@ function PurchasePageContent({
     if (!product || product.resourceType !== 'cloud-server') return;
     setCloudConfiguration(next);
     setDirty(true);
-    savePurchaseDraft(product.id, resourceType, next);
+    savePurchaseDraft(product.id, resourceType, next, 'configuration');
     if (Object.keys(errors).length) setErrors(validateCloudConfiguration(next).errors);
     setLiveMessage('配置已更新，并已保存为本次浏览会话的草稿。');
   }
@@ -240,7 +247,7 @@ function PurchasePageContent({
     if (!product || product.resourceType !== 'physical-machine') return;
     setPhysicalConfiguration(next);
     setDirty(true);
-    savePurchaseDraft(product.id, resourceType, next);
+    savePurchaseDraft(product.id, resourceType, next, 'configuration');
     if (Object.keys(errors).length) setErrors(validatePhysicalConfiguration(next).errors);
     setLiveMessage('配置已更新，并已保存为本次浏览会话的草稿。');
   }
@@ -263,8 +270,15 @@ function PurchasePageContent({
         return;
       }
     } else return;
-    setConfirmationOpen(true);
-    setLiveMessage('配置校验通过，已打开确认弹窗。');
+    const configuration =
+      product.resourceType === 'cloud-server'
+        ? cloudConfiguration!
+        : physicalConfiguration!;
+    savePurchaseDraft(product.id, resourceType, configuration, 'confirmation');
+    const next = new URLSearchParams(searchParams);
+    next.set('step', 'confirmation');
+    setSearchParams(next);
+    setLiveMessage('配置校验通过，请核对订单。');
   }
 
   async function submitPurchase() {
@@ -284,15 +298,19 @@ function PurchasePageContent({
           ? cloudConfiguration!
           : physicalConfiguration!,
       );
-      clearPurchaseDraft(product.id);
       setDirty(false);
-      setConfirmationOpen(false);
-      setResult(nextResult);
       setLiveMessage(
         nextResult.orderStatus === 'awaiting-payment'
           ? '订单已创建，请完成支付。'
           : '按量订单已开通。',
       );
+      if (nextResult.orderStatus === 'awaiting-payment') {
+        navigate(checkoutPath(nextResult.orderId));
+        clearPurchaseDraft(product.id);
+        return;
+      }
+      clearPurchaseDraft(product.id);
+      setResult(nextResult);
     } finally {
       setSubmitting(false);
     }
@@ -333,6 +351,24 @@ function PurchasePageContent({
 
   if (product.resourceType === 'cloud-server' && cloudConfiguration && cloudQuote) {
     const validation = validateCloudConfiguration(cloudConfiguration);
+    if (requestedStep === 'confirmation' && draft?.step === 'confirmation') {
+      return (
+        <PurchaseOrderConfirmation
+          resourceLabel="云服务器"
+          productName={product.name}
+          items={cloudSummary}
+          quote={cloudQuote}
+          submitting={submitting}
+          onBack={() => {
+            savePurchaseDraft(product.id, resourceType, cloudConfiguration, 'configuration');
+            const next = new URLSearchParams(searchParams);
+            next.delete('step');
+            setSearchParams(next);
+          }}
+          onSubmit={() => void submitPurchase()}
+        />
+      );
+    }
     return (
       <>
         <PurchasePageLayout
@@ -349,12 +385,12 @@ function PurchasePageContent({
             { id: 'purchase-network', label: '网络与访问' },
           ]}
           liveMessage={liveMessage}
+          currentStep="configuration"
           summary={<ConfigurationSummary title="云服务器配置" items={cloudSummary} quote={cloudQuote} missingItems={validation.missingItems} dirty={dirty} onConfirm={validateAndConfirm} onReturn={requestReturn} onClearDraft={clearDraft} />}
         >
           <SelectedProductSummary product={product} onReturn={requestReturn} onChangeProduct={requestReturn} />
           <CloudPurchaseForm product={product} value={cloudConfiguration} errors={errors} onChange={updateCloud} onConfirm={validateAndConfirm} onReturn={requestReturn} />
         </PurchasePageLayout>
-        <ConfirmationModal open={confirmationOpen} resourceLabel="云服务器" productName={product.name} items={cloudSummary} quote={cloudQuote} submitting={submitting} onClose={() => setConfirmationOpen(false)} onSubmit={submitPurchase} />
         <PromptModal open={leaveOpen} title="离开当前配置？" description="当前配置尚未确认。离开后仍可在本次浏览会话中恢复草稿。" variant="warning" confirmLabel="确认离开" cancelLabel="继续配置" onClose={() => setLeaveOpen(false)} onConfirm={returnToMarketplace} />
       </>
     );
@@ -362,6 +398,24 @@ function PurchasePageContent({
 
   if (product.resourceType === 'physical-machine' && physicalConfiguration && physicalQuote) {
     const validation = validatePhysicalConfiguration(physicalConfiguration);
+    if (requestedStep === 'confirmation' && draft?.step === 'confirmation') {
+      return (
+        <PurchaseOrderConfirmation
+          resourceLabel="物理机"
+          productName={product.name}
+          items={physicalSummary}
+          quote={physicalQuote}
+          submitting={submitting}
+          onBack={() => {
+            savePurchaseDraft(product.id, resourceType, physicalConfiguration, 'configuration');
+            const next = new URLSearchParams(searchParams);
+            next.delete('step');
+            setSearchParams(next);
+          }}
+          onSubmit={() => void submitPurchase()}
+        />
+      );
+    }
     return (
       <>
         <PurchasePageLayout
@@ -375,12 +429,12 @@ function PurchasePageContent({
             { id: 'purchase-network', label: '网络意向' },
           ]}
           liveMessage={liveMessage}
+          currentStep="configuration"
           summary={<ConfigurationSummary title="物理机配置" items={physicalSummary} quote={physicalQuote} missingItems={validation.missingItems} dirty={dirty} onConfirm={validateAndConfirm} onReturn={requestReturn} onClearDraft={clearDraft} />}
         >
           <SelectedProductSummary product={product} onReturn={requestReturn} onChangeProduct={requestReturn} />
           <PhysicalPurchaseForm value={physicalConfiguration} errors={errors} onChange={updatePhysical} onConfirm={validateAndConfirm} onReturn={requestReturn} />
         </PurchasePageLayout>
-        <ConfirmationModal open={confirmationOpen} resourceLabel="物理机" productName={product.name} items={physicalSummary} quote={physicalQuote} submitting={submitting} onClose={() => setConfirmationOpen(false)} onSubmit={submitPurchase} />
         <PromptModal open={leaveOpen} title="离开当前配置？" description="当前配置尚未确认。离开后仍可在本次浏览会话中恢复草稿。" variant="warning" confirmLabel="确认离开" cancelLabel="继续配置" onClose={() => setLeaveOpen(false)} onConfirm={returnToMarketplace} />
       </>
     );

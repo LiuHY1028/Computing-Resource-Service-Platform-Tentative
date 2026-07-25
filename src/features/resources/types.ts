@@ -6,10 +6,10 @@ export type CloudServerStatus =
   | 'running'
   | 'stopped'
   | 'restarting'
-  | 'resizing'
   | 'expiring'
   | 'expired'
   | 'releasing'
+  | 'released'
   | 'abnormal';
 export type PhysicalMachineStatus =
   | 'preparing'
@@ -20,6 +20,7 @@ export type PhysicalMachineStatus =
   | 'expiring'
   | 'expired'
   | 'releasing'
+  | 'released'
   | 'abnormal';
 export type ResourceStatus = CloudServerStatus | PhysicalMachineStatus;
 export type ComputeType = 'cpu' | 'gpu';
@@ -120,11 +121,10 @@ interface ResourceBase {
   readonly purpose: string;
   readonly owner: string;
   readonly lastOperatedAt: string;
+  readonly releasedAt?: string;
   readonly connection: ConnectionInformation;
   readonly monitoring: readonly MonitoringMetric[];
-  readonly networkRules: readonly PortRule[];
   readonly software: readonly InstalledSoftware[];
-  readonly operationRecords: readonly OperationRecord[];
   readonly priceSnapshot: PriceSnapshot;
 }
 

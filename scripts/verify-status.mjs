@@ -33,13 +33,13 @@ const requiredResourceStatuses = [
   'running',
   'stopped',
   'restarting',
-  'resizing',
   'preparing',
   'powered-off',
   'maintenance',
   'expiring',
   'expired',
   'releasing',
+  'released',
   'abnormal',
 ];
 requiredResourceStatuses.forEach((status) => {
@@ -71,7 +71,7 @@ const requiredOrderStatuses = [
   'awaiting-payment',
   'paying',
   'paid',
-  'provisioning',
+  'fulfilling',
   'completed',
   'cancelled',
   'payment-failed',
@@ -171,6 +171,12 @@ const statusSources = [
 check(
   statusSources.every((source) => !forbiddenLegacyFields.test(source)),
   '正式状态模型仍残留旧的并列状态字段。',
+);
+check(
+  !resourceTypes.includes("'resizing'") &&
+    !orderTypes.includes("'provisioning'") &&
+    orderTypes.includes("'fulfilling'"),
+  '状态模型仍包含已删除的变配或旧开通状态。',
 );
 
 if (failures.length) {

@@ -25,6 +25,9 @@ export type PlatformOperationRecord = Readonly<{
   status: OperationStatus;
   message: string;
   targetPath?: string;
+  relatedOrderId?: string;
+  relatedBillId?: string;
+  correlationId?: string;
 }>;
 
 export type CreateOperationInput = Omit<

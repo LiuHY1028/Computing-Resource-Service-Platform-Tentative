@@ -280,6 +280,34 @@
 }
 .storage-target-card span { display: grid; gap: var(--space-4); }
 .storage-target-card small { color: var(--color-text-secondary); }
+.storage-unit-mounts,
+.storage-shared-target,
+.storage-shared-target__settings {
+  display: grid;
+  gap: var(--space-10);
+}
+.storage-unit-mount {
+  display: grid;
+  grid-template-columns: 110px minmax(240px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12);
+  border: var(--border-default);
+  border-radius: var(--radius-control);
+}
+.storage-unit-mount > span { color: var(--color-text-secondary); }
+.storage-shared-target {
+  padding: var(--space-10);
+  border: var(--border-default);
+  border-radius: var(--radius-control);
+}
+.storage-shared-target .storage-target-card { border: 0; padding: 0; }
+.storage-shared-target__settings {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding-top: var(--space-8);
+  border-top: var(--border-default);
+}
 .storage-attach-fields { align-items: end; }
 .storage-attach-fields > :first-child { flex: 1; }
 .storage-compatibility-note {
@@ -354,6 +382,34 @@
   .storage-order-confirmation { grid-template-columns: minmax(0, 1fr) 320px; }
   .storage-config-section { padding: var(--space-20); }
 }
+@media (max-width: 1390px) {
+  .storage-configurator__workspace,
+  .storage-order-confirmation {
+    grid-template-columns: 1fr;
+  }
+  .storage-quote {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+  }
+  .storage-quote > .ui-container {
+    grid-template-columns: minmax(180px, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-16);
+    padding: var(--space-14) var(--space-20);
+    box-shadow: 0 -10px 24px rgba(15, 23, 42, .08);
+  }
+  .storage-quote__heading,
+  .storage-quote > .ui-container > section,
+  .storage-quote > .ui-container > p:not(.storage-configurator__error):not(.storage-configurator__feedback) {
+    display: none;
+  }
+  .storage-quote__total {
+    padding: 0;
+    border: 0;
+  }
+  .storage-quote__total strong { font-size: 30px; }
+}
 @media (max-width: 1100px) {
   .storage-configurator__workspace,
   .storage-order-confirmation { grid-template-columns: 1fr; }
@@ -373,4 +429,5 @@
   .storage-protocol,
   .storage-attach-fields { align-items: flex-start; flex-direction: column; }
   .storage-config-section__heading p { text-align: left; }
+  .storage-unit-mount { grid-template-columns: 1fr; }
 }

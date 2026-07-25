@@ -1,8 +1,11 @@
 export {
-  createCustomImage,
+  completeImageTask,
+  createImageFromResource,
   deleteCustomImage,
   findImage,
   getCompatibleImages,
+  getImageResourceIds,
+  importCustomImage,
   queryImages,
   resetImageStore,
   updateCustomImage,

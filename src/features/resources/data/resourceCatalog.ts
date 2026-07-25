@@ -6,10 +6,8 @@ import type {
   ConnectionInformation,
   InstalledSoftware,
   MonitoringMetric,
-  OperationRecord,
   PhysicalMachineStatus,
   PhysicalMachineResource,
-  PortRule,
   Resource,
 } from '../types';
 import {
@@ -116,29 +114,6 @@ function connection(
   };
 }
 
-function networkRules(index: number): readonly PortRule[] {
-  return [
-    {
-      id: `rule-${index}-ssh`,
-      name: 'SSH 访问',
-      protocol: 'TCP',
-      servicePort: 22,
-      mappedPort: 22,
-      source: '10.0.0.0/8',
-      status: 'enabled',
-    },
-    {
-      id: `rule-${index}-service`,
-      name: '应用服务',
-      protocol: 'TCP',
-      servicePort: 8080,
-      mappedPort: 18080 + index,
-      source: '192.0.2.0/24',
-      status: index % 3 === 0 ? 'disabled' : 'enabled',
-    },
-  ];
-}
-
 function software(index: number, physical = false): readonly InstalledSoftware[] {
   return [
     {
@@ -154,30 +129,6 @@ function software(index: number, physical = false): readonly InstalledSoftware[]
       version: physical ? '1.8.0' : '1.29.2',
       status: index % 4 === 0 ? 'updating' : 'available',
       installedAt: '2026-07-12T14:20:00+08:00',
-    },
-  ];
-}
-
-function operationRecords(index: number): readonly OperationRecord[] {
-  return [
-    {
-      id: `operation-${index}-1`,
-      action: '资源信息同步',
-      actor: '平台服务',
-      createdAt: '2026-07-22T16:20:00+08:00',
-      status: 'completed',
-      message: '资源信息已更新。',
-    },
-    {
-      id: `operation-${index}-2`,
-      action: '连接信息读取',
-      actor: '当前用户',
-      createdAt: '2026-07-23T09:15:00+08:00',
-      status: index % 5 === 0 ? 'failed' : 'completed',
-      message:
-        index % 5 === 0
-          ? '连接信息暂时无法读取，请稍后重试。'
-          : '连接信息读取完成。',
     },
   ];
 }
@@ -270,7 +221,7 @@ const CLOUD_SEEDS: readonly CloudResourceSeed[] = [
   { id: 'cs-east-001', skuId: 'catalog-cloud-cpu-c16-west', name: '研发计算节点-01', status: 'running', site: '东部算力中心', cpu: '16 vCPU', memoryGb: 64, privateIp: '10.24.1.21', publicIp: '198.51.100.21', expiryState: 'active', expiresAt: '2027-06-30T23:59:59+08:00', project: '研发基础平台', purpose: '持续集成与服务验证' },
   { id: 'cs-east-002', skuId: 'catalog-cloud-gpu-g3-east', name: '视觉训练节点-02', status: 'running', site: '东部算力中心', cpu: '32 vCPU', memoryGb: 128, accelerator: accelerator(1), privateIp: '10.24.1.22', expiryState: 'expiring', expiresAt: '2026-08-05T23:59:59+08:00', project: '视觉算法平台', purpose: '模型训练环境' },
   { id: 'cs-west-003', skuId: 'catalog-cloud-cpu-c8-east', name: '数据处理节点-03', status: 'stopped', site: '西部算力中心', cpu: '8 vCPU', memoryGb: 32, privateIp: '10.24.2.23', publicIp: '203.0.113.23', expiryState: 'active', expiresAt: '2027-03-31T23:59:59+08:00', project: '数据工程平台', purpose: '批量数据处理' },
-  { id: 'cs-west-004', skuId: 'catalog-cloud-gpu-g2-west', name: '推理计算节点-04', status: 'resizing', site: '西部算力中心', cpu: '32 vCPU', memoryGb: 128, accelerator: accelerator(2), privateIp: '10.24.2.24', expiryState: 'active', expiresAt: '2027-01-31T23:59:59+08:00', project: '在线服务平台', purpose: '服务运行环境' },
+  { id: 'cs-west-004', skuId: 'catalog-cloud-gpu-g2-west', name: '推理计算节点-04', status: 'running', site: '西部算力中心', cpu: '32 vCPU', memoryGb: 128, accelerator: accelerator(2), privateIp: '10.24.2.24', expiryState: 'active', expiresAt: '2027-01-31T23:59:59+08:00', project: '在线服务平台', purpose: '服务运行环境' },
   { id: 'cs-east-005', skuId: 'catalog-cloud-cpu-c8-east', name: '通用开发节点-05', status: 'creating', site: '东部算力中心', cpu: '8 vCPU', memoryGb: 32, privateIp: '10.24.1.25', available: false, expiryState: 'active', expiresAt: '2027-07-20T23:59:59+08:00', project: '开发工具平台', purpose: '开发环境准备' },
   { id: 'cs-south-006', skuId: 'catalog-cloud-gpu-g1-east', name: '加速验证节点-06', status: 'abnormal', site: '南部算力中心', cpu: '16 vCPU', memoryGb: 64, accelerator: accelerator(1, '通用加速卡 80GB'), privateIp: '10.24.3.26', expiryState: 'expiring', expiresAt: '2026-08-12T23:59:59+08:00', project: '算法验证环境', purpose: '加速能力验证' },
   { id: 'cs-south-007', skuId: 'catalog-cloud-cpu-c8-east', name: '归档计算节点-07', status: 'expired', site: '南部算力中心', cpu: '8 vCPU', memoryGb: 32, privateIp: '10.24.3.27', expiryState: 'expired', expiresAt: '2026-07-15T23:59:59+08:00', project: '历史数据平台', purpose: '归档任务查询' },
@@ -344,9 +295,7 @@ function createCloudResource(seed: CloudResourceSeed, index: number): CloudServe
     lastOperatedAt: '2026-07-23T09:15:00+08:00',
     connection: connection(seed.privateIp, seed.publicIp, seed.available ?? true),
     monitoring: monitoringMetrics(Boolean(seed.accelerator)),
-    networkRules: networkRules(index),
     software: software(index),
-    operationRecords: operationRecords(index),
     instanceSpec: price?.name ?? seed.skuId,
     vCpu: Number(seed.cpu.match(/\d+/)?.[0] ?? 8),
     imageId,
@@ -394,9 +343,7 @@ function createPhysicalResource(
     lastOperatedAt: '2026-07-23T09:15:00+08:00',
     connection: connection(seed.privateIp, seed.publicIp, seed.available ?? true),
     monitoring: monitoringMetrics(Boolean(seed.accelerator)),
-    networkRules: networkRules(index + 20),
     software: software(index, true),
-    operationRecords: operationRecords(index + 20),
     assetNumber: `ASSET-EAST-${String(index).padStart(4, '0')}`,
     machineModel: price?.name ?? (seed.accelerator ? '高密度加速计算服务器' : '通用双路计算服务器'),
     cpuModel: `${seed.cpu.match(/×\s*(\d+)/)?.[1] ?? 32} 核服务器处理器`,

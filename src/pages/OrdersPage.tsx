@@ -456,10 +456,16 @@ export function OperationRecordsPage() {
   const search = searchParams.get('q')?.toLocaleLowerCase() ?? '';
   const module = (searchParams.get('module') ?? 'all') as 'all' | OperationModule;
   const status = (searchParams.get('status') ?? 'all') as 'all' | OperationStatus;
+  const resourceId = searchParams.get('resourceId') ?? '';
+  const dateFrom = searchParams.get('from') ?? '';
+  const dateTo = searchParams.get('to') ?? '';
   const records = listOperationRecords().filter((record) => {
     if (search && ![record.action, record.targetId, record.targetName, record.message].join(' ').toLocaleLowerCase().includes(search)) return false;
     if (module !== 'all' && record.module !== module) return false;
     if (status !== 'all' && record.status !== status) return false;
+    if (resourceId && record.targetId !== resourceId) return false;
+    if (dateFrom && record.createdAt.slice(0, 10) < dateFrom) return false;
+    if (dateTo && record.createdAt.slice(0, 10) > dateTo) return false;
     return true;
   });
   function setParam(key: string, value: string) {
@@ -514,6 +520,18 @@ export function OperationRecordsPage() {
                 { value: 'all', label: '全部模块' },
                 ...Object.entries(MODULE_LABELS).map(([value, label]) => ({ value, label })),
               ]}
+            />
+            <Input
+              aria-label="开始日期"
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setParam('from', event.target.value)}
+            />
+            <Input
+              aria-label="结束日期"
+              type="date"
+              value={dateTo}
+              onChange={(event) => setParam('to', event.target.value)}
             />
             <Select
               aria-label="执行状态"

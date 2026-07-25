@@ -11,7 +11,6 @@ import {
   submitResourceAction,
   createRentalRenewalOrders,
   createRenewalOrders,
-  createResourceResizeOrder,
   updateAutoRenewal,
   updateResourceMetadata,
 } from './resourceStore';
@@ -20,7 +19,6 @@ import { getOrdersForResource, resetOrderStore } from '../../orders';
 import { getBillForOrder, resetBillStore } from '../../bills';
 import { payAndFulfillOrder } from '../../commerce';
 import { resetOperationsStore } from '../../operations';
-import { createPriceSnapshot, money } from '../../pricing';
 
 const cloudQuery: ResourceQuery = {
   resourceType: 'cloud-server',
@@ -199,35 +197,6 @@ describe('resourceStore', () => {
     expect(result[0]?.order.pricingSnapshot.duration).toBe(6);
     expect(result[0]?.order.pricingSnapshot.total.amountFen).toBeGreaterThan(0);
     expect(getBillForOrder(result[0]!.order.id)?.status).toBe('unpaid');
-  });
-
-  it('routes a charged configuration change through an adjustment bill', () => {
-    const adjustment = money(12800);
-    const order = createResourceResizeOrder({
-      resourceId: 'cs-east-001',
-      changes: '升级计算规格',
-      pricingSnapshot: createPriceSnapshot('resize-adjustment', {
-        billingMode: 'adjustment',
-        quantity: 1,
-        lineItems: [{
-          id: 'resize-difference',
-          category: 'compute',
-          label: '配置补差价',
-          unitPrice: adjustment,
-          quantity: 1,
-          amount: adjustment,
-          unitLabel: '次',
-        }],
-        subtotal: adjustment,
-        total: adjustment,
-      }),
-    });
-    expect(order.orderType).toBe('resize');
-    expect(getBillForOrder(order.id)).toMatchObject({
-      billType: 'adjustment',
-      status: 'unpaid',
-      amount: adjustment,
-    });
   });
 
   it('synchronizes project and tags into the resource operation record', () => {
