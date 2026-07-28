@@ -3,7 +3,8 @@ node_modules/
 
 # Build and test output
 dist/
-release/
+release/*
+!release/算力资源服务平台.html
 coverage/
 /artifacts/
 /docs/reference-local/
