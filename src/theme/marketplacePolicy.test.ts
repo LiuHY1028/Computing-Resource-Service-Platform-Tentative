@@ -217,12 +217,27 @@ describe('marketplace production-source policies', () => {
     expect(marketplaceStyles).toMatch(/prefers-reduced-motion:\s*reduce/);
   });
 
-  it('does not introduce benchmark assets, external imagery, or new dependencies', () => {
+  it('only permits the owned marketplace illustration and introduces no external imagery or dependencies', () => {
     expect(
       sourceOffenders(
-        /<img\b|https?:\/\/|\b(?:artifacts|reference-local)\b|\.(?:png|jpe?g|webp)\b|url\s*\(/iu,
+        /https?:\/\/|\b(?:artifacts|reference-local)\b|url\s*\(/iu,
       ),
     ).toEqual([]);
+    expect(
+      sourceOffenders(/\.(?:png|webp)\b/iu),
+    ).toEqual([]);
+    expect(
+      sourceOffenders(/\.(?:jpe?g)\b/iu),
+    ).toEqual(['../pages/MarketplacePage.tsx']);
+    expect(
+      sourceOffenders(/<img\b/iu),
+    ).toEqual(['../pages/MarketplacePage.tsx']);
+    expect(productionSources['../pages/MarketplacePage.tsx']).toContain(
+      "from '../assets/product/marketplace-resource-orchestration.jpg'",
+    );
+    expect(productionSources['../pages/MarketplacePage.tsx']).toContain(
+      'alt="算力资源统一选择与管理示意"',
+    );
     expect(Object.keys(packageManifest.dependencies).sort()).toEqual([
       'react',
       'react-dom',

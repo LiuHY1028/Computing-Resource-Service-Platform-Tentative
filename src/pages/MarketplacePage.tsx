@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, UnderlineTabs } from '../components/ui';
 import { APP_PATHS } from '../app/routes';
+import marketplaceResourceImage from '../assets/product/marketplace-resource-orchestration.jpg';
 import {
   MarketplaceFilters,
   MarketplacePriceMatrix,
@@ -460,18 +461,75 @@ export function MarketplacePage() {
         />
       </section>
 
-      <section className="marketplace-guidance" aria-label="资源购买说明">
-        <div>
-          <strong>计费方式</strong>
-          <p>云服务器支持目录中标明的包月与按量价格，物理机按月计费。</p>
-        </div>
-        <div>
-          <strong>配置与订单</strong>
-          <p>进入配置页继续核对镜像、存储、网络和价格，再创建正式订单。</p>
-        </div>
-        <div>
-          <strong>处理状态</strong>
-          <p>订单、付款和资源准备状态均可在控制台按当前记录查看。</p>
+      <section
+        className="marketplace-value-story"
+        aria-labelledby="marketplace-value-title"
+      >
+        <figure className="marketplace-value-story__visual">
+          <img
+            src={marketplaceResourceImage}
+            alt="算力资源统一选择与管理示意"
+            width="1280"
+            height="853"
+            loading="lazy"
+          />
+          <figcaption>
+            <strong>一个入口连接资源全流程</strong>
+            <span>云服务器与物理机沿用同一套选择和管理路径</span>
+          </figcaption>
+        </figure>
+        <div className="marketplace-value-story__content">
+          <span>不止是列出规格</span>
+          <h2 id="marketplace-value-title">
+            把算力选择、购买配置和资源管理连成一条线
+          </h2>
+          <p>
+            面对云服务器与物理机，不必在规格表、价格说明和管理入口之间来回寻找。
+            平台把关键选择集中起来，也把购买后的资源状态接回同一个控制台。
+          </p>
+          <div className="marketplace-value-story__points" role="list">
+            <div role="listitem">
+              <span>01</span>
+              <div>
+                <strong>规格更好找</strong>
+                <p>按站点、计算类型、加速卡型号、卡数和计费模式组合筛选。</p>
+              </div>
+            </div>
+            <div role="listitem">
+              <span>02</span>
+              <div>
+                <strong>价格更清楚</strong>
+                <p>目录与配置页读取统一价格，完整金额在下单前继续核对。</p>
+              </div>
+            </div>
+            <div role="listitem">
+              <span>03</span>
+              <div>
+                <strong>买完接着管</strong>
+                <p>订单、资源准备和后续管理入口保持关联，不让流程断在购买页。</p>
+              </div>
+            </div>
+          </div>
+          <div className="marketplace-value-story__actions">
+            <Button
+              className="marketplace-value-story__primary-action"
+              variant="primary"
+              onClick={() =>
+                document
+                  .getElementById('marketplace-catalog')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            >
+              选择算力资源
+            </Button>
+            <Button
+              className="marketplace-value-story__secondary-action"
+              variant="secondary"
+              onClick={() => navigate(APP_PATHS.cloudResources)}
+            >
+              管理已有资源
+            </Button>
+          </div>
         </div>
       </section>
     </div>

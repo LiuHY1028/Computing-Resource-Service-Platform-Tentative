@@ -116,6 +116,18 @@ describe('MarketplacePage', () => {
     expect(document.querySelector('.marketplace-hero__compute-card')).toBeNull();
     expect(document.querySelector('.marketplace-price-matrix')).toBeInTheDocument();
     expect(document.querySelector('.marketplace-comparison-table')).toBeInTheDocument();
+    expect(document.querySelector('.marketplace-value-story')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', {
+        name: '算力资源统一选择与管理示意',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: '把算力选择、购买配置和资源管理连成一条线',
+      }),
+    ).toBeInTheDocument();
     await waitForCloudCatalog();
     expect(
       screen.getByRole('heading', { level: 2, name: '云服务器精选规格' }),

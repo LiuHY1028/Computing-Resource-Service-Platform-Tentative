@@ -11,10 +11,7 @@ import {
   SearchInput,
   Select,
   StatusBadge,
-  Table,
-  TextButton,
   UnderlineTabs,
-  type TableColumn,
 } from '../components/ui';
 import {
   getSoftwareCompatibility,
@@ -38,6 +35,7 @@ import {
   type PricePolicy,
 } from '../features/pricing';
 import { createCommerceOrder } from '../features/orders';
+import softwareDeploymentImage from '../assets/product/software-deployment-management.jpg';
 import './software-center.css';
 
 const PAGE_SIZE = 6;
@@ -179,109 +177,6 @@ function SoftwareVersionMatrix({
   );
 }
 
-type SoftwareAdaptationRow = Readonly<{
-  software: SoftwareProduct;
-  compatibleResourceCount: number;
-  installedResourceCount: number;
-  coveragePercent: number;
-}>;
-
-function SoftwareAdaptationTable({
-  rows,
-  onOpen,
-}: Readonly<{
-  rows: readonly SoftwareAdaptationRow[];
-  onOpen: (software: SoftwareProduct) => void;
-}>) {
-  const columns: readonly TableColumn<SoftwareAdaptationRow>[] = [
-    {
-      key: 'software',
-      title: '软件与版本',
-      width: '29%',
-      multiline: true,
-      render: (row) => (
-        <div className="software-adaptation-table__cell">
-          <TextButton onClick={() => onOpen(row.software)}>
-            {row.software.name}
-          </TextButton>
-          <span>{row.software.publisher} · {row.software.versions[0]}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'environment',
-      title: '适用环境',
-      width: '23%',
-      multiline: true,
-      render: (row) => (
-        <div className="software-adaptation-table__cell">
-          <strong>
-            {row.software.compatibleOperatingSystems.join(' / ')}
-          </strong>
-          <span>
-            {row.software.compatibleComputeTypes
-              .map((type) => type.toUpperCase())
-              .join(' / ')}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'compatibility',
-      title: '兼容资源',
-      width: '18%',
-      multiline: true,
-      render: (row) => (
-        <div className="software-adaptation-table__cell">
-          <strong>{row.compatibleResourceCount} 个</strong>
-          <span>
-            {row.compatibleResourceCount
-              ? '当前可提交安装'
-              : '当前无可安装资源'}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'coverage',
-      title: '安装覆盖',
-      width: '30%',
-      multiline: true,
-      render: (row) => (
-        <div className="software-adaptation-table__cell">
-          <div
-            className="software-adaptation-table__meter"
-            role="progressbar"
-            aria-label={`${row.software.name}安装覆盖`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={row.coveragePercent}
-          >
-            <span style={{ width: `${row.coveragePercent}%` }} />
-          </div>
-          <span>
-            已关联 {row.installedResourceCount} 个 · {row.coveragePercent}%
-          </span>
-        </div>
-      ),
-    },
-  ];
-
-  return (
-    <Table
-      aria-label="软件适配与安装覆盖"
-      className="software-adaptation-table"
-      columns={columns}
-      rows={rows}
-      getRowKey={(row) => row.software.id}
-      getRowLabel={(row) => row.software.name}
-      layout="fixed"
-      minWidth="820px"
-      onRowClick={(row) => onOpen(row.software)}
-    />
-  );
-}
-
 export function SoftwarePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -349,38 +244,6 @@ export function SoftwarePage() {
   )
     ? query.category
     : 'all';
-  const adaptationRows = useMemo<readonly SoftwareAdaptationRow[]>(
-    () =>
-      catalog.map((item) => {
-        const compatibleResourceCount = resources.filter(
-          (resource) => getSoftwareCompatibility(item, resource).compatible,
-        ).length;
-        const installedResourceCount = new Set(
-          installations
-            .filter(
-              (installation) =>
-                installation.softwareId === item.id &&
-                isActiveInstallation(installation.status),
-            )
-            .map((installation) => installation.resourceId),
-        ).size;
-        return {
-          software: item,
-          compatibleResourceCount,
-          installedResourceCount,
-          coveragePercent: compatibleResourceCount
-            ? Math.min(
-                100,
-                Math.round(
-                  (installedResourceCount / compatibleResourceCount) * 100,
-                ),
-              )
-            : 0,
-        };
-      }),
-    [catalog, installations, resources],
-  );
-
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key);
@@ -789,30 +652,73 @@ export function SoftwarePage() {
       </section>
 
       <section
-        className="software-section software-adaptation-section"
-        aria-labelledby="software-adaptation-title"
+        className="software-value-story"
+        aria-labelledby="software-value-title"
       >
-        <div className="software-section-heading software-section-heading--centered">
-          <span>资源适配</span>
-          <h2 id="software-adaptation-title">软件适配与安装覆盖</h2>
-          <p>覆盖率按当前已关联资源数与可安装资源数计算，不代表外部使用热度。</p>
+        <div className="software-value-story__content">
+          <span>安装前后，都有清晰路径</span>
+          <h2 id="software-value-title">让软件环境与算力资源真正对上号</h2>
+          <p>
+            软件发现、版本选择、兼容判断和安装结果不再散落在不同入口。
+            从选软件到回到资源继续管理，一条链路贯穿安装前后。
+          </p>
+          <div className="software-value-story__points" role="list">
+            <div role="listitem">
+              <span>01</span>
+              <div>
+                <strong>先确认能不能装</strong>
+                <p>根据操作系统、计算类型和目标资源状态判断当前安装条件。</p>
+              </div>
+            </div>
+            <div role="listitem">
+              <span>02</span>
+              <div>
+                <strong>费用边界提前说明</strong>
+                <p>免费、服务已包含、按月计费和需授权策略在提交前明确展示。</p>
+              </div>
+            </div>
+            <div role="listitem">
+              <span>03</span>
+              <div>
+                <strong>装完还能继续管理</strong>
+                <p>安装任务与目标资源、订单和操作记录保持关联。</p>
+              </div>
+            </div>
+          </div>
+          <div className="software-value-story__actions">
+            <Button
+              className="software-value-story__primary-action"
+              variant="primary"
+              onClick={() =>
+                document
+                  .getElementById('software-catalog')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            >
+              浏览软件目录
+            </Button>
+            <Button
+              className="software-value-story__secondary-action"
+              variant="secondary"
+              onClick={() => navigate(APP_PATHS.cloudResources)}
+            >
+              查看我的资源
+            </Button>
+          </div>
         </div>
-        <SoftwareAdaptationTable rows={adaptationRows} onOpen={openDetail} />
-      </section>
-
-      <section className="software-guidance" aria-label="软件安装说明">
-        <div>
-          <strong>兼容确认</strong>
-          <p>安装前核对操作系统、计算类型和目标资源当前状态。</p>
-        </div>
-        <div>
-          <strong>费用处理</strong>
-          <p>免费或服务已包含的软件直接提交任务，收费软件按现有规则创建订单。</p>
-        </div>
-        <div>
-          <strong>结果联动</strong>
-          <p>任务与目标资源、订单和操作记录保持关联，可在控制台继续查看。</p>
-        </div>
+        <figure className="software-value-story__visual">
+          <img
+            src={softwareDeploymentImage}
+            alt="软件版本兼容校验与部署管理示意"
+            width="1280"
+            height="818"
+            loading="lazy"
+          />
+          <figcaption>
+            <strong>一条部署链路</strong>
+            <span>版本、兼容、费用与任务结果连续衔接</span>
+          </figcaption>
+        </figure>
       </section>
 
       <Modal

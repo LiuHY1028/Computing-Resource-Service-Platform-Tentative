@@ -42,7 +42,20 @@ describe('SoftwarePage', () => {
     expect(
       document.querySelector('.software-version-card--featured'),
     ).toHaveAttribute('data-featured', 'true');
-    expect(document.querySelector('.software-adaptation-table')).toBeInTheDocument();
+    expect(document.querySelector('.software-value-story')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', {
+        name: '软件版本兼容校验与部署管理示意',
+      }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('.software-adaptation-table')).toBeNull();
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: '让软件环境与算力资源真正对上号',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('软件适配与安装覆盖')).not.toBeInTheDocument();
     expect(document.querySelector('.software-featured__spotlight')).toBeNull();
     const featuredSoftwareHeading = screen.getByRole('heading', {
       level: 2,
@@ -66,7 +79,7 @@ describe('SoftwarePage', () => {
     expect(screen.getByText('4 个匹配结果')).toBeInTheDocument();
   });
 
-  it('filters installed software from the hero and opens a detail from the adaptation table', async () => {
+  it('filters installed software from the hero and opens a detail from the catalog', async () => {
     const user = renderSoftware();
 
     await user.click(
@@ -77,14 +90,13 @@ describe('SoftwarePage', () => {
     ).toHaveTextContent('已安装或处理中');
     expect(screen.getByText('3 个匹配结果')).toBeInTheDocument();
 
-    const adaptation = screen
-      .getByRole('heading', { name: '软件适配与安装覆盖' })
-      .closest('section');
-    expect(adaptation).toBeTruthy();
+    const softwareHeading = screen
+      .getAllByRole('heading', { name: '资源监控组件' })
+      .find((heading) => heading.closest('article.software-card'));
+    const card = softwareHeading?.closest('article');
+    expect(card).toBeTruthy();
     await user.click(
-      within(adaptation as HTMLElement).getByRole('button', {
-        name: '资源监控组件',
-      }),
+      within(card as HTMLElement).getByRole('button', { name: '查看详情' }),
     );
     expect(
       screen.getByRole('dialog', { name: '软件详情' }),

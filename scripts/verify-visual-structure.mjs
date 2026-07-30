@@ -174,9 +174,9 @@ check(
     'marketplace-pricing-section',
     'marketplace-catalog-section',
     'marketplace-comparison-section',
-    'marketplace-guidance',
+    'marketplace-value-story',
   ].every((token) => marketplace.includes(token)),
-  '资源商城必须保留 Hero、四项能力、价格矩阵、完整目录、规格对比和说明区。',
+  '资源商城必须保留 Hero、四项能力、价格矩阵、完整目录、规格对比和品牌能力叙事区。',
 );
 check(
   !marketplace.includes('marketplace-hero__compute-card')
@@ -187,9 +187,12 @@ check(
 check(
   marketplace.includes('<MarketplacePriceMatrix')
     && marketplace.includes('<MarketplaceSpecificationComparison')
+    && marketplace.includes('marketplace-resource-orchestration.jpg')
+    && marketplace.includes('把算力选择、购买配置和资源管理连成一条线')
     && marketplaceStyles.includes('grid-template-columns: repeat(3, minmax(0, 1fr))')
-    && marketplaceStyles.includes('.marketplace-comparison-table td'),
-  '资源商城必须使用三列价格矩阵和可读规格对比表。',
+    && marketplaceStyles.includes('.marketplace-comparison-table td')
+    && marketplaceStyles.includes('.marketplace-value-story__visual img'),
+  '资源商城必须使用三列价格矩阵、可读规格对比表及原创能力宣传图文。',
 );
 
 check(
@@ -198,10 +201,9 @@ check(
     'software-capability-strip',
     'software-version-section',
     'software-catalog-section',
-    'software-adaptation-section',
-    'software-guidance',
+    'software-value-story',
   ].every((token) => software.includes(token)),
-  '软件中心必须保留 Hero、四项能力、版本矩阵、完整目录、适配表和说明区。',
+  '软件中心必须保留 Hero、四项能力、版本矩阵、完整目录和部署能力叙事区。',
 );
 check(
   !software.includes('software-featured__spotlight')
@@ -211,17 +213,22 @@ check(
 );
 check(
   software.includes('<SoftwareVersionMatrix')
-    && software.includes('<SoftwareAdaptationTable')
     && software.includes('software-version-card--featured')
     && software.includes('software-hero__package')
     && software.includes('software-hero__deployment-pipeline')
     && software.includes('getSoftwareCompatibility(item, resource)')
-    && software.includes('installedResourceCount / compatibleResourceCount'),
-  '软件精选、部署主题 Hero 和安装覆盖必须由当前软件、资源及安装关系派生。',
+    && software.includes('software-deployment-management.jpg')
+    && software.includes('让软件环境与算力资源真正对上号')
+    && softwareStyles.includes('.software-value-story__visual img')
+    && !software.includes('SoftwareAdaptationTable')
+    && !software.includes('software-adaptation-table'),
+  '软件精选、部署主题 Hero 和原创部署宣传图文必须保留，旧安装覆盖表必须删除。',
 );
 check(
   !software.includes('精选软件与版本')
     && !software.includes('费用策略和兼容范围来自当前软件目录')
+    && !software.includes('软件适配与安装覆盖')
+    && !software.includes('覆盖率按当前已关联资源数')
     && !software.includes('software-hero__visual-line')
     && softwareStyles.includes('.software-section-heading--centered > h2')
     && marketplaceStyles.includes('.marketplace-section-heading--centered > h2'),
