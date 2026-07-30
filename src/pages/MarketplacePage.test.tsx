@@ -78,28 +78,33 @@ describe('MarketplacePage', () => {
     renderMarketplace();
 
     expect(
-      screen.getByRole('heading', { level: 1, name: '让每一份算力都匹配真实工作负载' }),
+      screen.getByRole('heading', { level: 1, name: '面向业务工作负载的算力资源' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: '选择适合当前工作负载的资源',
+        name: '算力方案与价格',
       }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: '算力规格对比' }),
     ).toBeInTheDocument();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
     expect(screen.queryByText('MKT-01')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '资源商城' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    expect(
+      within(screen.getByTestId('marketplace-navigation')).getByRole('link', {
+        name: '资源商城',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('tab', { name: '云服务器' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
     expect(screen.queryByText('演示数据')).not.toBeInTheDocument();
-    expect(
-      screen.getByText('物理资源独占'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('GPU 规格覆盖')).toBeInTheDocument();
+    expect(document.querySelector('.marketplace-hero__compute-card')).toBeNull();
+    expect(document.querySelector('.marketplace-price-matrix')).toBeInTheDocument();
+    expect(document.querySelector('.marketplace-comparison-table')).toBeInTheDocument();
     await waitForCloudCatalog();
     expect(
       screen.getByRole('heading', { level: 2, name: '云服务器精选规格' }),
@@ -178,6 +183,23 @@ describe('MarketplacePage', () => {
     await waitForPhysicalCatalog();
     expect(screen.queryByText('正在加载资源规格')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '重新加载' })).not.toBeInTheDocument();
+  });
+
+  it('uses the specification comparison to switch type and locate a purchasable GPU configuration', async () => {
+    const { user, location } = renderMarketplace('/marketplace?type=cloud');
+    await waitForCloudCatalog();
+
+    await user.click(
+      screen.getByRole('button', { name: '整机加速计算 P8' }),
+    );
+
+    await waitForPhysicalCatalog(1);
+    expect(location()).toBe('/marketplace?type=physical');
+    expect(screen.getByText('型号：高性能加速卡 80GB')).toBeInTheDocument();
+    expect(screen.getByText('数量：8 张')).toBeInTheDocument();
+    expect(
+      screen.getByText('已定位“整机加速计算 P8”对应的可购规格。'),
+    ).toBeInTheDocument();
   });
 
   it('keeps URL, tab, and catalog aligned through browser back and forward', async () => {

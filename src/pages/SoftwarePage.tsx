@@ -11,6 +11,10 @@ import {
   SearchInput,
   Select,
   StatusBadge,
+  Table,
+  TextButton,
+  UnderlineTabs,
+  type TableColumn,
 } from '../components/ui';
 import {
   getSoftwareCompatibility,
@@ -38,12 +42,6 @@ import './software-center.css';
 
 const PAGE_SIZE = 6;
 const CATEGORIES = ['全部软件', '运行环境', '开发工具', '运维工具'] as const;
-const CATEGORY_NOTES: Readonly<Record<(typeof CATEGORIES)[number], string>> = {
-  全部软件: '完整目录',
-  运行环境: '基础运行栈',
-  开发工具: '研发与加速',
-  运维工具: '监控与诊断',
-};
 
 type SoftwareDialogState = Readonly<{
   view: 'detail' | 'install';
@@ -78,6 +76,168 @@ function softwareGlyph(item: SoftwareProduct) {
     return 'GX';
   }
   return item.category.slice(0, 1);
+}
+
+function SoftwareVersionMatrix({
+  items,
+  onDetail,
+  onInstall,
+}: Readonly<{
+  items: readonly SoftwareProduct[];
+  onDetail: (software: SoftwareProduct) => void;
+  onInstall: (software: SoftwareProduct) => void;
+}>) {
+  return (
+    <div className="software-version-matrix" role="list">
+      {items.map((item) => (
+        <article className="software-version-card" key={item.id} role="listitem">
+          <div className="software-version-card__heading">
+            <span className="software-version-card__glyph" aria-hidden="true">
+              {softwareGlyph(item)}
+            </span>
+            <div>
+              <span>{item.category}</span>
+              <strong className="software-version-card__title">{item.name}</strong>
+              <p>{item.publisher}</p>
+            </div>
+          </div>
+          <dl>
+            <div>
+              <dt>当前版本</dt>
+              <dd>{item.versions[0]}</dd>
+            </div>
+            <div>
+              <dt>操作系统</dt>
+              <dd>{item.compatibleOperatingSystems.join(' / ')}</dd>
+            </div>
+            <div>
+              <dt>适用算力</dt>
+              <dd>
+                {item.compatibleComputeTypes
+                  .map((type) => type.toUpperCase())
+                  .join(' / ')}
+              </dd>
+            </div>
+            <div>
+              <dt>费用策略</dt>
+              <dd>{softwarePriceLabel(item.id)}</dd>
+            </div>
+          </dl>
+          <div className="software-version-card__actions">
+            <Button variant="secondary" onClick={() => onDetail(item)}>
+              查看详情
+            </Button>
+            <Button variant="primary" onClick={() => onInstall(item)}>
+              安装
+            </Button>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+type SoftwareAdaptationRow = Readonly<{
+  software: SoftwareProduct;
+  compatibleResourceCount: number;
+  installedResourceCount: number;
+  coveragePercent: number;
+}>;
+
+function SoftwareAdaptationTable({
+  rows,
+  onOpen,
+}: Readonly<{
+  rows: readonly SoftwareAdaptationRow[];
+  onOpen: (software: SoftwareProduct) => void;
+}>) {
+  const columns: readonly TableColumn<SoftwareAdaptationRow>[] = [
+    {
+      key: 'software',
+      title: '软件与版本',
+      width: '29%',
+      multiline: true,
+      render: (row) => (
+        <div className="software-adaptation-table__cell">
+          <TextButton onClick={() => onOpen(row.software)}>
+            {row.software.name}
+          </TextButton>
+          <span>{row.software.publisher} · {row.software.versions[0]}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'environment',
+      title: '适用环境',
+      width: '23%',
+      multiline: true,
+      render: (row) => (
+        <div className="software-adaptation-table__cell">
+          <strong>
+            {row.software.compatibleOperatingSystems.join(' / ')}
+          </strong>
+          <span>
+            {row.software.compatibleComputeTypes
+              .map((type) => type.toUpperCase())
+              .join(' / ')}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'compatibility',
+      title: '兼容资源',
+      width: '18%',
+      multiline: true,
+      render: (row) => (
+        <div className="software-adaptation-table__cell">
+          <strong>{row.compatibleResourceCount} 个</strong>
+          <span>
+            {row.compatibleResourceCount
+              ? '当前可提交安装'
+              : '当前无可安装资源'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'coverage',
+      title: '安装覆盖',
+      width: '30%',
+      multiline: true,
+      render: (row) => (
+        <div className="software-adaptation-table__cell">
+          <div
+            className="software-adaptation-table__meter"
+            role="progressbar"
+            aria-label={`${row.software.name}安装覆盖`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={row.coveragePercent}
+          >
+            <span style={{ width: `${row.coveragePercent}%` }} />
+          </div>
+          <span>
+            已关联 {row.installedResourceCount} 个 · {row.coveragePercent}%
+          </span>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <Table
+      aria-label="软件适配与安装覆盖"
+      className="software-adaptation-table"
+      columns={columns}
+      rows={rows}
+      getRowKey={(row) => row.software.id}
+      getRowLabel={(row) => row.software.name}
+      layout="fixed"
+      minWidth="820px"
+      onRowClick={(row) => onOpen(row.software)}
+    />
+  );
 }
 
 export function SoftwarePage() {
@@ -141,8 +301,43 @@ export function SoftwarePage() {
     });
     return [...cloud.items, ...physical.items];
   }, []);
-  const catalog = querySoftware();
-  const featured = catalog.find((item) => item.id === 'software-gpu-toolkit') ?? catalog[0];
+  const catalog = useMemo(() => querySoftware(), []);
+  const featuredCategory = CATEGORIES.slice(1).includes(
+    query.category as (typeof CATEGORIES)[number],
+  )
+    ? query.category
+    : 'all';
+  const adaptationRows = useMemo<readonly SoftwareAdaptationRow[]>(
+    () =>
+      catalog.map((item) => {
+        const compatibleResourceCount = resources.filter(
+          (resource) => getSoftwareCompatibility(item, resource).compatible,
+        ).length;
+        const installedResourceCount = new Set(
+          installations
+            .filter(
+              (installation) =>
+                installation.softwareId === item.id &&
+                isActiveInstallation(installation.status),
+            )
+            .map((installation) => installation.resourceId),
+        ).size;
+        return {
+          software: item,
+          compatibleResourceCount,
+          installedResourceCount,
+          coveragePercent: compatibleResourceCount
+            ? Math.min(
+                100,
+                Math.round(
+                  (installedResourceCount / compatibleResourceCount) * 100,
+                ),
+              )
+            : 0,
+        };
+      }),
+    [catalog, installations, resources],
+  );
 
   function setParam(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -260,92 +455,129 @@ export function SoftwarePage() {
 
   return (
     <div className="software-center-page">
-      <section className="software-featured" aria-labelledby="software-center-title">
-        <div className="software-featured__intro">
-          <span className="software-featured__eyebrow">应用与环境目录</span>
-          <h1 id="software-center-title">软件中心</h1>
-          <p>
-            发现适配当前算力资源的软件、运行环境和工具，完成版本与兼容性确认后提交安装任务。
-          </p>
-          <SearchInput
-            className="software-guide-search"
-            aria-label="全局搜索软件"
-            value={query.search}
-            placeholder="搜索软件、能力或发布方"
-            onChange={(event) => setParam('q', event.target.value)}
-            clearable
-            onClear={() => setParam('q', '')}
-          />
-          <div className="software-guide-categories" aria-label="热门分类">
-            {CATEGORIES.slice(1).map((category) => (
-              <button type="button" key={category} onClick={() => setParam('category', category)}>
-                {category}
-              </button>
-            ))}
+      <section className="software-hero" aria-labelledby="software-center-title">
+        <div className="software-hero__inner">
+          <div className="software-hero__content">
+            <span>软件与环境服务</span>
+            <h1 id="software-center-title">软件中心</h1>
+            <p>
+              浏览适配当前算力资源的软件、运行环境和工具，核对版本、兼容性与费用策略后提交安装任务。
+            </p>
+            <div className="software-hero__actions">
+              <Button
+                className="software-hero__primary-action"
+                variant="primary"
+                onClick={() => {
+                  const catalogElement =
+                    document.getElementById('software-catalog');
+                  if (
+                    catalogElement &&
+                    typeof catalogElement.scrollIntoView === 'function'
+                  ) {
+                    catalogElement.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    });
+                  }
+                }}
+              >
+                浏览软件
+              </Button>
+              <Button
+                className="software-hero__secondary-action"
+                variant="secondary"
+                onClick={() => {
+                  setParam('installation', 'completed');
+                  window.requestAnimationFrame(() => {
+                    const catalogElement =
+                      document.getElementById('software-catalog');
+                    if (
+                      catalogElement &&
+                      typeof catalogElement.scrollIntoView === 'function'
+                    ) {
+                      catalogElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                      });
+                    }
+                  });
+                }}
+              >
+                查看已安装软件
+              </Button>
+            </div>
           </div>
-          <div className="software-featured__stats" aria-label="软件中心概览">
-            <div><strong>{catalog.length}</strong><span>收录软件</span></div>
-            <div><strong>{new Set(catalog.flatMap((item) => item.versions)).size}</strong><span>可选版本</span></div>
-            <div><strong>{resources.length}</strong><span>关联资源</span></div>
+          <div className="software-hero__visual" aria-hidden="true">
+            <svg viewBox="0 0 500 320">
+              <path d="M78 252H426" className="software-hero__visual-line" />
+              <path d="M120 252V212H248M386 252V184H324" className="software-hero__visual-line" />
+              <rect x="104" y="74" width="174" height="116" rx="12" />
+              <rect x="222" y="110" width="174" height="116" rx="12" />
+              <rect x="140" y="108" width="96" height="14" rx="7" className="software-hero__visual-slot" />
+              <rect x="140" y="140" width="68" height="10" rx="5" className="software-hero__visual-slot" />
+              <circle cx="120" cy="270" r="12" />
+              <circle cx="252" cy="270" r="12" />
+              <circle cx="386" cy="270" r="12" />
+              <path d="M278 152H346M278 180H330" className="software-hero__visual-line" />
+            </svg>
           </div>
         </div>
-
-        {featured && (
-          <article className="software-featured__spotlight">
-            <div className="software-featured__label">
-              <span>精选软件</span>
-              <span>适配加速资源</span>
-            </div>
-            <div className="software-featured__glyph" aria-hidden="true">
-              {softwareGlyph(featured)}
-            </div>
-            <div>
-              <span>{featured.category}</span>
-              <h2>{featured.name}</h2>
-              <p>{featured.description}</p>
-            </div>
-            <dl>
-              <div><dt>推荐版本</dt><dd>{featured.versions[0]}</dd></div>
-              <div><dt>费用策略</dt><dd>{softwarePriceLabel(featured.id)}</dd></div>
-            </dl>
-            <Button variant="primary" onClick={() => openInstall(featured)}>
-              选择资源安装
-            </Button>
-          </article>
-        )}
       </section>
 
-      <section className="software-collection" aria-labelledby="software-catalog-title">
-        <div className="software-category-rail" aria-label="软件分类">
-          <div><span className="software-category-rail__label">软件分类</span><h2>按用途浏览</h2></div>
-          <nav>
-            {CATEGORIES.map((category) => {
-              const value = category === '全部软件' ? 'all' : category;
-              const active = query.category === value;
-              return (
-                <button
-                  className={active ? 'is-active' : undefined}
-                  key={category}
-                  type="button"
-                  onClick={() => setParam('category', value)}
-                >
-                  <span>{category}</span>
-                  <small>{CATEGORY_NOTES[category]}</small>
-                </button>
-              );
-            })}
-          </nav>
-          <div className="software-category-rail__note">
-            <span aria-hidden="true">↗</span>
-            <p>安装任务会关联目标资源，并同步记录到控制台操作记录。</p>
-          </div>
+      <section className="software-capability-strip" aria-label="软件服务能力">
+        <div className="software-capability-strip__inner">
+          <div><span>01</span><strong>常用环境</strong><p>集中浏览运行环境与工具。</p></div>
+          <div><span>02</span><strong>版本管理</strong><p>安装前核对当前可选版本。</p></div>
+          <div><span>03</span><strong>兼容检测</strong><p>依据目标资源判断安装条件。</p></div>
+          <div><span>04</span><strong>进度可追踪</strong><p>安装任务与操作记录保持关联。</p></div>
         </div>
+      </section>
 
+      <section
+        className="software-section software-version-section"
+        aria-labelledby="software-version-title"
+      >
+        <div className="software-section-heading software-section-heading--centered">
+          <span>软件与版本</span>
+          <h2 id="software-version-title">精选软件与版本</h2>
+          <p>费用策略和兼容范围来自当前软件目录，未确认的商业授权不展示金额。</p>
+        </div>
+        <UnderlineTabs
+          className="software-version-tabs"
+          aria-label="软件分类"
+          value={featuredCategory}
+          onValueChange={(value) => setParam('category', value)}
+          items={CATEGORIES.map((category) => {
+            const value = category === '全部软件' ? 'all' : category;
+            const items =
+              value === 'all'
+                ? catalog
+                : catalog.filter((item) => item.category === value);
+            return {
+              value,
+              label: category,
+              panel: (
+                <SoftwareVersionMatrix
+                  items={items}
+                  onDetail={openDetail}
+                  onInstall={openInstall}
+                />
+              ),
+            };
+          })}
+        />
+      </section>
+
+      <section
+        className="software-section software-catalog-section"
+        id="software-catalog"
+        aria-labelledby="software-catalog-title"
+      >
         <div className="software-catalog">
-          <div className="software-catalog__heading">
+          <div className="software-section-heading software-catalog__heading">
             <div>
-              <span>应用目录</span>
-              <h2 id="software-catalog-title">软件目录</h2>
+              <span>完整软件目录</span>
+              <h2 id="software-catalog-title">查找并安装软件</h2>
             </div>
             <p>{software.length} 个匹配结果</p>
           </div>
@@ -477,6 +709,33 @@ export function SoftwarePage() {
               onPageChange={(next) => setParam('page', String(next))}
             />
           )}
+        </div>
+      </section>
+
+      <section
+        className="software-section software-adaptation-section"
+        aria-labelledby="software-adaptation-title"
+      >
+        <div className="software-section-heading software-section-heading--centered">
+          <span>资源适配</span>
+          <h2 id="software-adaptation-title">软件适配与安装覆盖</h2>
+          <p>覆盖率按当前已关联资源数与可安装资源数计算，不代表外部使用热度。</p>
+        </div>
+        <SoftwareAdaptationTable rows={adaptationRows} onOpen={openDetail} />
+      </section>
+
+      <section className="software-guidance" aria-label="软件安装说明">
+        <div>
+          <strong>兼容确认</strong>
+          <p>安装前核对操作系统、计算类型和目标资源当前状态。</p>
+        </div>
+        <div>
+          <strong>费用处理</strong>
+          <p>免费或服务已包含的软件直接提交任务，收费软件按现有规则创建订单。</p>
+        </div>
+        <div>
+          <strong>结果联动</strong>
+          <p>任务与目标资源、订单和操作记录保持关联，可在控制台继续查看。</p>
         </div>
       </section>
 

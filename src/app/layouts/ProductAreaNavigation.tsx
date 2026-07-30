@@ -40,46 +40,47 @@ export function ProductAreaNavigation({
       data-variant={variant}
       data-testid={`${variant}-navigation`}
     >
-      <ProductBrand />
-      <nav className="product-area-navigation__links" aria-label="产品区域">
-        <NavLink
-          to={APP_PATHS.marketplace}
-          className={location.pathname.startsWith(APP_PATHS.marketplace) ? 'is-active' : ''}
-        >
-          资源商城
-        </NavLink>
-        <NavLink
-          to={APP_PATHS.software}
-          className={location.pathname.startsWith(APP_PATHS.software) ? 'is-active' : ''}
-        >
-          软件中心
-        </NavLink>
-      </nav>
-      <div className="product-area-navigation__actions">
-        <button
-          type="button"
-          className="product-area-navigation__message"
-          aria-label="消息入口"
-          aria-expanded={feedbackOpen}
-          onClick={() => setFeedbackOpen((current) => !current)}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 8a6 6 0 0 1 12 0v4.1l1.6 2.7a1 1 0 0 1-.86 1.5H5.26a1 1 0 0 1-.86-1.5L6 12.1V8Zm4 10.3h4a2 2 0 0 1-4 0Z" />
-          </svg>
-        </button>
-        <Link className="product-area-navigation__console" to={APP_PATHS.cloudResources}>
-          进入控制台
-          <span aria-hidden="true">↗</span>
-        </Link>
-        <span className="product-area-navigation__avatar" aria-label="当前用户">
-          用
-        </span>
-        {feedbackOpen && (
-          <div className="product-area-navigation__feedback" role="status">
-            <strong>暂无新消息</strong>
-            <span>新的平台通知将在这里显示。</span>
-          </div>
-        )}
+      <div className="product-area-navigation__inner">
+        <ProductBrand />
+        <nav className="product-area-navigation__links" aria-label="产品区域">
+          <NavLink
+            to={APP_PATHS.marketplace}
+            className={location.pathname.startsWith(APP_PATHS.marketplace) ? 'is-active' : ''}
+          >
+            资源商城
+          </NavLink>
+          <NavLink
+            to={APP_PATHS.software}
+            className={location.pathname.startsWith(APP_PATHS.software) ? 'is-active' : ''}
+          >
+            软件中心
+          </NavLink>
+        </nav>
+        <div className="product-area-navigation__actions">
+          <Link className="product-area-navigation__console" to={APP_PATHS.cloudResources}>
+            进入控制台
+          </Link>
+          <button
+            type="button"
+            className="product-area-navigation__message"
+            aria-label="消息入口"
+            aria-expanded={feedbackOpen}
+            onClick={() => setFeedbackOpen((current) => !current)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 8a6 6 0 0 1 12 0v4.1l1.6 2.7a1 1 0 0 1-.86 1.5H5.26a1 1 0 0 1-.86-1.5L6 12.1V8Zm4 10.3h4a2 2 0 0 1-4 0Z" />
+            </svg>
+          </button>
+          <span className="product-area-navigation__avatar" aria-label="当前用户">
+            用
+          </span>
+          {feedbackOpen && (
+            <div className="product-area-navigation__feedback" role="status">
+              <strong>暂无新消息</strong>
+              <span>新的平台通知将在这里显示。</span>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

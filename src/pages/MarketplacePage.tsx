@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Container, TitleBarTabs } from '../components/ui';
+import { Button, UnderlineTabs } from '../components/ui';
 import { APP_PATHS } from '../app/routes';
 import {
   MarketplaceFilters,
+  MarketplacePriceMatrix,
   MarketplaceResults,
+  MarketplaceSpecificationComparison,
   getMarketplaceFilterOptions,
   getMarketplaceScrollRegion,
   loadMarketplaceNavigationContext,
@@ -16,7 +18,6 @@ import {
   type MarketplaceResultsState,
 } from '../features/marketplace';
 import '../features/marketplace/marketplace.css';
-import '../features/marketplace/marketplace-experience.css';
 
 const PAGE_SIZE = 6;
 
@@ -143,6 +144,25 @@ export function MarketplacePage() {
     }),
     [effectiveQuery],
   );
+  const priceMatrixProducts = useMemo(
+    () =>
+      queryMarketplaceProducts({
+        resourceType,
+        ...defaultFilters(),
+      }).items,
+    [resourceType],
+  );
+  const comparisonProducts = useMemo(
+    () =>
+      (['cloud-server', 'physical-machine'] as const).flatMap(
+        (candidateType) =>
+          queryMarketplaceProducts({
+            resourceType: candidateType,
+            ...defaultFilters(),
+          }).items,
+      ),
+    [],
+  );
 
   useEffect(() => {
     const context = initialContextRef.current;
@@ -232,6 +252,35 @@ export function MarketplacePage() {
     }
   }
 
+  function handleComparisonSelect(product: MarketplaceProduct) {
+    const nextFilters = sanitizeFilters(
+      {
+        ...defaultFilters(),
+        computeType: 'gpu',
+        acceleratorModels: product.accelerator
+          ? [product.accelerator.model]
+          : [],
+        acceleratorCounts: product.accelerator
+          ? [product.accelerator.count]
+          : [],
+      },
+      product.resourceType,
+    );
+    setFilters(nextFilters);
+    setPage(1);
+    setFeedback(`已定位“${product.name}”对应的可购规格。`);
+    updateTypeParameter(product.resourceType);
+    window.requestAnimationFrame(() => {
+      const catalogElement = document.getElementById('marketplace-catalog');
+      if (
+        catalogElement &&
+        typeof catalogElement.scrollIntoView === 'function'
+      ) {
+        catalogElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+
   const catalog = (
     <div className="marketplace-catalog">
       <MarketplaceFilters
@@ -280,99 +329,156 @@ export function MarketplacePage() {
         </div>
       )}
       <section className="marketplace-hero" data-resource-type={resourceType}>
-        <div className="marketplace-hero__content">
-          <span className="marketplace-hero__eyebrow">算力资源商城</span>
-          <h1>
-            让每一份算力
-            <span>都匹配真实工作负载</span>
-          </h1>
-          <p>
-            汇集 CPU 与 GPU 云服务器、专属物理机资源。按站点、核心规格和价格快速比较，进入配置页完成镜像、存储与网络选择。
-          </p>
-          <div className="marketplace-hero__actions">
-            <Button
-              variant="primary"
-              onClick={() =>
-                document
-                  .getElementById('marketplace-catalog')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }
-            >
-              浏览可购资源
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                handleResourceTypeChange(
-                  resourceType === 'cloud-server' ? 'physical' : 'cloud',
-                )
-              }
-            >
-              查看{resourceType === 'cloud-server' ? '物理机' : '云服务器'}
-            </Button>
-          </div>
-          <dl className="marketplace-hero__facts">
-            <div>
-              <dt>资源形态</dt>
-              <dd>云服务器 · 物理机</dd>
+        <div className="marketplace-hero__inner">
+          <div className="marketplace-hero__content">
+            <span className="marketplace-hero__eyebrow">算力资源服务</span>
+            <h1>面向业务工作负载的算力资源</h1>
+            <p>
+              集中比较云服务器与物理机的核心规格、站点和计费方式，进入配置页继续选择镜像、存储与网络。
+            </p>
+            <div className="marketplace-hero__actions">
+              <Button
+                className="marketplace-hero__primary-action"
+                variant="primary"
+                onClick={() => {
+                  const catalogElement =
+                    document.getElementById('marketplace-catalog');
+                  if (
+                    catalogElement &&
+                    typeof catalogElement.scrollIntoView === 'function'
+                  ) {
+                    catalogElement.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    });
+                  }
+                }}
+              >
+                浏览资源
+              </Button>
+              <Button
+                className="marketplace-hero__secondary-action"
+                variant="secondary"
+                onClick={() => navigate(APP_PATHS.cloudResources)}
+              >
+                进入控制台
+              </Button>
             </div>
-            <div>
-              <dt>计算覆盖</dt>
-              <dd>CPU · GPU</dd>
-            </div>
-            <div>
-              <dt>可选站点</dt>
-              <dd>{filterOptions.sites.length} 个</dd>
-            </div>
-          </dl>
-        </div>
-        <div className="marketplace-hero__visual" aria-hidden="true">
-          <span className="marketplace-hero__glow" />
-          <div className="marketplace-hero__compute-card marketplace-hero__compute-card--primary">
-            <span>GPU Compute</span>
-            <strong>并行算力</strong>
-            <i>高性能计算资源</i>
           </div>
-          <div className="marketplace-hero__compute-card marketplace-hero__compute-card--secondary">
-            <span>CPU Cloud</span>
-            <strong>通用计算</strong>
-            <i>灵活规格组合</i>
+          <div className="marketplace-hero__visual" aria-hidden="true">
+            <svg viewBox="0 0 520 340">
+              <path d="M84 270H430" className="marketplace-hero__visual-line" />
+              <path d="M132 270V190H260V270" className="marketplace-hero__visual-line" />
+              <path d="M260 270V126H388V270" className="marketplace-hero__visual-line" />
+              <rect x="112" y="70" width="164" height="112" rx="12" />
+              <rect x="238" y="106" width="174" height="116" rx="12" />
+              <rect x="150" y="102" width="88" height="12" rx="6" className="marketplace-hero__visual-slot" />
+              <rect x="150" y="130" width="56" height="10" rx="5" className="marketplace-hero__visual-slot" />
+              <rect x="276" y="140" width="98" height="12" rx="6" className="marketplace-hero__visual-slot" />
+              <rect x="276" y="168" width="62" height="10" rx="5" className="marketplace-hero__visual-slot" />
+              <circle cx="126" cy="294" r="13" />
+              <circle cx="260" cy="294" r="13" />
+              <circle cx="394" cy="294" r="13" />
+              <path d="M126 281V250M260 281V222M394 281V250" className="marketplace-hero__visual-line" />
+            </svg>
           </div>
-          <div className="marketplace-hero__compute-card marketplace-hero__compute-card--physical">
-            <span>Bare Metal</span>
-            <strong>专属整机</strong>
-            <i>物理资源独占</i>
-          </div>
-          <span className="marketplace-hero__orbit marketplace-hero__orbit--one" />
-          <span className="marketplace-hero__orbit marketplace-hero__orbit--two" />
         </div>
       </section>
 
       <section className="marketplace-capability-strip" aria-label="资源购买能力">
-        <div><span>01</span><strong>筛选与比较</strong><p>用同一视图核对站点、规格和价格。</p></div>
-        <div><span>02</span><strong>完整配置</strong><p>继续选择镜像、存储与网络访问。</p></div>
-        <div><span>03</span><strong>进入控制台</strong><p>订单创建后统一追踪付款与资源交付信息。</p></div>
+        <div className="marketplace-capability-strip__inner">
+          <div><span>01</span><strong>多类型算力</strong><p>云服务器与物理机集中选择。</p></div>
+          <div><span>02</span><strong>GPU 规格覆盖</strong><p>按型号和卡数核对可购配置。</p></div>
+          <div><span>03</span><strong>灵活计费</strong><p>按资源类型查看包月或按量价格。</p></div>
+          <div><span>04</span><strong>状态持续追踪</strong><p>订单与资源处理状态统一记录。</p></div>
+        </div>
       </section>
 
-      <Container className="marketplace-tabs-shell" id="marketplace-catalog">
-        <div className="marketplace-catalog-heading">
-          <div>
-            <span>RESOURCE CATALOG</span>
-            <h2>选择适合当前工作负载的资源</h2>
-          </div>
-          <p>资源价格来自统一价目目录，具体配置在下一步核对。</p>
+      <section
+        className="marketplace-section marketplace-pricing-section"
+        aria-labelledby="marketplace-pricing-title"
+      >
+        <div className="marketplace-section-heading marketplace-section-heading--centered">
+          <span>资源定价</span>
+          <h2 id="marketplace-pricing-title">算力方案与价格</h2>
+          <p>价格来自平台统一价目目录，进入配置页后核对完整购买信息。</p>
         </div>
-        <TitleBarTabs
-          className="marketplace-tabs"
+        <UnderlineTabs
+          className="marketplace-price-tabs"
           aria-label="资源类型"
           value={resourceTypeQueryValue(resourceType)}
           onValueChange={handleResourceTypeChange}
           items={[
-            { value: 'cloud', label: '云服务器', panel: catalog },
-            { value: 'physical', label: '物理机', panel: catalog },
+            {
+              value: 'cloud',
+              label: '云服务器',
+              panel: (
+                <MarketplacePriceMatrix
+                  products={priceMatrixProducts}
+                  billingMode={effectiveQuery.billingMode}
+                  onConfigure={handleConfigure}
+                />
+              ),
+            },
+            {
+              value: 'physical',
+              label: '物理机',
+              panel: (
+                <MarketplacePriceMatrix
+                  products={priceMatrixProducts}
+                  billingMode={effectiveQuery.billingMode}
+                  onConfigure={handleConfigure}
+                />
+              ),
+            },
           ]}
         />
-      </Container>
+      </section>
+
+      <section
+        className="marketplace-section marketplace-catalog-section"
+        id="marketplace-catalog"
+        aria-labelledby="marketplace-catalog-title"
+      >
+        <div className="marketplace-section-heading marketplace-catalog-heading">
+          <div>
+            <span>完整资源目录</span>
+            <h2 id="marketplace-catalog-title">筛选并配置算力资源</h2>
+          </div>
+          <p>当前显示{resourceType === 'cloud-server' ? '云服务器' : '物理机'}，可使用条件栏进一步缩小范围。</p>
+        </div>
+        {catalog}
+      </section>
+
+      <section
+        className="marketplace-section marketplace-comparison-section"
+        aria-labelledby="marketplace-comparison-title"
+      >
+        <div className="marketplace-section-heading marketplace-section-heading--centered">
+          <span>规格比较</span>
+          <h2 id="marketplace-comparison-title">算力规格对比</h2>
+          <p>配置规模按当前目录最大可购卡数归一化，不代表理论性能或实测跑分。</p>
+        </div>
+        <MarketplaceSpecificationComparison
+          products={comparisonProducts}
+          onSelect={handleComparisonSelect}
+        />
+      </section>
+
+      <section className="marketplace-guidance" aria-label="资源购买说明">
+        <div>
+          <strong>计费方式</strong>
+          <p>云服务器支持目录中标明的包月与按量价格，物理机按月计费。</p>
+        </div>
+        <div>
+          <strong>配置与订单</strong>
+          <p>进入配置页继续核对镜像、存储、网络和价格，再创建正式订单。</p>
+        </div>
+        <div>
+          <strong>处理状态</strong>
+          <p>订单、付款和资源准备状态均可在控制台按当前记录查看。</p>
+        </div>
+      </section>
     </div>
   );
 }

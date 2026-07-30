@@ -33,7 +33,10 @@ describe('offline hash routing', () => {
       expect(window.location.hash).toBe('#/marketplace'),
     );
     expect(
-      screen.getByRole('heading', { level: 1, name: '让每一份算力都匹配真实工作负载' }),
+      screen.getByRole('heading', {
+        level: 1,
+        name: '面向业务工作负载的算力资源',
+      }),
     ).toBeInTheDocument();
   });
 

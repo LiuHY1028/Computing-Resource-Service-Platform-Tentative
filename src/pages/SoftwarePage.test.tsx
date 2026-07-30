@@ -31,11 +31,39 @@ describe('SoftwarePage', () => {
       screen.getByRole('heading', { level: 1, name: '软件中心' }),
     ).toBeInTheDocument();
     expect(screen.getByTestId('software-navigation')).toHaveAttribute('data-variant', 'software');
-    expect(document.querySelector('.software-featured__spotlight')).toBeInTheDocument();
+    expect(document.querySelector('.software-hero')).toBeInTheDocument();
+    expect(document.querySelector('.software-version-matrix')).toBeInTheDocument();
+    expect(document.querySelector('.software-adaptation-table')).toBeInTheDocument();
+    expect(document.querySelector('.software-featured__spotlight')).toBeNull();
 
     await user.click(screen.getByRole('combobox', { name: '费用策略' }));
     await user.click(screen.getByRole('option', { name: '服务已包含' }));
     expect(screen.getByText('4 个匹配结果')).toBeInTheDocument();
+  });
+
+  it('filters installed software from the hero and opens a detail from the adaptation table', async () => {
+    const user = renderSoftware();
+
+    await user.click(
+      screen.getByRole('button', { name: '查看已安装软件' }),
+    );
+    expect(
+      screen.getByRole('combobox', { name: '安装状态' }),
+    ).toHaveTextContent('已安装或处理中');
+    expect(screen.getByText('3 个匹配结果')).toBeInTheDocument();
+
+    const adaptation = screen
+      .getByRole('heading', { name: '软件适配与安装覆盖' })
+      .closest('section');
+    expect(adaptation).toBeTruthy();
+    await user.click(
+      within(adaptation as HTMLElement).getByRole('button', {
+        name: '资源监控组件',
+      }),
+    );
+    expect(
+      screen.getByRole('dialog', { name: '软件详情' }),
+    ).toBeInTheDocument();
   });
 
   it('submits an installation and links the result back to the console', async () => {

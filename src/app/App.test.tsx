@@ -23,19 +23,19 @@ describe('application routes', () => {
 
     expect(DEFAULT_APP_ROUTE.pageId).toBe('MKT-01');
     expect(
-      screen.getByRole('heading', { level: 1, name: '让每一份算力都匹配真实工作负载' }),
+      screen.getByRole('heading', { level: 1, name: '面向业务工作负载的算力资源' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: '选择适合当前工作负载的资源',
+        name: '算力方案与价格',
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText('模块占位页面')).not.toBeInTheDocument();
   });
 
   it.each([
-    ['/marketplace', '让每一份算力都匹配真实工作负载'],
+    ['/marketplace', '面向业务工作负载的算力资源'],
     ['/console/resources/cloud-servers', '云服务器列表'],
     ['/console/storage', '存储管理'],
     ['/console/images', '镜像管理'],

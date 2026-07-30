@@ -12,6 +12,8 @@ export {
   type MarketplaceNavigationContext,
 } from './state/marketplaceNavigationState';
 export { MarketplaceFilters } from './components/MarketplaceFilters';
+export { MarketplacePriceMatrix } from './components/MarketplacePriceMatrix';
+export { MarketplaceSpecificationComparison } from './components/MarketplaceSpecificationComparison';
 export {
   MarketplaceResults,
   type MarketplaceResultsState,

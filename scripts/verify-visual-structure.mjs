@@ -18,6 +18,13 @@ const usageMeter = read('src/components/ui/UsageMeter/UsageMeter.tsx');
 const statusBadge = read('src/components/ui/StatusBadge/StatusBadge.tsx');
 const storagePurchase = read('src/pages/StoragePurchasePage.tsx');
 const storagePurchaseStyles = read('src/styles/storage-purchase.css');
+const marketplace = read('src/pages/MarketplacePage.tsx');
+const marketplaceStyles = read('src/features/marketplace/marketplace.css');
+const software = read('src/pages/SoftwarePage.tsx');
+const softwareStyles = read('src/pages/software-center.css');
+const productLayouts = read('src/app/layouts/product-layouts.css');
+const marketplaceLayout = read('src/app/layouts/MarketplaceLayout.tsx');
+const softwareLayout = read('src/app/layouts/SoftwareCenterLayout.tsx');
 const packageJson = JSON.parse(read('package.json'));
 
 check(
@@ -161,6 +168,65 @@ check(
 );
 
 check(
+  [
+    'marketplace-hero',
+    'marketplace-capability-strip',
+    'marketplace-pricing-section',
+    'marketplace-catalog-section',
+    'marketplace-comparison-section',
+    'marketplace-guidance',
+  ].every((token) => marketplace.includes(token)),
+  '资源商城必须保留 Hero、四项能力、价格矩阵、完整目录、规格对比和说明区。',
+);
+check(
+  !marketplace.includes('marketplace-hero__compute-card')
+    && !marketplace.includes('marketplace-hero__orbit')
+    && !marketplaceStyles.match(/(?:linear|radial)-gradient|backdrop-filter/),
+  '资源商城不得恢复旋转算力卡、轨道、光效、复杂渐变或玻璃拟态。',
+);
+check(
+  marketplace.includes('<MarketplacePriceMatrix')
+    && marketplace.includes('<MarketplaceSpecificationComparison')
+    && marketplaceStyles.includes('grid-template-columns: repeat(3, minmax(0, 1fr))')
+    && marketplaceStyles.includes('.marketplace-comparison-table td'),
+  '资源商城必须使用三列价格矩阵和可读规格对比表。',
+);
+
+check(
+  [
+    'software-hero',
+    'software-capability-strip',
+    'software-version-section',
+    'software-catalog-section',
+    'software-adaptation-section',
+    'software-guidance',
+  ].every((token) => software.includes(token)),
+  '软件中心必须保留 Hero、四项能力、版本矩阵、完整目录、适配表和说明区。',
+);
+check(
+  !software.includes('software-featured__spotlight')
+    && !software.includes('software-category-rail')
+    && !softwareStyles.match(/(?:linear|radial)-gradient|backdrop-filter/),
+  '软件中心不得恢复深色聚光卡、厚重分类轨道、复杂渐变或玻璃拟态。',
+);
+check(
+  software.includes('<SoftwareVersionMatrix')
+    && software.includes('<SoftwareAdaptationTable')
+    && software.includes('getSoftwareCompatibility(item, resource)')
+    && software.includes('installedResourceCount / compatibleResourceCount'),
+  '软件版本矩阵和安装覆盖必须由当前软件、资源及安装关系派生。',
+);
+
+check(
+  productLayouts.includes('--product-nav-height: 56px')
+    && productLayouts.includes('--product-content-width: 1200px')
+    && productLayouts.includes('.product-area-footer__body')
+    && marketplaceLayout.includes('<ProductAreaFooter')
+    && softwareLayout.includes('<ProductAreaFooter'),
+  '商城与软件中心必须共用 56px 顶栏、1200px 版心和正式深色页尾。',
+);
+
+check(
   Object.keys(packageJson.dependencies ?? {}).every((dependency) => [
     'react',
     'react-dom',
@@ -184,4 +250,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`视觉结构验证通过：${formalTableOwners.length} 个正式表格入口已迁移，存储购买、存储管理与文件样板结构有效。`);
+console.log(`视觉结构验证通过：${formalTableOwners.length} 个正式表格入口已迁移，公共产品页、存储购买、存储管理与文件样板结构有效。`);

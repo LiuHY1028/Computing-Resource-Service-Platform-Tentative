@@ -64,7 +64,7 @@ describe('single visible status', () => {
 
   it('uses compatibility text rather than a second status badge on software cards', async () => {
     renderPath('/software');
-    await screen.findByRole('heading', { name: '软件目录' });
+    await screen.findByRole('heading', { name: '查找并安装软件' });
     const cards = [...document.querySelectorAll('.software-card')];
     expect(cards.length).toBeGreaterThan(0);
     cards.forEach((card) => {

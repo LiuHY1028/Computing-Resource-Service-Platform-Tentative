@@ -78,6 +78,9 @@ describe('standalone frontend delivery policy', () => {
     expect(finalizeSource).toContain('算力资源服务平台.html');
     expect(verifySource).toContain('data:font\\/woff2;base64');
     expect(verifySource).toContain('__dev');
-    expect(gitignoreSource).toMatch(/^release\/$/m);
+    expect(gitignoreSource).toMatch(/^release\/\*$/m);
+    expect(gitignoreSource).toMatch(
+      /^!release\/算力资源服务平台\.html$/m,
+    );
   });
 });

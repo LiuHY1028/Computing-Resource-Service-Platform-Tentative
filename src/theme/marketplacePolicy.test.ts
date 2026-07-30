@@ -42,10 +42,6 @@ const marketplaceStyles = Object.entries(productionSources)
   .filter(([file]) => file.endsWith('/marketplace.css'))
   .map(([, source]) => source)
   .join('\n');
-const marketplaceExperienceStyles = Object.entries(productionSources)
-  .filter(([file]) => file.endsWith('/marketplace-experience.css'))
-  .map(([, source]) => source)
-  .join('\n');
 const marketplacePageTokenBlock =
   marketplaceStyles.match(/\.marketplace-page\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
 const marketplaceStylesWithoutPageTokenBlock = marketplaceStyles.replace(
@@ -160,19 +156,19 @@ describe('marketplace production-source policies', () => {
       /--marketplace-accent-blue:\s*#[\da-f]{6}/i,
     );
     expect(marketplacePageTokenBlock).toMatch(
-      /--marketplace-accent-cyan:\s*#[\da-f]{6}/i,
+      /--marketplace-accent-soft:\s*#[\da-f]{6}/i,
     );
     expect(marketplacePageTokenBlock).toMatch(
-      /--marketplace-accent-violet:\s*#[\da-f]{6}/i,
+      /--marketplace-surface:\s*#[\da-f]{3,6}/i,
     );
     expect(marketplacePageTokenBlock).toMatch(
-      /--marketplace-surface-blue:\s*#[\da-f]{6}/i,
+      /--marketplace-page-surface:\s*#[\da-f]{6}/i,
     );
     expect(marketplacePageTokenBlock).toMatch(
-      /--marketplace-surface-cyan:\s*#[\da-f]{6}/i,
+      /--marketplace-border:\s*#[\da-f]{6}/i,
     );
     expect(marketplacePageTokenBlock).toMatch(
-      /--marketplace-surface-violet:\s*#[\da-f]{6}/i,
+      /--marketplace-hero-shape:\s*rgb\(/i,
     );
     expect(marketplaceStylesWithoutPageTokenBlock).not.toMatch(
       /#[\da-f]{3,8}\b|rgba?\(|hsla?\(/i,
@@ -192,9 +188,10 @@ describe('marketplace production-source policies', () => {
       marketplaceStyles.match(/\.resource-product-card\s*\{([^}]+)\}/)?.[1] ??
       '';
     expect(cardRootRule).not.toContain('minmax(0, 1fr)');
-    expect(marketplaceExperienceStyles).toContain('.marketplace-layout .marketplace-page');
-    expect(marketplaceExperienceStyles).not.toContain('.console-layout');
-    expect(marketplaceExperienceStyles).not.toContain('.software-center-layout');
+    expect(marketplaceStyles).toContain('.marketplace-price-matrix');
+    expect(marketplaceStyles).toContain('.marketplace-comparison-table');
+    expect(marketplaceStyles).not.toContain('.marketplace-hero__compute-card');
+    expect(marketplaceStyles).not.toMatch(/(?:linear|radial)-gradient|backdrop-filter/);
   });
 
   it('documents the four-to-three-column contract and accessible motion states', () => {
