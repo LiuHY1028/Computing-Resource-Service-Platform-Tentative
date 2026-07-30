@@ -238,7 +238,11 @@
 
 .marketplace-section-heading--centered {
   display: grid;
+  width: 100%;
   max-width: 760px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  justify-content: center;
   justify-items: center;
   margin-right: auto;
   margin-bottom: 36px;
@@ -274,7 +278,16 @@
 }
 
 .marketplace-section-heading--centered p {
-  margin-top: 12px;
+  width: 100%;
+  margin: 12px auto 0;
+  text-align: center;
+}
+
+.marketplace-section-heading--centered > span,
+.marketplace-section-heading--centered > h2 {
+  width: 100%;
+  justify-self: center;
+  text-align: center;
 }
 
 .marketplace-price-tabs .ui-tabs__list {

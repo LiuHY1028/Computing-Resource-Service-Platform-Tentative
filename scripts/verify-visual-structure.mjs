@@ -212,9 +212,20 @@ check(
 check(
   software.includes('<SoftwareVersionMatrix')
     && software.includes('<SoftwareAdaptationTable')
+    && software.includes('software-version-card--featured')
+    && software.includes('software-hero__package')
+    && software.includes('software-hero__deployment-pipeline')
     && software.includes('getSoftwareCompatibility(item, resource)')
     && software.includes('installedResourceCount / compatibleResourceCount'),
-  '软件版本矩阵和安装覆盖必须由当前软件、资源及安装关系派生。',
+  '软件精选、部署主题 Hero 和安装覆盖必须由当前软件、资源及安装关系派生。',
+);
+check(
+  !software.includes('精选软件与版本')
+    && !software.includes('费用策略和兼容范围来自当前软件目录')
+    && !software.includes('software-hero__visual-line')
+    && softwareStyles.includes('.software-section-heading--centered > h2')
+    && marketplaceStyles.includes('.marketplace-section-heading--centered > h2'),
+  '软件精选区不得恢复冗长三级标题，两页居中标题和软件独立 Hero 语义必须保留。',
 );
 
 check(

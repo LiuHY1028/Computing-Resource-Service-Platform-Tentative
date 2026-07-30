@@ -11,6 +11,10 @@
   --software-hero-shape: rgb(255 255 255 / 18%);
   --software-hero-line: rgb(255 255 255 / 58%);
   --software-hero-slot: rgb(255 255 255 / 72%);
+  --software-hero-package-top: rgb(255 255 255 / 24%);
+  --software-hero-package-face: rgb(255 255 255 / 14%);
+  --software-hero-module: rgb(255 255 255 / 12%);
+  --software-hero-module-icon: rgb(255 255 255 / 22%);
   --software-hero-eyebrow: rgb(255 255 255 / 72%);
   --software-hero-copy: rgb(255 255 255 / 78%);
   --software-hero-border: rgb(255 255 255 / 62%);
@@ -116,27 +120,65 @@
 
 .software-hero__visual svg {
   display: block;
-  width: min(100%, 500px);
+  width: min(100%, 520px);
   height: auto;
 }
 
-.software-hero__visual rect,
-.software-hero__visual circle {
+.software-hero__package-top,
+.software-hero__package-side,
+.software-hero__package-face {
   fill: var(--software-hero-shape);
   stroke: var(--software-hero-line);
   stroke-width: 2;
+  stroke-linejoin: round;
 }
 
-.software-hero__visual .software-hero__visual-slot {
-  fill: var(--software-hero-slot);
-  stroke: none;
+.software-hero__package-top {
+  fill: var(--software-hero-package-top);
 }
 
-.software-hero__visual-line {
+.software-hero__package-face {
+  fill: var(--software-hero-package-face);
+}
+
+.software-hero__package-fold,
+.software-hero__package-check,
+.software-hero__deployment-pipeline path,
+.software-hero__deployment-module path {
   fill: none;
   stroke: var(--software-hero-line);
   stroke-linecap: round;
+  stroke-linejoin: round;
   stroke-width: 2;
+}
+
+.software-hero__package-check {
+  stroke: var(--software-hero-slot);
+  stroke-width: 3;
+}
+
+.software-hero__deployment-pipeline path:first-child {
+  stroke-dasharray: 5 6;
+}
+
+.software-hero__deployment-module rect:first-child {
+  fill: var(--software-hero-module);
+  stroke: var(--software-hero-line);
+  stroke-width: 2;
+}
+
+.software-hero__deployment-module rect:nth-child(2) {
+  fill: var(--software-hero-module-icon);
+  stroke: none;
+}
+
+.software-hero__deployment-module path:first-of-type {
+  stroke: var(--software-hero-slot);
+  stroke-width: 2.5;
+}
+
+.software-hero__deployment-module path:last-child {
+  stroke: var(--software-hero-slot);
 }
 
 .software-capability-strip {
@@ -214,7 +256,11 @@
 
 .software-section-heading--centered {
   display: grid;
+  width: 100%;
   max-width: 760px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  justify-content: center;
   justify-items: center;
   margin-right: auto;
   margin-bottom: 36px;
@@ -251,7 +297,39 @@
 }
 
 .software-section-heading--centered p {
-  margin-top: 12px;
+  width: 100%;
+  margin: 12px auto 0;
+  text-align: center;
+}
+
+.software-section-heading--centered > span,
+.software-section-heading--centered > h2 {
+  width: 100%;
+  justify-self: center;
+  text-align: center;
+}
+
+.software-version-section__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 26px;
+  text-align: center;
+}
+
+.software-version-section__heading h2 {
+  margin: 0;
+  color: var(--software-text);
+  font-size: 30px;
+  font-weight: 630;
+  letter-spacing: -.025em;
+  line-height: 1.3;
+}
+
+.software-version-section__heading span {
+  color: var(--software-muted);
+  font-size: 13px;
 }
 
 .software-version-tabs .ui-tabs__list {
@@ -277,17 +355,69 @@
   border-left: 1px solid var(--software-border);
   border-radius: 6px;
   background: var(--software-surface);
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.software-version-matrix--4 {
+  grid-template-columns: minmax(340px, 1.45fr) repeat(3, minmax(0, 1fr));
+}
+
+.software-version-matrix--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.software-version-matrix--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.software-version-matrix--1 {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .software-version-card {
-  display: grid;
+  position: relative;
+  display: flex;
   min-width: 0;
-  align-content: start;
+  flex-direction: column;
   padding: 20px;
   border-right: 1px solid var(--software-border);
   border-bottom: 1px solid var(--software-border);
   background: var(--software-surface);
+}
+
+.software-version-card--featured {
+  padding-top: 18px;
+  border-top: 3px solid var(--software-accent);
+  background: var(--software-accent-soft);
+}
+
+.software-version-card__featured-label {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.software-version-card__featured-label strong {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 4px;
+  background: var(--software-accent);
+  color: var(--software-surface);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.software-version-card__featured-label span {
+  overflow: hidden;
+  color: var(--software-accent-dark);
+  font-size: 11px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .software-version-card__heading {
@@ -342,6 +472,13 @@
   white-space: nowrap;
 }
 
+.software-version-card__description {
+  margin: 16px 0 0;
+  color: var(--software-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
 .software-version-card dl {
   display: grid;
   margin: 18px 0 0;
@@ -375,7 +512,8 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 16px;
 }
 
 .software-version-card__actions .ui-button {
@@ -779,7 +917,8 @@
     min-height: 400px;
   }
 
-  .software-version-matrix {
+  .software-version-matrix--4,
+  .software-version-matrix--3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -822,13 +961,21 @@
 }
 
 @media (max-width: 640px) {
-  .software-version-matrix,
+  .software-version-matrix--4,
+  .software-version-matrix--3,
+  .software-version-matrix--2,
   .software-card-grid,
   .software-filter-bar,
   .software-detail__facts,
   .software-capability-strip__inner,
   .software-guidance {
     grid-template-columns: 1fr;
+  }
+
+  .software-version-section__heading {
+    align-items: center;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .software-filter-bar > :first-child {

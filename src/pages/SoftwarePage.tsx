@@ -87,52 +87,94 @@ function SoftwareVersionMatrix({
   onDetail: (software: SoftwareProduct) => void;
   onInstall: (software: SoftwareProduct) => void;
 }>) {
+  const featuredSoftware = items.reduce<SoftwareProduct | undefined>(
+    (current, item) => {
+      if (!current) return item;
+      return getSoftwareInstallCount(item.id) >
+        getSoftwareInstallCount(current.id)
+        ? item
+        : current;
+    },
+    undefined,
+  );
+  const matrixSize = Math.min(Math.max(items.length, 1), 4);
+
   return (
-    <div className="software-version-matrix" role="list">
-      {items.map((item) => (
-        <article className="software-version-card" key={item.id} role="listitem">
-          <div className="software-version-card__heading">
-            <span className="software-version-card__glyph" aria-hidden="true">
-              {softwareGlyph(item)}
-            </span>
-            <div>
-              <span>{item.category}</span>
-              <strong className="software-version-card__title">{item.name}</strong>
-              <p>{item.publisher}</p>
+    <div
+      className={`software-version-matrix software-version-matrix--${matrixSize}`}
+      role="list"
+    >
+      {items.map((item) => {
+        const isFeatured = item.id === featuredSoftware?.id;
+        const installedResourceCount = getSoftwareInstallCount(item.id);
+
+        return (
+          <article
+            className={`software-version-card${isFeatured ? ' software-version-card--featured' : ''}`}
+            data-featured={isFeatured ? 'true' : undefined}
+            key={item.id}
+            role="listitem"
+          >
+            {isFeatured && (
+              <div className="software-version-card__featured-label">
+                <strong>当前精选</strong>
+                <span>
+                  {installedResourceCount
+                    ? `已关联 ${installedResourceCount} 个资源`
+                    : '当前分类优先展示'}
+                </span>
+              </div>
+            )}
+            <div className="software-version-card__heading">
+              <span className="software-version-card__glyph" aria-hidden="true">
+                {softwareGlyph(item)}
+              </span>
+              <div>
+                <span>{item.category}</span>
+                <strong className="software-version-card__title">
+                  {item.name}
+                </strong>
+                <p>{item.publisher}</p>
+              </div>
             </div>
-          </div>
-          <dl>
-            <div>
-              <dt>当前版本</dt>
-              <dd>{item.versions[0]}</dd>
+            {isFeatured && (
+              <p className="software-version-card__description">
+                {item.description}
+              </p>
+            )}
+            <dl>
+              <div>
+                <dt>当前版本</dt>
+                <dd>{item.versions[0]}</dd>
+              </div>
+              <div>
+                <dt>操作系统</dt>
+                <dd>{item.compatibleOperatingSystems.join(' / ')}</dd>
+              </div>
+              <div>
+                <dt>适用算力</dt>
+                <dd>
+                  {item.compatibleComputeTypes
+                    .map((type) => type.toUpperCase())
+                    .join(' / ')}
+                </dd>
+              </div>
+              <div>
+                <dt>费用策略</dt>
+                <dd>{softwarePriceLabel(item.id)}</dd>
+              </div>
+            </dl>
+            <div className="software-version-card__actions">
+              <Button variant="secondary" onClick={() => onDetail(item)}>
+                查看详情
+              </Button>
+              <Button variant="primary" onClick={() => onInstall(item)}>
+                安装
+              </Button>
             </div>
-            <div>
-              <dt>操作系统</dt>
-              <dd>{item.compatibleOperatingSystems.join(' / ')}</dd>
-            </div>
-            <div>
-              <dt>适用算力</dt>
-              <dd>
-                {item.compatibleComputeTypes
-                  .map((type) => type.toUpperCase())
-                  .join(' / ')}
-              </dd>
-            </div>
-            <div>
-              <dt>费用策略</dt>
-              <dd>{softwarePriceLabel(item.id)}</dd>
-            </div>
-          </dl>
-          <div className="software-version-card__actions">
-            <Button variant="secondary" onClick={() => onDetail(item)}>
-              查看详情
-            </Button>
-            <Button variant="primary" onClick={() => onInstall(item)}>
-              安装
-            </Button>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -508,17 +550,52 @@ export function SoftwarePage() {
             </div>
           </div>
           <div className="software-hero__visual" aria-hidden="true">
-            <svg viewBox="0 0 500 320">
-              <path d="M78 252H426" className="software-hero__visual-line" />
-              <path d="M120 252V212H248M386 252V184H324" className="software-hero__visual-line" />
-              <rect x="104" y="74" width="174" height="116" rx="12" />
-              <rect x="222" y="110" width="174" height="116" rx="12" />
-              <rect x="140" y="108" width="96" height="14" rx="7" className="software-hero__visual-slot" />
-              <rect x="140" y="140" width="68" height="10" rx="5" className="software-hero__visual-slot" />
-              <circle cx="120" cy="270" r="12" />
-              <circle cx="252" cy="270" r="12" />
-              <circle cx="386" cy="270" r="12" />
-              <path d="M278 152H346M278 180H330" className="software-hero__visual-line" />
+            <svg viewBox="0 0 520 320">
+              <g className="software-hero__package">
+                <path
+                  d="M72 106 162 58l90 48-90 48Z"
+                  className="software-hero__package-top"
+                />
+                <path
+                  d="M72 106v106l90 50V154Z"
+                  className="software-hero__package-side"
+                />
+                <path
+                  d="M252 106v106l-90 50V154Z"
+                  className="software-hero__package-face"
+                />
+                <path
+                  d="M119 132 162 155l43-23"
+                  className="software-hero__package-fold"
+                />
+                <path
+                  d="m186 184 10 10 20-22"
+                  className="software-hero__package-check"
+                />
+              </g>
+              <g className="software-hero__deployment-pipeline">
+                <path d="M260 160h50" />
+                <path d="m300 150 12 10-12 10" />
+                <path d="M312 160h18V68M330 160v92" />
+              </g>
+              <g className="software-hero__deployment-module">
+                <rect x="330" y="38" width="146" height="60" rx="10" />
+                <rect x="348" y="56" width="28" height="24" rx="6" />
+                <path d="m356 67 4 4 8-9" />
+                <path d="M390 60h62M390 76h42" />
+              </g>
+              <g className="software-hero__deployment-module">
+                <rect x="330" y="130" width="146" height="60" rx="10" />
+                <rect x="348" y="148" width="28" height="24" rx="6" />
+                <path d="m356 159 4 4 8-9" />
+                <path d="M390 152h62M390 168h50" />
+              </g>
+              <g className="software-hero__deployment-module">
+                <rect x="330" y="222" width="146" height="60" rx="10" />
+                <rect x="348" y="240" width="28" height="24" rx="6" />
+                <path d="m356 251 4 4 8-9" />
+                <path d="M390 244h62M390 260h38" />
+              </g>
             </svg>
           </div>
         </div>
@@ -537,10 +614,9 @@ export function SoftwarePage() {
         className="software-section software-version-section"
         aria-labelledby="software-version-title"
       >
-        <div className="software-section-heading software-section-heading--centered">
-          <span>软件与版本</span>
-          <h2 id="software-version-title">精选软件与版本</h2>
-          <p>费用策略和兼容范围来自当前软件目录，未确认的商业授权不展示金额。</p>
+        <div className="software-version-section__heading">
+          <h2 id="software-version-title">精选软件</h2>
+          <span>{catalog.length} 款可选 · 按分类浏览</span>
         </div>
         <UnderlineTabs
           className="software-version-tabs"

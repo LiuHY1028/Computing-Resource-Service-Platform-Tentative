@@ -32,9 +32,34 @@ describe('SoftwarePage', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('software-navigation')).toHaveAttribute('data-variant', 'software');
     expect(document.querySelector('.software-hero')).toBeInTheDocument();
+    expect(
+      document.querySelector('.software-hero__package'),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector('.software-hero__deployment-pipeline'),
+    ).toBeInTheDocument();
     expect(document.querySelector('.software-version-matrix')).toBeInTheDocument();
+    expect(
+      document.querySelector('.software-version-card--featured'),
+    ).toHaveAttribute('data-featured', 'true');
     expect(document.querySelector('.software-adaptation-table')).toBeInTheDocument();
     expect(document.querySelector('.software-featured__spotlight')).toBeNull();
+    const featuredSoftwareHeading = screen.getByRole('heading', {
+      level: 2,
+      name: '精选软件',
+    });
+    expect(featuredSoftwareHeading).toBeInTheDocument();
+    expect(
+      within(
+        featuredSoftwareHeading.closest('section') as HTMLElement,
+      ).queryByText('软件与版本'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('精选软件与版本')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        '费用策略和兼容范围来自当前软件目录，未确认的商业授权不展示金额。',
+      ),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('combobox', { name: '费用策略' }));
     await user.click(screen.getByRole('option', { name: '服务已包含' }));
