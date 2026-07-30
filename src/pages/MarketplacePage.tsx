@@ -396,13 +396,8 @@ export function MarketplacePage() {
 
       <section
         className="marketplace-section marketplace-pricing-section"
-        aria-labelledby="marketplace-pricing-title"
+        aria-label="算力方案与价格"
       >
-        <div className="marketplace-section-heading marketplace-section-heading--centered">
-          <span>资源定价</span>
-          <h2 id="marketplace-pricing-title">算力方案与价格</h2>
-          <p>价格来自平台统一价目目录，进入配置页后核对完整购买信息。</p>
-        </div>
         <UnderlineTabs
           className="marketplace-price-tabs"
           aria-label="资源类型"

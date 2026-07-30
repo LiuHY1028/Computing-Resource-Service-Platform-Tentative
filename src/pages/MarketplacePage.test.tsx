@@ -81,11 +81,22 @@ describe('MarketplacePage', () => {
       screen.getByRole('heading', { level: 1, name: '面向业务工作负载的算力资源' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', {
-        level: 2,
+      screen.getByRole('region', {
         name: '算力方案与价格',
       }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', {
+        level: 2,
+        name: '算力方案与价格',
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('资源定价')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        '价格来自平台统一价目目录，进入配置页后核对完整购买信息。',
+      ),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 2, name: '算力规格对比' }),
     ).toBeInTheDocument();

@@ -26,8 +26,7 @@ describe('application routes', () => {
       screen.getByRole('heading', { level: 1, name: '面向业务工作负载的算力资源' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', {
-        level: 2,
+      screen.getByRole('region', {
         name: '算力方案与价格',
       }),
     ).toBeInTheDocument();
